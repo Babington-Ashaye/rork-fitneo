@@ -6,447 +6,682 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemBackground)
+            Theme.pageGradient.ignoresSafeArea()
+            Theme.glowGradient
+                .frame(width: 600, height: 600)
+                .offset(y: -300)
                 .ignoresSafeArea()
+                .allowsHitTesting(false)
 
             VStack(spacing: 0) {
-                // Progress bar
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(.systemGray5))
-                            .frame(height: 4)
-
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(
-                                LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing)
-                            )
-                            .frame(width: geo.size.width * CGFloat(viewModel.currentStep + 1) / CGFloat(viewModel.totalSteps), height: 4)
-                    }
+                if viewModel.currentStep > 0 && viewModel.currentStep < 19 {
+                    OnboardingProgressBar(progress: viewModel.progress)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 16)
                 }
-                .frame(height: 4)
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
 
-                // Step content
                 ScrollView {
-                    VStack(spacing: 32) {
+                    VStack(alignment: .leading, spacing: 28) {
                         stepContent
                             .padding(.horizontal, 24)
                             .padding(.top, 24)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                Spacer()
-
-                // Navigation buttons
-                VStack(spacing: 16) {
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    HStack(spacing: 16) {
-                        if viewModel.currentStep > 0 {
-                            Button("Back") {
-                                viewModel.previousStep()
-                            }
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-                        }
-
-                        Button {
-                            if viewModel.currentStep == viewModel.totalSteps - 1 {
-                                Task {
-                                    await viewModel.saveOnboarding()
-                                    if viewModel.isComplete {
-                                        onComplete()
-                                    }
-                                }
-                            } else {
-                                viewModel.nextStep()
-                            }
-                        } label: {
-                            HStack {
-                                if viewModel.isSaving {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text(viewModel.currentStep == viewModel.totalSteps - 1 ? "Get Started" : "Continue")
-                                        .font(.headline)
-                                }
-                                if !viewModel.isSaving && viewModel.currentStep < viewModel.totalSteps - 1 {
-                                    Image(systemName: "arrow.right")
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing)
-                            )
-                            .foregroundStyle(.white)
-                            .clipShape(.rect(cornerRadius: 16))
-                        }
-                        .disabled(!viewModel.canProceed || viewModel.isSaving)
-                        .opacity(!viewModel.canProceed ? 0.6 : 1)
-                    }
-                    .padding(.horizontal, 24)
-                }
-                .padding(.bottom, 32)
+                if shouldShowFooter { footer }
             }
         }
+        .preferredColorScheme(.dark)
+        .animation(.easeInOut(duration: 0.4), value: viewModel.currentStep)
+    }
+
+    private var shouldShowFooter: Bool {
+        switch viewModel.currentStep {
+        case 0, 3, 8, 13, 19: return false // welcome / calibrations / completion
+        default: return true
+        }
+    }
+
+    private var primaryLabel: String {
+        viewModel.isFinishStep ? "Finish" : "Continue"
+    }
+
+    private var footer: some View {
+        VStack(spacing: 12) {
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.danger)
+                    .multilineTextAlignment(.center)
+            }
+            HStack(spacing: 12) {
+                if viewModel.currentStep > 1 {
+                    Button {
+                        viewModel.back()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .glassCard(cornerRadius: 18)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button {
+                    if viewModel.isFinishStep {
+                        Task { await viewModel.finish() }
+                    } else {
+                        viewModel.next()
+                    }
+                } label: {
+                    Text(primaryLabel)
+                        .primaryButtonStyle(disabled: !viewModel.canProceed)
+                }
+                .buttonStyle(.plain)
+                .disabled(!viewModel.canProceed)
+            }
+            .padding(.horizontal, 24)
+        }
+        .padding(.bottom, 28)
+        .padding(.top, 8)
     }
 
     @ViewBuilder
     private var stepContent: some View {
         switch viewModel.currentStep {
-        case 0:
-            AgeStepView(data: $viewModel.onboardingData)
-        case 1:
-            GenderStepView(data: $viewModel.onboardingData)
-        case 2:
-            GoalStepView(data: $viewModel.onboardingData)
-        case 3:
-            LevelStepView(data: $viewModel.onboardingData)
-        case 4:
-            PreferenceStepView(data: $viewModel.onboardingData)
-        case 5:
-            TargetAreasStepView(data: $viewModel.onboardingData)
-        default:
-            EmptyView()
+        case 0: WelcomeStep { viewModel.next() }
+        case 1: GoalStep(data: $viewModel.data)
+        case 2: LevelStep(data: $viewModel.data)
+        case 3: CalibrationView(
+            title: "AI CALIBRATION",
+            subtitle: "Building Your FITNEO Profile",
+            icon: "sparkles",
+            items: [
+                "Mapping your fitness baseline...",
+                "Analyzing goal patterns...",
+                "Building your profile..."
+            ],
+            activeItem: "Calibrating AI coach...",
+            endProgress: 0.6,
+            onFinished: { viewModel.next() }
+        )
+        case 4: EquipmentStep(data: $viewModel.data)
+        case 5: FocusStep(data: $viewModel.data)
+        case 6: DurationStep(data: $viewModel.data)
+        case 7: StatsStep(data: $viewModel.data)
+        case 8: CalibrationView(
+            title: "NUTRITION PLAN",
+            subtitle: "Setting Nutrition Plan",
+            icon: "applelogo",
+            items: [
+                "Calculating caloric needs...",
+                "Optimizing macronutrients...",
+                "Planning meal timing...",
+                "Setting weight targets..."
+            ],
+            activeItem: "Nutrition plan ready!",
+            endProgress: 0.9,
+            onFinished: { viewModel.next() }
+        )
+        case 9: DietStep(data: $viewModel.data)
+        case 10: CoachStep(data: $viewModel.data)
+        case 11: WorkoutTimeStep(data: $viewModel.data)
+        case 12: SleepStep(data: $viewModel.data)
+        case 13: GoalsProjectionStep(data: $viewModel.data, onContinue: { viewModel.next() })
+        case 14: ActivityStep(data: $viewModel.data)
+        case 15: PhysiqueStep(data: $viewModel.data)
+        case 16: MotivationStep(data: $viewModel.data)
+        case 17: LanguageStep(data: $viewModel.data)
+        case 18: ThemeStep(data: $viewModel.data)
+        case 19: CompletionStep(onFinished: onComplete)
+        default: EmptyView()
         }
     }
 }
 
-// MARK: - Step Views
+// MARK: - Step views
 
-struct AgeStepView: View {
-    @Binding var data: OnboardingData
+private struct WelcomeStep: View {
+    var onBegin: () -> Void
+    @State private var glow = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Text("How old are you?")
-                .font(.title2.bold())
+        VStack(spacing: 28) {
+            Spacer().frame(height: 60)
+            ZStack {
+                Circle()
+                    .fill(Theme.accent.opacity(glow ? 0.45 : 0.2))
+                    .frame(width: 220, height: 220)
+                    .blur(radius: 50)
+                    .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: glow)
+                VStack(spacing: 10) {
+                    Image(systemName: "bolt.heart.fill")
+                        .font(.system(size: 80, weight: .bold))
+                        .foregroundStyle(Theme.accent)
+                        .shadow(color: Theme.accent.opacity(0.7), radius: 20)
+                    Text("FITNEO")
+                        .font(.system(size: 48, weight: .black, design: .rounded))
+                        .tracking(8)
+                        .foregroundStyle(.white)
+                }
+            }
+            Text("The future of fitness is you.")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
 
-            Text("This helps us customize your workout intensity")
+            Spacer()
+
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                onBegin()
+            } label: {
+                Text("Begin Calibration")
+                    .primaryButtonStyle()
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 40)
+        }
+        .frame(maxWidth: .infinity)
+        .onAppear { glow = true }
+    }
+}
+
+private struct GoalStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Goal Setting", aiLabel: "Calibrating your targets...", question: "What is your #1 goal?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.Goal.allCases, id: \.self) { g in
+                    SelectableCard(title: g.title, icon: g.icon, isSelected: data.goal == g) {
+                        data.goal = g
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct LevelStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Level Assessment", aiLabel: nil, question: "Where are you right now?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.FitnessLevel.allCases, id: \.self) { l in
+                    SelectableCard(title: l.title, subtitle: l.subtitle, isSelected: data.fitnessLevel == l) {
+                        data.fitnessLevel = l
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct EquipmentStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Equipment Setup", aiLabel: nil, question: "What do you have access to?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.Equipment.allCases, id: \.self) { e in
+                    SelectableCard(title: e.title, icon: e.icon, isSelected: data.equipment == e) {
+                        data.equipment = e
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct FocusStep: View {
+    @Binding var data: OnboardingData
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Body Focus", aiLabel: nil, question: "Where do you want to focus most?")
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(OnboardingData.FocusArea.allCases, id: \.self) { area in
+                    GridCard(title: area.title, icon: area.icon, isSelected: data.focusAreas.contains(area)) {
+                        if data.focusAreas.contains(area) {
+                            data.focusAreas.removeAll { $0 == area }
+                        } else {
+                            data.focusAreas.append(area)
+                        }
+                    }
+                }
+            }
+            Text("Select one or more")
+                .font(.caption)
+                .foregroundStyle(Theme.textTertiary)
+        }
+    }
+}
+
+private struct DurationStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Session Length", aiLabel: nil, question: "How long can you train per session?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.SessionLength.allCases, id: \.self) { s in
+                    SelectableCard(title: s.title, isSelected: data.sessionLength == s) {
+                        data.sessionLength = s
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct StatsStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Your Stats", aiLabel: nil, question: "Tell us your numbers")
+            StatInputRow(
+                label: "Weight",
+                value: $data.weight,
+                unit: $data.weightUnit,
+                units: OnboardingData.WeightUnit.allCases,
+                unitTitle: { $0.rawValue },
+                range: 30...250
+            )
+            StatInputRow(
+                label: "Height",
+                value: $data.height,
+                unit: $data.heightUnit,
+                units: OnboardingData.HeightUnit.allCases,
+                unitTitle: { $0.rawValue },
+                range: 100...230
+            )
+        }
+    }
+}
+
+private struct DietStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Nutrition Setup", aiLabel: nil, question: "What describes your diet?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.DietType.allCases, id: \.self) { d in
+                    SelectableCard(title: d.title, icon: d.icon, isSelected: data.dietType == d) {
+                        data.dietType = d
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct CoachStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "AI Coach Setup", aiLabel: nil, question: "How do you want to be coached?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.CoachPersonality.allCases, id: \.self) { c in
+                    SelectableCard(title: c.title, subtitle: c.subtitle, isSelected: data.coachPersonality == c) {
+                        data.coachPersonality = c
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct WorkoutTimeStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Schedule", aiLabel: nil, question: "When do you prefer to train?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.WorkoutTime.allCases, id: \.self) { t in
+                    SelectableCard(title: t.title, subtitle: t.subtitle, isSelected: data.workoutTime == t) {
+                        data.workoutTime = t
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct SleepStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Recovery", aiLabel: nil, question: "How is your current sleep?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.SleepQuality.allCases, id: \.self) { s in
+                    SelectableCard(title: s.title, subtitle: s.subtitle, isSelected: data.sleepQuality == s) {
+                        data.sleepQuality = s
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct GoalsProjectionStep: View {
+    @Binding var data: OnboardingData
+    var onContinue: () -> Void
+
+    @State private var animate = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                SectionHeader(title: "Your Goals")
+                Spacer()
+                Text("AI ANALYSIS")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(1.5)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Theme.accent))
+            }
+            Text("Projected Growth Over 6 Months")
+                .font(.title3.bold())
+                .foregroundStyle(.white)
+
+            HStack(alignment: .bottom, spacing: 14) {
+                ForEach(0..<6, id: \.self) { i in
+                    VStack(spacing: 4) {
+                        HStack(alignment: .bottom, spacing: 4) {
+                            bar(height: animate ? CGFloat(40 + i * 22) : 8, color: Theme.success)
+                            bar(height: animate ? CGFloat(36 + i * 4) : 8, color: Theme.danger.opacity(0.8))
+                        }
+                        .frame(height: 180, alignment: .bottom)
+                        Text("Mo \(i + 1)")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(16)
+            .glassCard(cornerRadius: 18)
+
+            HStack(spacing: 12) {
+                LegendDot(color: Theme.success, label: "With FITNEO")
+                LegendDot(color: Theme.danger.opacity(0.8), label: "Without")
+            }
+
+            Text("Based on your goal, here is how FITNEO accelerates your journey:")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.textSecondary)
+                .padding(.top, 4)
 
-            VStack(spacing: 16) {
-                Text("\(data.age)")
-                    .font(.system(size: 72, weight: .bold, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-
-                Slider(value: .init(
-                    get: { Double(data.age) },
-                    set: { data.age = Int($0) }
-                ), in: 13...100, step: 1)
-                .tint(.orange)
-            }
-            .padding(.vertical, 40)
-        }
-    }
-}
-
-struct GenderStepView: View {
-    @Binding var data: OnboardingData
-    let options = ["Male", "Female", "Non-binary", "Prefer not to say"]
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("What's your gender?")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-
-            Text("Optional - helps personalize recommendations")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            VStack(spacing: 12) {
-                ForEach(options, id: \.self) { option in
-                    Button {
-                        data.gender = option == "Prefer not to say" ? nil : option.lowercased()
-                    } label: {
-                        HStack {
-                            Text(option)
-                                .font(.headline)
-                            Spacer()
-                            if data.gender == option.lowercased() || (option == "Prefer not to say" && data.gender == nil) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                        .padding()
-                        .background(
-                            (data.gender == option.lowercased() || (option == "Prefer not to say" && data.gender == nil))
-                            ? Color.orange.opacity(0.15)
-                            : Color(.secondarySystemBackground)
-                        )
-                        .clipShape(.rect(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(
-                                    (data.gender == option.lowercased() || (option == "Prefer not to say" && data.gender == nil))
-                                    ? Color.orange : Color.clear,
-                                    lineWidth: 2
-                                )
-                        )
-                    }
-                    .foregroundStyle(.primary)
-                }
-            }
-        }
-    }
-}
-
-struct GoalStepView: View {
-    @Binding var data: OnboardingData
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("What's your fitness goal?")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-
-            VStack(spacing: 12) {
-                ForEach(OnboardingData.FitnessGoal.allCases, id: \.self) { goal in
-                    Button {
-                        withAnimation(.spring(duration: 0.3)) {
-                            data.fitnessGoal = goal
-                        }
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(goal.displayName)
-                                    .font(.headline)
-                                Text(goalDescription(for: goal))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if data.fitnessGoal == goal {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.orange)
-                                    .font(.title3)
-                            }
-                        }
-                        .padding()
-                        .background(
-                            data.fitnessGoal == goal
-                            ? Color.orange.opacity(0.15)
-                            : Color(.secondarySystemBackground)
-                        )
-                        .clipShape(.rect(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(data.fitnessGoal == goal ? Color.orange : Color.clear, lineWidth: 2)
-                        )
-                    }
-                    .foregroundStyle(.primary)
-                }
-            }
-        }
-    }
-
-    private func goalDescription(for goal: OnboardingData.FitnessGoal) -> String {
-        switch goal {
-        case .loseWeight: return "Burn calories and shed pounds"
-        case .buildMuscle: return "Gain strength and muscle mass"
-        case .maintainFitness: return "Stay active and healthy"
-        case .improveEndurance: return "Boost stamina and cardio"
-        }
-    }
-}
-
-struct LevelStepView: View {
-    @Binding var data: OnboardingData
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("What's your fitness level?")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-
-            VStack(spacing: 12) {
-                ForEach(OnboardingData.FitnessLevel.allCases, id: \.self) { level in
-                    Button {
-                        withAnimation(.spring(duration: 0.3)) {
-                            data.fitnessLevel = level
-                        }
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(level.displayName)
-                                    .font(.headline)
-                                Text(levelDescription(for: level))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if data.fitnessLevel == level {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.orange)
-                                    .font(.title3)
-                            }
-                        }
-                        .padding()
-                        .background(
-                            data.fitnessLevel == level
-                            ? Color.orange.opacity(0.15)
-                            : Color(.secondarySystemBackground)
-                        )
-                        .clipShape(.rect(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(data.fitnessLevel == level ? Color.orange : Color.clear, lineWidth: 2)
-                        )
-                    }
-                    .foregroundStyle(.primary)
-                }
-            }
-        }
-    }
-
-    private func levelDescription(for level: OnboardingData.FitnessLevel) -> String {
-        switch level {
-        case .beginner: return "New to working out or returning after a break"
-        case .intermediate: return "Work out regularly, comfortable with exercises"
-        case .advanced: return "Experienced, looking for challenging workouts"
-        }
-    }
-}
-
-struct PreferenceStepView: View {
-    @Binding var data: OnboardingData
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("How do you prefer to work out?")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-
-            VStack(spacing: 12) {
-                ForEach(OnboardingData.WorkoutPreference.allCases, id: \.self) { preference in
-                    Button {
-                        withAnimation(.spring(duration: 0.3)) {
-                            data.workoutPreference = preference
-                        }
-                    } label: {
-                        HStack {
-                            Text(preference.displayName)
-                                .font(.headline)
-                            Spacer()
-                            if data.workoutPreference == preference {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.orange)
-                                    .font(.title3)
-                            }
-                        }
-                        .padding()
-                        .background(
-                            data.workoutPreference == preference
-                            ? Color.orange.opacity(0.15)
-                            : Color(.secondarySystemBackground)
-                        )
-                        .clipShape(.rect(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(data.workoutPreference == preference ? Color.orange : Color.clear, lineWidth: 2)
-                        )
-                    }
-                    .foregroundStyle(.primary)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Workout Duration")
-                    .font(.headline)
-                    .padding(.top, 8)
-
-                HStack(spacing: 8) {
-                    ForEach(OnboardingData.WorkoutDuration.allCases, id: \.self) { duration in
-                        Button {
-                            data.workoutDuration = duration
-                        } label: {
-                            Text(duration.displayName)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, 16)
-                                .background(data.workoutDuration == duration ? Color.orange : Color(.secondarySystemBackground))
-                                .foregroundStyle(data.workoutDuration == duration ? .white : .primary)
-                                .clipShape(.rect(cornerRadius: 20))
-                        }
-                    }
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Days per week: \(data.daysPerWeek)")
-                    .font(.headline)
-
-                Slider(value: .init(
-                    get: { Double(data.daysPerWeek) },
-                    set: { data.daysPerWeek = Int($0) }
-                ), in: 1...7, step: 1)
-                .tint(.orange)
-            }
-        }
-    }
-}
-
-struct TargetAreasStepView: View {
-    @Binding var data: OnboardingData
-
-    let columns = [GridItem(.adaptive(minimum: 100), spacing: 8)]
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("Target areas")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-
-            Text("Select the areas you want to focus on")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            LazyVGrid(columns: columns, spacing: 8) {
-                ForEach(OnboardingData.TargetArea.allCases, id: \.self) { area in
-                    Button {
-                        withAnimation(.spring(duration: 0.2)) {
-                            if data.targetAreas.contains(area) {
-                                data.targetAreas.removeAll { $0 == area }
-                            } else {
-                                data.targetAreas.append(area)
-                            }
-                        }
-                    } label: {
-                        Text(area.displayName)
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(benefits, id: \.self) { b in
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Theme.accent)
+                        Text(b)
                             .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                data.targetAreas.contains(area)
-                                ? Color.orange.opacity(0.2)
-                                : Color(.secondarySystemBackground)
-                            )
-                            .foregroundStyle(data.targetAreas.contains(area) ? .orange : .primary)
-                            .clipShape(.rect(cornerRadius: 20))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(data.targetAreas.contains(area) ? Color.orange : Color.clear, lineWidth: 1.5)
-                            )
+                            .foregroundStyle(.white)
                     }
                 }
+            }
+            .padding(16)
+            .glassCard(cornerRadius: 18)
+
+            Button {
+                onContinue()
+            } label: {
+                Text("Continue")
+                    .primaryButtonStyle()
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 12)
+        }
+        .onAppear {
+            withAnimation(.spring(duration: 1.2, bounce: 0.3).delay(0.2)) {
+                animate = true
+            }
+        }
+    }
+
+    private func bar(height: CGFloat, color: Color) -> some View {
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
+            .fill(LinearGradient(colors: [color, color.opacity(0.6)], startPoint: .top, endPoint: .bottom))
+            .frame(width: 12, height: height)
+            .animation(.spring(duration: 1.0, bounce: 0.3), value: height)
+    }
+
+    private var benefits: [String] {
+        switch data.goal {
+        case .loseFat:
+            return ["Burn 2× more calories", "Track daily fat loss", "Sustainable weight management"]
+        case .buildMuscle:
+            return ["Optimized hypertrophy programming", "Personalized macros", "Progressive overload tracking"]
+        case .athleticPerformance:
+            return ["Sport-specific conditioning", "Recovery optimization", "Peak performance windows"]
+        case .maintainTone, .none:
+            return ["Balanced full-body training", "Sustainable routine", "Long-term habit building"]
+        }
+    }
+}
+
+private struct LegendDot: View {
+    let color: Color
+    let label: String
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 10, height: 10)
+            Text(label).font(.caption).foregroundStyle(Theme.textSecondary)
+        }
+    }
+}
+
+private struct ActivityStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Daily Activity", aiLabel: nil, question: "Outside workouts, how active are you?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.ActivityLevel.allCases, id: \.self) { a in
+                    SelectableCard(title: a.title, subtitle: a.subtitle, isSelected: data.activityLevel == a) {
+                        data.activityLevel = a
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct PhysiqueStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Your Target", aiLabel: nil, question: "What physique are you working toward?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.TargetPhysique.allCases, id: \.self) { p in
+                    SelectableCard(title: p.title, isSelected: data.targetPhysique == p) {
+                        data.targetPhysique = p
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct MotivationStep: View {
+    @Binding var data: OnboardingData
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Motivation", aiLabel: nil, question: "What keeps you going?")
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(OnboardingData.MotivationStyle.allCases, id: \.self) { m in
+                    GridCard(title: m.title, icon: m.icon, isSelected: data.motivationStyles.contains(m)) {
+                        if data.motivationStyles.contains(m) {
+                            data.motivationStyles.removeAll { $0 == m }
+                        } else {
+                            data.motivationStyles.append(m)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct LanguageStep: View {
+    @Binding var data: OnboardingData
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Language", aiLabel: nil, question: "Choose your language")
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(OnboardingData.AppLanguage.allCases, id: \.self) { l in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        data.language = l
+                    } label: {
+                        HStack(spacing: 10) {
+                            Text(l.flag).font(.title2)
+                            Text(l.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Spacer()
+                            if data.language == l {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 14)
+                        .glassCard(selected: data.language == l, cornerRadius: 14)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+}
+
+private struct ThemeStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Appearance", aiLabel: nil, question: "Choose your theme")
+            VStack(spacing: 12) {
+                ForEach(OnboardingData.AppTheme.allCases, id: \.self) { t in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        data.theme = t
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image(systemName: t.icon)
+                                .font(.system(size: 26, weight: .semibold))
+                                .foregroundStyle(data.theme == t ? Theme.accent : Theme.textSecondary)
+                                .frame(width: 56, height: 56)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(data.theme == t ? Theme.accent.opacity(0.15) : Color.white.opacity(0.05))
+                                )
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(t.title)
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                                Text(t.subtitle)
+                                    .font(.footnote)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                            Spacer()
+                            if data.theme == t {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                        .padding(16)
+                        .glassCard(selected: data.theme == t)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+}
+
+private struct CompletionStep: View {
+    var onFinished: () -> Void
+    @State private var pulse = false
+    @State private var ringProgress: CGFloat = 0
+    @State private var fadeIn = false
+    @State private var barProgress: Double = 0.9
+
+    var body: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 3)
+                    .frame(width: 220, height: 220)
+                Circle()
+                    .trim(from: 0, to: ringProgress)
+                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 220, height: 220)
+                    .shadow(color: Theme.accent, radius: 14)
+                Circle()
+                    .stroke(Color.white.opacity(0.05), lineWidth: 2)
+                    .frame(width: 170, height: 170)
+                Circle()
+                    .trim(from: 0, to: ringProgress)
+                    .stroke(Theme.accent.opacity(0.6), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 170, height: 170)
+
+                VStack(spacing: 8) {
+                    Image(systemName: "bolt.heart.fill")
+                        .font(.system(size: 56, weight: .bold))
+                        .foregroundStyle(Theme.accent)
+                        .scaleEffect(pulse ? 1.08 : 0.95)
+                        .shadow(color: Theme.accent.opacity(0.7), radius: 20)
+                    Text("FITNEO")
+                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 240, height: 240)
+
+            VStack(spacing: 8) {
+                Text("Your AI Fitness System Is Ready.")
+                    .font(.system(size: 24, weight: .bold))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white)
+                    .opacity(fadeIn ? 1 : 0)
+                Text("Personalized for you. Powered by AI.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .opacity(fadeIn ? 1 : 0)
+            }
+
+            OnboardingProgressBar(progress: barProgress)
+                .padding(.horizontal, 32)
+
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.3)) { ringProgress = 1 }
+            withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { pulse = true }
+            withAnimation(.easeInOut(duration: 1.0).delay(0.6)) { fadeIn = true }
+            withAnimation(.easeInOut(duration: 1.4).delay(0.3)) { barProgress = 1.0 }
+
+            Task {
+                try? await Task.sleep(for: .seconds(2.4))
+                await MainActor.run { onFinished() }
             }
         }
     }

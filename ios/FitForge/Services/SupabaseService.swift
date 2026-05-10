@@ -8,22 +8,18 @@ enum AuthError: Error, LocalizedError {
     case networkError
     case unknown
     case notAuthenticated
-    case invalidResponse
-    case appleSignInFailed
     case googleSignInFailed
     case profileCreationFailed
 
     var errorDescription: String? {
         switch self {
-        case .invalidCredentials: return "Invalid email or password"
-        case .emailAlreadyExists: return "An account with this email already exists"
-        case .networkError: return "Network error. Please try again."
-        case .unknown: return "Something went wrong"
-        case .notAuthenticated: return "Please sign in"
-        case .invalidResponse: return "Invalid server response"
-        case .appleSignInFailed: return "Apple Sign-In failed"
-        case .googleSignInFailed: return "Google Sign-In failed"
-        case .profileCreationFailed: return "Failed to create user profile"
+        case .invalidCredentials: "Invalid email or password."
+        case .emailAlreadyExists: "An account with this email already exists."
+        case .networkError: "Network error. Please check your connection."
+        case .unknown: "Something went wrong. Please try again."
+        case .notAuthenticated: "Please sign in to continue."
+        case .googleSignInFailed: "Google sign-in failed. Please try again."
+        case .profileCreationFailed: "Failed to create your profile."
         }
     }
 }
@@ -38,317 +34,207 @@ final class SupabaseService {
 
     let client: SupabaseClient
 
-    var isAuthenticated: Bool {
-        client.auth.currentSession != nil
-    }
-
-    var userId: UUID? {
-        client.auth.currentSession?.user.id
-    }
+    var isAuthenticated: Bool { client.auth.currentSession != nil }
+    var userId: UUID? { client.auth.currentSession?.user.id }
+    var currentUserEmail: String? { client.auth.currentSession?.user.email }
 
     private init() {
-        self.client = SupabaseClient(
-            supabaseURL: supabaseURL,
-            supabaseKey: supabaseKey
-        )
+        self.client = SupabaseClient(supabaseURL: supabaseURL, supabaseKey: supabaseKey)
     }
 
-    // MARK: - Session Restoration
+    // MARK: - Session
 
     func restoreSession() async throws -> UserProfile? {
-        let _ = try await client.auth.session
+        _ = try await client.auth.session
         return try await ensureProfileExists()
     }
 
-    // MARK: - Email/Password Auth
+    // MARK: - Auth
 
     func signUp(email: String, password: String) async throws -> UserProfile {
-        let response = try await client.auth.signUp(
-            email: email,
-            password: password
-        )
-
-        let user = response.user
-
-        let profile = UserProfile(
-            id: user.id,
-            email: email,
-            displayName: user.userMetadata["full_name"]?.stringValue,
-            onboardingCompleted: false,
-            createdAt: Date(),
-            subscriptionStatus: .free
-        )
-
-        try await createProfile(profile)
-        return profile
+        do {
+            _ = try await client.auth.signUp(email: email, password: password)
+            return try await ensureProfileExists()
+        } catch {
+            throw mapAuthError(error)
+        }
     }
 
     func signIn(email: String, password: String) async throws -> UserProfile {
-        let _ = try await client.auth.signIn(
-            email: email,
-            password: password
-        )
-
-        return try await ensureProfileExists()
-    }
-
-    // MARK: - Apple Sign-In
-
-    func signInWithApple(idToken: String, fullName: String?) async throws -> UserProfile {
-        let _ = try await client.auth.signInWithIdToken(
-            credentials: .init(
-                provider: .apple,
-                idToken: idToken
-            )
-        )
-
-        // Update full name if provided (only available on first sign-in)
-        if let fullName {
-            _ = try? await client.auth.update(
-                user: UserAttributes(data: ["full_name": .string(fullName)])
-            )
+        do {
+            _ = try await client.auth.signIn(email: email, password: password)
+            return try await ensureProfileExists()
+        } catch {
+            throw mapAuthError(error)
         }
-
-        return try await ensureProfileExists()
     }
-
-    // MARK: - Google Sign-In
 
     func signInWithGoogle() async throws -> UserProfile {
-        let _ = try await client.auth.signInWithOAuth(
-            provider: .google
-        ) { session in
-            session.prefersEphemeralWebBrowserSession = false
+        do {
+            _ = try await client.auth.signInWithOAuth(provider: .google) { session in
+                session.prefersEphemeralWebBrowserSession = false
+            }
+            return try await ensureProfileExists()
+        } catch {
+            throw AuthError.googleSignInFailed
         }
-
-        return try await ensureProfileExists()
     }
-
-    // MARK: - Sign Out
 
     func signOut() async throws {
         try await client.auth.signOut()
     }
 
-    // MARK: - Profile Management
+    private nonisolated func mapAuthError(_ error: Error) -> AuthError {
+        let message = error.localizedDescription.lowercased()
+        if message.contains("invalid") || message.contains("credentials") { return .invalidCredentials }
+        if message.contains("already") || message.contains("registered") { return .emailAlreadyExists }
+        if message.contains("network") || message.contains("connection") { return .networkError }
+        return .unknown
+    }
+
+    // MARK: - Profile (user_profiles table)
+
+    private struct ProfileRow: Codable {
+        let id: UUID
+        let email: String
+        let display_name: String?
+        let onboarding_completed: Bool?
+        let created_at: Date?
+    }
 
     func ensureProfileExists() async throws -> UserProfile {
-        guard let userId = client.auth.currentSession?.user.id else {
+        guard let userId = client.auth.currentSession?.user.id,
+              let user = client.auth.currentUser else {
             throw AuthError.notAuthenticated
         }
 
-        do {
-            let profile: UserProfile = try await client
-                .from("profiles")
-                .select()
-                .eq("id", value: userId)
-                .single()
-                .execute()
-                .value
-
-            return profile
-        } catch {
-            // Profile doesn't exist, create it
-            guard let user = client.auth.currentUser else {
-                throw AuthError.notAuthenticated
-            }
-
-            let profile = UserProfile(
-                id: userId,
-                email: user.email ?? "",
-                displayName: user.userMetadata["full_name"]?.stringValue,
-                onboardingCompleted: false,
-                createdAt: Date(),
-                subscriptionStatus: .free
-            )
-
-            try await createProfile(profile)
-            return profile
+        if let existing = try? await fetchProfile(userId: userId) {
+            return existing
         }
-    }
 
-    func createProfile(_ profile: UserProfile) async throws {
-        try await client
-            .from("profiles")
-            .insert(profile)
-            .execute()
+        let row = ProfileRow(
+            id: userId,
+            email: user.email ?? "",
+            display_name: user.userMetadata["full_name"]?.stringValue,
+            onboarding_completed: false,
+            created_at: Date()
+        )
+        do {
+            try await client.from("user_profiles").insert(row).execute()
+        } catch {
+            // ignore – may already exist via DB trigger
+        }
+        return try await fetchProfile(userId: userId)
     }
 
     func fetchProfile(userId: UUID) async throws -> UserProfile {
-        let profile: UserProfile = try await client
-            .from("profiles")
+        let row: ProfileRow = try await client
+            .from("user_profiles")
             .select()
             .eq("id", value: userId)
             .single()
             .execute()
             .value
 
-        return profile
-    }
-
-    func updateProfile(_ profile: UserProfile) async throws {
-        try await client
-            .from("profiles")
-            .update(profile)
-            .eq("id", value: profile.id)
-            .execute()
-    }
-
-    // MARK: - Onboarding
-
-    func saveOnboarding(_ data: OnboardingData, userId: UUID) async throws {
-        struct OnboardingPayload: Codable {
-            let userId: UUID
-            let age: Int
-            let gender: String?
-            let fitnessGoal: String
-            let fitnessLevel: String
-            let workoutPreference: String
-            let workoutDuration: String
-            let daysPerWeek: Int
-            let targetAreas: [String]
-
-            enum CodingKeys: String, CodingKey {
-                case userId = "user_id"
-                case age
-                case gender
-                case fitnessGoal = "fitness_goal"
-                case fitnessLevel = "fitness_level"
-                case workoutPreference = "workout_preference"
-                case workoutDuration = "workout_duration"
-                case daysPerWeek = "days_per_week"
-                case targetAreas = "target_areas"
-            }
-        }
-
-        let payload = OnboardingPayload(
-            userId: userId,
-            age: data.age,
-            gender: data.gender,
-            fitnessGoal: data.fitnessGoal.rawValue,
-            fitnessLevel: data.fitnessLevel.rawValue,
-            workoutPreference: data.workoutPreference.rawValue,
-            workoutDuration: data.workoutDuration.rawValue,
-            daysPerWeek: data.daysPerWeek,
-            targetAreas: data.targetAreas.map { $0.rawValue }
+        return UserProfile(
+            id: row.id,
+            email: row.email,
+            displayName: row.display_name,
+            onboardingCompleted: row.onboarding_completed ?? false,
+            createdAt: row.created_at ?? Date()
         )
+    }
 
+    func setOnboardingCompleted(_ completed: Bool, userId: UUID) async throws {
         try await client
-            .from("onboarding")
-            .upsert(payload)
-            .execute()
-    }
-
-    func fetchOnboarding(userId: UUID) async throws -> OnboardingData? {
-        struct OnboardingRow: Codable {
-            let userId: UUID
-            let age: Int
-            let gender: String?
-            let fitnessGoal: String
-            let fitnessLevel: String
-            let workoutPreference: String
-            let workoutDuration: String
-            let daysPerWeek: Int
-            let targetAreas: [String]
-
-            enum CodingKeys: String, CodingKey {
-                case userId = "user_id"
-                case age
-                case gender
-                case fitnessGoal = "fitness_goal"
-                case fitnessLevel = "fitness_level"
-                case workoutPreference = "workout_preference"
-                case workoutDuration = "workout_duration"
-                case daysPerWeek = "days_per_week"
-                case targetAreas = "target_areas"
-            }
-        }
-
-        do {
-            let row: OnboardingRow = try await client
-                .from("onboarding")
-                .select()
-                .eq("user_id", value: userId)
-                .single()
-                .execute()
-                .value
-
-            return OnboardingData(
-                age: row.age,
-                gender: row.gender,
-                fitnessGoal: OnboardingData.FitnessGoal(rawValue: row.fitnessGoal) ?? .maintainFitness,
-                fitnessLevel: OnboardingData.FitnessLevel(rawValue: row.fitnessLevel) ?? .beginner,
-                workoutPreference: OnboardingData.WorkoutPreference(rawValue: row.workoutPreference) ?? .noEquipment,
-                workoutDuration: OnboardingData.WorkoutDuration(rawValue: row.workoutDuration) ?? .thirty,
-                daysPerWeek: row.daysPerWeek,
-                targetAreas: row.targetAreas.compactMap { OnboardingData.TargetArea(rawValue: $0) }
-            )
-        } catch {
-            return nil
-        }
-    }
-
-    // MARK: - Workouts
-
-    func saveWorkoutPlan(_ plan: WorkoutPlan) async throws {
-        try await client
-            .from("workout_plans")
-            .upsert(plan)
-            .execute()
-    }
-
-    func fetchWorkoutPlans(userId: UUID) async throws -> [WorkoutPlan] {
-        let plans: [WorkoutPlan] = try await client
-            .from("workout_plans")
-            .select()
-            .eq("user_id", value: userId)
-            .execute()
-            .value
-
-        return plans
-    }
-
-    func markWorkoutCompleted(workoutId: UUID) async throws {
-        try await client
-            .from("workout_plans")
-            .update(["is_completed": true])
-            .eq("id", value: workoutId)
-            .execute()
-    }
-
-    // MARK: - History
-
-    func saveWorkoutHistory(_ history: WorkoutHistory) async throws {
-        try await client
-            .from("workout_history")
-            .insert(history)
-            .execute()
-    }
-
-    func fetchWorkoutHistory(userId: UUID) async throws -> [WorkoutHistory] {
-        let history: [WorkoutHistory] = try await client
-            .from("workout_history")
-            .select()
-            .eq("user_id", value: userId)
-            .order("completed_at", ascending: false)
-            .execute()
-            .value
-
-        return history
-    }
-
-    // MARK: - Subscription
-
-    func fetchSubscriptionStatus(userId: UUID) async throws -> UserProfile.SubscriptionStatus {
-        let profile = try await fetchProfile(userId: userId)
-        return profile.subscriptionStatus
-    }
-
-    func updateSubscription(userId: UUID, status: UserProfile.SubscriptionStatus) async throws {
-        try await client
-            .from("profiles")
-            .update(["subscription_status": status.rawValue])
+            .from("user_profiles")
+            .update(["onboarding_completed": completed])
             .eq("id", value: userId)
             .execute()
+    }
+
+    // MARK: - Onboarding answers
+
+    private struct OnboardingPayload: Codable {
+        let user_id: UUID
+        let goal: String?
+        let fitness_level: String?
+        let equipment: String?
+        let focus_areas: [String]
+        let session_length: String?
+        let weight: Double
+        let weight_unit: String
+        let height: Double
+        let height_unit: String
+        let diet_type: String?
+        let coach_personality: String?
+        let workout_time: String?
+        let sleep_quality: String?
+        let activity_level: String?
+        let target_physique: String?
+        let motivation_styles: [String]
+        let language: String
+        let theme: String
+        let updated_at: Date
+    }
+
+    func saveOnboardingProgress(_ data: OnboardingData, userId: UUID) async {
+        let payload = OnboardingPayload(
+            user_id: userId,
+            goal: data.goal?.rawValue,
+            fitness_level: data.fitnessLevel?.rawValue,
+            equipment: data.equipment?.rawValue,
+            focus_areas: data.focusAreas.map(\.rawValue),
+            session_length: data.sessionLength?.rawValue,
+            weight: data.weight,
+            weight_unit: data.weightUnit.rawValue,
+            height: data.height,
+            height_unit: data.heightUnit.rawValue,
+            diet_type: data.dietType?.rawValue,
+            coach_personality: data.coachPersonality?.rawValue,
+            workout_time: data.workoutTime?.rawValue,
+            sleep_quality: data.sleepQuality?.rawValue,
+            activity_level: data.activityLevel?.rawValue,
+            target_physique: data.targetPhysique?.rawValue,
+            motivation_styles: data.motivationStyles.map(\.rawValue),
+            language: data.language.rawValue,
+            theme: data.theme.rawValue,
+            updated_at: Date()
+        )
+
+        // Best-effort: ignore failure so onboarding can complete in-memory
+        // and user can retry later. Logged for debugging.
+        do {
+            try await client
+                .from("user_profiles")
+                .update(payload)
+                .eq("id", value: userId)
+                .execute()
+        } catch {
+            print("[FITNEO] Failed to save onboarding progress: \(error)")
+        }
+    }
+
+    // MARK: - Subscriptions (trial)
+
+    private struct SubscriptionRow: Codable {
+        let user_id: UUID
+        let plan: String
+        let status: String
+        let started_at: Date
+    }
+
+    func startTrialSubscription(userId: UUID) async {
+        let row = SubscriptionRow(
+            user_id: userId,
+            plan: "trial",
+            status: "active",
+            started_at: Date()
+        )
+        do {
+            try await client.from("subscriptions").insert(row).execute()
+        } catch {
+            print("[FITNEO] Failed to start trial subscription: \(error)")
+        }
     }
 }

@@ -3,73 +3,91 @@ import SwiftUI
 @Observable
 @MainActor
 final class OnboardingViewModel {
-    var onboardingData = OnboardingData(
-        age: 25,
-        gender: nil,
-        fitnessGoal: .buildMuscle,
-        fitnessLevel: .beginner,
-        workoutPreference: .noEquipment,
-        workoutDuration: .thirty,
-        daysPerWeek: 3,
-        targetAreas: [.fullBody]
-    )
-
-    var currentStep = 0
-    var isSaving = false
+    var data = OnboardingData()
+    var currentStep: Int = 0
     var isComplete = false
     var errorMessage: String?
 
-    let totalSteps = 6
+    /// Step map (20 total, indices 0..19):
+    /// 0 Welcome • 1 Goal • 2 Level • 3 Calib1 • 4 Equipment • 5 Focus • 6 Duration
+    /// 7 Stats • 8 Calib2 • 9 Diet • 10 Coach • 11 Time • 12 Sleep • 13 Calib3
+    /// 14 Activity • 15 Physique • 16 Motivation • 17 Language • 18 Theme • 19 Completion
+    let totalSteps = 20
 
     private let service = SupabaseService.shared
 
+    var progress: Double {
+        guard totalSteps > 1 else { return 0 }
+        return Double(currentStep) / Double(totalSteps - 1)
+    }
+
     var canProceed: Bool {
         switch currentStep {
-        case 0: return onboardingData.age >= 13 && onboardingData.age <= 100
-        case 1: return true // gender optional
-        case 2: return true // fitness goal always selected
-        case 3: return true // fitness level always selected
-        case 4: return true // workout preference always selected
-        case 5: return !onboardingData.targetAreas.isEmpty
-        default: return false
+        case 1: return data.goal != nil
+        case 2: return data.fitnessLevel != nil
+        case 4: return data.equipment != nil
+        case 5: return !data.focusAreas.isEmpty
+        case 6: return data.sessionLength != nil
+        case 7: return data.weight > 0 && data.height > 0
+        case 9: return data.dietType != nil
+        case 10: return data.coachPersonality != nil
+        case 11: return data.workoutTime != nil
+        case 12: return data.sleepQuality != nil
+        case 14: return data.activityLevel != nil
+        case 15: return data.targetPhysique != nil
+        case 16: return !data.motivationStyles.isEmpty
+        case 17: return true
+        case 18: return true
+        default: return true
         }
     }
 
-    func nextStep() {
-        if currentStep < totalSteps - 1 {
-            currentStep += 1
+    /// True when the screen advances itself (no Continue button).
+    var isAutoStep: Bool {
+        currentStep == 0 || currentStep == 3 || currentStep == 8 || currentStep == 13 || currentStep == 19
+    }
+
+    /// The Theme step (18) is the last user-input screen → tapping its CTA finishes onboarding.
+    var isFinishStep: Bool { currentStep == 18 }
+
+    func next() {
+        guard currentStep < totalSteps - 1 else { return }
+        withAnimation(.easeInOut(duration: 0.4)) { currentStep += 1 }
+        persistProgress()
+    }
+
+    func back() {
+        guard currentStep > 0 else { return }
+        withAnimation(.easeInOut(duration: 0.4)) { currentStep -= 1 }
+    }
+
+    func goTo(_ step: Int) {
+        guard step >= 0 && step < totalSteps else { return }
+        withAnimation(.easeInOut(duration: 0.4)) { currentStep = step }
+    }
+
+    private func persistProgress() {
+        guard let userId = service.userId else { return }
+        let snapshot = data
+        Task.detached { [snapshot] in
+            await SupabaseService.shared.saveOnboardingProgress(snapshot, userId: userId)
         }
     }
 
-    func previousStep() {
-        if currentStep > 0 {
-            currentStep -= 1
-        }
-    }
-
-    func saveOnboarding() async {
-        isSaving = true
-        errorMessage = nil
-
+    /// Save all answers, mark profile complete, start trial subscription. Then advance to completion screen.
+    func finish() async {
         guard let userId = service.userId else {
-            errorMessage = "Not authenticated"
-            isSaving = false
+            errorMessage = "You must be signed in."
             return
         }
-
+        await service.saveOnboardingProgress(data, userId: userId)
         do {
-            try await service.saveOnboarding(onboardingData, userId: userId)
-
-            // Update profile to mark onboarding complete
-            var profile = try await service.fetchProfile(userId: userId)
-            profile.onboardingCompleted = true
-            try await service.updateProfile(profile)
-
+            try await service.setOnboardingCompleted(true, userId: userId)
+            await service.startTrialSubscription(userId: userId)
             isComplete = true
+            withAnimation(.easeInOut(duration: 0.5)) { currentStep = 19 }
         } catch {
-            errorMessage = "Failed to save preferences. Please try again."
+            errorMessage = "Failed to save your profile. Please try again."
         }
-
-        isSaving = false
     }
 }

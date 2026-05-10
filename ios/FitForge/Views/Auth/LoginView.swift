@@ -1,5 +1,4 @@
 import SwiftUI
-import AuthenticationServices
 
 struct LoginView: View {
     @State private var email = ""
@@ -10,182 +9,154 @@ struct LoginView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemBackground)
+            Theme.pageGradient.ignoresSafeArea()
+            Theme.glowGradient
+                .frame(width: 500, height: 500)
+                .offset(y: -260)
                 .ignoresSafeArea()
+                .allowsHitTesting(false)
 
-            VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 12) {
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 64))
-                        .foregroundStyle(.linearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing))
+            ScrollView {
+                VStack(spacing: 32) {
+                    VStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Theme.accent.opacity(0.18))
+                                .frame(width: 120, height: 120)
+                                .blur(radius: 28)
+                            Image(systemName: "bolt.heart.fill")
+                                .font(.system(size: 56, weight: .bold))
+                                .foregroundStyle(Theme.accent)
+                                .shadow(color: Theme.accent.opacity(0.6), radius: 16)
+                        }
                         .padding(.top, 60)
 
-                    Text("FitForge")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
+                        Text("FITNEO")
+                            .font(.system(size: 40, weight: .black, design: .rounded))
+                            .tracking(6)
+                            .foregroundStyle(.white)
 
-                    Text("Forge your best self")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.bottom, 40)
-
-                // Form
-                VStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Email")
+                        Text("The future of fitness is you.")
                             .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
-
-                        TextField("you@example.com", text: $email)
-                            .textContentType(.emailAddress)
-                            .keyboardType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .padding()
-                            .background(Color(.secondarySystemBackground))
-                            .clipShape(.rect(cornerRadius: 12))
+                            .foregroundStyle(Theme.textSecondary)
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Password")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
+                    VStack(spacing: 16) {
+                        FieldView(label: "Email", placeholder: "you@example.com", text: $email, isSecure: false, keyboard: .emailAddress, contentType: .emailAddress)
+                        FieldView(label: "Password", placeholder: "Enter password", text: $password, isSecure: true, keyboard: .default, contentType: isSignUp ? .newPassword : .password)
 
-                        SecureField("Enter password", text: $password)
-                            .textContentType(isSignUp ? .newPassword : .password)
-                            .padding()
-                            .background(Color(.secondarySystemBackground))
-                            .clipShape(.rect(cornerRadius: 12))
-                    }
-
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    Button {
-                        Task {
-                            if isSignUp {
-                                await viewModel.signUp(email: email, password: password)
-                            } else {
-                                await viewModel.signIn(email: email, password: password)
-                            }
-                            if viewModel.isAuthenticated {
-                                onAuthSuccess()
-                            }
+                        if let error = viewModel.errorMessage {
+                            Text(error)
+                                .font(.footnote)
+                                .foregroundStyle(Theme.danger)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
                         }
-                    } label: {
-                        HStack {
-                            if viewModel.isLoading {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Text(isSignUp ? "Create Account" : "Sign In")
-                                    .font(.headline)
+
+                        Button {
+                            Task {
+                                if isSignUp {
+                                    await viewModel.signUp(email: email, password: password)
+                                } else {
+                                    await viewModel.signIn(email: email, password: password)
+                                }
+                                if viewModel.isAuthenticated { onAuthSuccess() }
                             }
+                        } label: {
+                            HStack {
+                                if viewModel.isLoading {
+                                    ProgressView().tint(.white)
+                                } else {
+                                    Text(isSignUp ? "Create Account" : "Sign In")
+                                }
+                            }
+                            .primaryButtonStyle(disabled: !canSubmit)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing)
-                        )
-                        .foregroundStyle(.white)
-                        .clipShape(.rect(cornerRadius: 16))
-                    }
-                    .disabled(email.isEmpty || password.count < 6 || viewModel.isLoading)
-                    .opacity(email.isEmpty || password.count < 6 ? 0.6 : 1)
+                        .disabled(!canSubmit || viewModel.isLoading)
 
-                    // Divider
-                    HStack {
-                        Rectangle()
-                            .fill(Color(.separator))
-                            .frame(height: 1)
-                        Text("or")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Rectangle()
-                            .fill(Color(.separator))
-                            .frame(height: 1)
-                    }
-                    .padding(.vertical, 8)
-
-                    // Social Sign-In Buttons
-                    VStack(spacing: 12) {
-                        SignInWithAppleButton { request in
-                            request.requestedScopes = [.email, .fullName]
-                        } onCompletion: { result in
-                            handleAppleSignIn(result: result)
+                        HStack(spacing: 12) {
+                            Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+                            Text("OR").font(.caption).foregroundStyle(Theme.textTertiary)
+                            Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
                         }
-                        .frame(height: 50)
-                        .clipShape(.rect(cornerRadius: 12))
+                        .padding(.vertical, 4)
 
                         Button {
                             Task {
                                 await viewModel.signInWithGoogle()
-                                if viewModel.isAuthenticated {
-                                    onAuthSuccess()
-                                }
+                                if viewModel.isAuthenticated { onAuthSuccess() }
                             }
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: "g.circle.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(.red)
+                                Image(systemName: "globe")
+                                    .font(.title3)
+                                    .foregroundStyle(Theme.accent)
                                 Text("Continue with Google")
                                     .font(.headline)
-                                    .foregroundStyle(.primary)
+                                    .foregroundStyle(.white)
                             }
                             .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color(.secondarySystemBackground))
-                            .clipShape(.rect(cornerRadius: 12))
+                            .padding(.vertical, 16)
+                            .glassCard()
                         }
                         .disabled(viewModel.isLoading)
-                    }
 
-                    Button {
-                        withAnimation {
-                            isSignUp.toggle()
-                            viewModel.errorMessage = nil
+                        Button {
+                            withAnimation(.easeInOut) {
+                                isSignUp.toggle()
+                                viewModel.errorMessage = nil
+                            }
+                        } label: {
+                            Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.accent)
                         }
-                    } label: {
-                        Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
-                            .font(.subheadline)
-                            .foregroundStyle(.orange)
+                        .padding(.top, 8)
                     }
-                }
-                .padding(.horizontal, 24)
+                    .padding(.horizontal, 24)
 
-                Spacer()
+                    Spacer(minLength: 40)
+                }
             }
         }
+        .preferredColorScheme(.dark)
     }
 
-    private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let idToken = credential.identityToken.flatMap({ String(data: $0, encoding: .utf8) }) else {
-                viewModel.errorMessage = "Unable to retrieve Apple credentials"
-                return
-            }
+    private var canSubmit: Bool {
+        !email.isEmpty && password.count >= 6
+    }
+}
 
-            let fullName = credential.fullName?.formatted()
+private struct FieldView: View {
+    let label: String
+    let placeholder: String
+    @Binding var text: String
+    let isSecure: Bool
+    let keyboard: UIKeyboardType
+    let contentType: UITextContentType?
 
-            Task {
-                await viewModel.signInWithApple(idToken: idToken, fullName: fullName)
-                if viewModel.isAuthenticated {
-                    onAuthSuccess()
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(Theme.textSecondary)
+
+            Group {
+                if isSecure {
+                    SecureField(placeholder, text: $text)
+                } else {
+                    TextField(placeholder, text: $text)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
             }
-
-        case .failure(let error):
-            viewModel.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
+            .textContentType(contentType)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .glassCard(cornerRadius: 14)
         }
     }
 }
