@@ -18,6 +18,8 @@ struct LoginView: View {
 
             ScrollView {
                 VStack(spacing: 32) {
+                    // Anchor used so SwiftUI scrolls focused fields above the keyboard reliably.
+                    Color.clear.frame(height: 1)
                     VStack(spacing: 14) {
                         ZStack {
                             Circle()
@@ -87,18 +89,28 @@ struct LoginView: View {
                                 if viewModel.isAuthenticated { onAuthSuccess() }
                             }
                         } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "globe")
-                                    .font(.title3)
-                                    .foregroundStyle(Theme.accent)
+                            ZStack {
+                                HStack {
+                                    GoogleGLogo(size: 20)
+                                    Spacer()
+                                }
                                 Text("Continue with Google")
-                                    .font(.headline)
-                                    .foregroundStyle(.white)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(Color(red: 0.20, green: 0.20, blue: 0.20))
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .glassCard()
+                            .padding(.horizontal, 18)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color.white)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.18), radius: 8, x: 0, y: 3)
                         }
+                        .accessibilityLabel("Continue with Google")
                         .disabled(viewModel.isLoading)
 
                         Button {
@@ -117,9 +129,13 @@ struct LoginView: View {
 
                     Spacer(minLength: 40)
                 }
+                .padding(.bottom, 32)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .scrollIndicators(.hidden)
         }
         .preferredColorScheme(.dark)
+        .ignoresSafeArea(.keyboard, edges: [])
     }
 
     private var canSubmit: Bool {

@@ -70,12 +70,19 @@ final class SupabaseService {
     }
 
     func signInWithGoogle() async throws -> UserProfile {
+        let redirectURL = URL(string: "app.rork.n07af0pn4z4nr89p8q8qr://login-callback")!
         do {
-            _ = try await client.auth.signInWithOAuth(provider: .google) { session in
-                session.prefersEphemeralWebBrowserSession = false
+            _ = try await client.auth.signInWithOAuth(
+                provider: .google,
+                redirectTo: redirectURL
+            ) { session in
+                session.prefersEphemeralWebBrowserSession = true
             }
             return try await ensureProfileExists()
+        } catch is CancellationError {
+            throw AuthError.googleSignInFailed
         } catch {
+            // Never crash: surface a friendly error for any failure (cancelled, no scheme, network, etc.)
             throw AuthError.googleSignInFailed
         }
     }
