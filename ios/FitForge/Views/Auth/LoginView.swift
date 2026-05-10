@@ -121,25 +121,30 @@ struct LoginView: View {
                                 if viewModel.isAuthenticated { onAuthSuccess() }
                             }
                         } label: {
-                            HStack(spacing: 12) {
-                                GoogleGLogo(size: 20)
-                                    .frame(width: 20, height: 20)
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color.white)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                                    )
+                                    .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 3)
+
                                 Text("Continue with Google")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundStyle(Color(red: 0.20, green: 0.20, blue: 0.20))
-                                Spacer()
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+
+                                HStack {
+                                    GoogleGLogo(size: 20)
+                                        .frame(width: 20, height: 20)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
                             }
-                            .padding(.horizontal, 16)
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.white)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
-                            )
-                            .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 3)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
                         }
                         .disabled(viewModel.isLoading)
 
@@ -158,6 +163,7 @@ struct LoginView: View {
                         }
                         .padding(.top, 6)
                     }
+                    .frame(maxWidth: min(UIScreen.main.bounds.width - 40, 400))
                     .padding(.horizontal, 20)
 
                     Spacer(minLength: 40)
@@ -165,6 +171,8 @@ struct LoginView: View {
                 .padding(.bottom, 32)
                 .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: .infinity)
+            .clipped()
             .scrollDismissesKeyboard(.interactively)
             .scrollIndicators(.hidden)
         }
@@ -211,83 +219,5 @@ private struct FieldView: View {
             .glassCard(cornerRadius: 14)
         }
         .frame(maxWidth: .infinity)
-    }
-}
-
-// MARK: — Google G Logo
-struct GoogleGLogo: View {
-    var size: CGFloat = 20
-
-    private let blue   = Color(red: 0x42/255, green: 0x85/255, blue: 0xF4/255)
-    private let red    = Color(red: 0xEA/255, green: 0x43/255, blue: 0x35/255)
-    private let yellow = Color(red: 0xFB/255, green: 0xBC/255, blue: 0x05/255)
-    private let green  = Color(red: 0x34/255, green: 0xA8/255, blue: 0x53/255)
-
-    var body: some View {
-        Canvas { context, canvasSize in
-            let w = canvasSize.width
-            let h = canvasSize.height
-            let center = CGPoint(x: w / 2, y: h / 2)
-            let radius = min(w, h) / 2
-            let innerRadius = radius * 0.42
-
-            func arcSegment(start: Double, end: Double) -> Path {
-                var p = Path()
-                p.move(to: CGPoint(
-                    x: center.x + cos(start * .pi / 180) * radius,
-                    y: center.y + sin(start * .pi / 180) * radius
-                ))
-                p.addArc(center: center, radius: radius,
-                         startAngle: .degrees(start), endAngle: .degrees(end),
-                         clockwise: false)
-                p.addLine(to: CGPoint(
-                    x: center.x + cos(end * .pi / 180) * innerRadius,
-                    y: center.y + sin(end * .pi / 180) * innerRadius
-                ))
-                p.addArc(center: center, radius: innerRadius,
-                         startAngle: .degrees(end), endAngle: .degrees(start),
-                         clockwise: true)
-                p.closeSubpath()
-                return p
-            }
-
-            context.fill(arcSegment(start: -90, end: 0),   with: .color(blue))
-            context.fill(arcSegment(start: 0,   end: 90),  with: .color(green))
-            context.fill(arcSegment(start: 90,  end: 180), with: .color(yellow))
-            context.fill(arcSegment(start: 180, end: 270), with: .color(red))
-
-            let barHeight = radius * 0.42
-            let barRect = CGRect(
-                x: center.x,
-                y: center.y - barHeight / 2,
-                width: radius * 1.05,
-                height: barHeight
-            )
-            context.fill(Path(barRect), with: .color(blue))
-
-            let notchRect = CGRect(
-                x: center.x + innerRadius * 0.1,
-                y: center.y - barHeight,
-                width: radius,
-                height: barHeight / 2
-            )
-            context.blendMode = .destinationOut
-            context.fill(Path(notchRect), with: .color(.black))
-            context.blendMode = .normal
-
-            context.blendMode = .destinationOut
-            context.fill(
-                Path(ellipseIn: CGRect(
-                    x: center.x - innerRadius,
-                    y: center.y - innerRadius,
-                    width: innerRadius * 2,
-                    height: innerRadius * 2
-                )),
-                with: .color(.black)
-            )
-            context.blendMode = .normal
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
     }
 }
