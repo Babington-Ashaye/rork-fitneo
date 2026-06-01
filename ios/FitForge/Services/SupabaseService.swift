@@ -45,16 +45,22 @@ final class SupabaseService {
     // MARK: - Session
 
     func restoreSession() async throws -> UserProfile? {
-        _ = try await client.auth.session
-        return try await ensureProfileExists()
+        let session = try await client.auth.session
+        return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
     }
 
     // MARK: - Auth
 
     func signUp(email: String, password: String) async throws -> UserProfile {
         do {
-            _ = try await client.auth.signUp(email: email, password: password)
-            return try await ensureProfileExists()
+            let response = try await client.auth.signUp(email: email, password: password)
+            // If email confirmation is on, session may be nil — use the returned user directly.
+            if let session = response.session {
+                return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
+            }
+            let user = response.user
+            try? await upsertProfile(userId: user.id, email: user.email ?? email, displayName: nil)
+            return UserProfile(id: user.id, email: user.email ?? email, displayName: nil, onboardingCompleted: false, createdAt: Date())
         } catch {
             throw mapAuthError(error)
         }
@@ -62,8 +68,8 @@ final class SupabaseService {
 
     func signIn(email: String, password: String) async throws -> UserProfile {
         do {
-            _ = try await client.auth.signIn(email: email, password: password)
-            return try await ensureProfileExists()
+            let session = try await client.auth.signIn(email: email, password: password)
+            return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
         } catch {
             throw mapAuthError(error)
         }
@@ -72,17 +78,16 @@ final class SupabaseService {
     func signInWithGoogle() async throws -> UserProfile {
         let redirectURL = URL(string: "app.rork.n07af0pn4z4nr89p8q8qr://login-callback")!
         do {
-            _ = try await client.auth.signInWithOAuth(
+            let session = try await client.auth.signInWithOAuth(
                 provider: .google,
                 redirectTo: redirectURL
             ) { session in
                 session.prefersEphemeralWebBrowserSession = true
             }
-            return try await ensureProfileExists()
+            return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
         } catch is CancellationError {
             throw AuthError.googleSignInFailed
         } catch {
-            // Never crash: surface a friendly error for any failure (cancelled, no scheme, network, etc.)
             throw AuthError.googleSignInFailed
         }
     }
@@ -109,29 +114,23 @@ final class SupabaseService {
         let created_at: Date?
     }
 
-    func ensureProfileExists() async throws -> UserProfile {
-        guard let userId = client.auth.currentSession?.user.id,
-              let user = client.auth.currentUser else {
-            throw AuthError.notAuthenticated
-        }
-
+    func ensureProfileExists(userId: UUID, email: String?) async throws -> UserProfile {
         if let existing = try? await fetchProfile(userId: userId) {
             return existing
         }
+        try? await upsertProfile(userId: userId, email: email, displayName: nil)
+        return try await fetchProfile(userId: userId)
+    }
 
+    private func upsertProfile(userId: UUID, email: String?, displayName: String?) async throws {
         let row = ProfileRow(
             id: userId,
-            email: user.email ?? "",
-            display_name: user.userMetadata["full_name"]?.stringValue,
+            email: email ?? "",
+            display_name: displayName,
             onboarding_completed: false,
             created_at: Date()
         )
-        do {
-            try await client.from("user_profiles").insert(row).execute()
-        } catch {
-            // ignore – may already exist via DB trigger
-        }
-        return try await fetchProfile(userId: userId)
+        try await client.from("user_profiles").insert(row).execute()
     }
 
     func fetchProfile(userId: UUID) async throws -> UserProfile {
