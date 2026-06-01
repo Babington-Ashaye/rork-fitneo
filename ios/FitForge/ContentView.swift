@@ -1,103 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var authViewModel = AuthViewModel()
-    @State private var onboardingViewModel = OnboardingViewModel()
-    @State private var showOnboarding = false
     @State private var selectedTab = 0
-    @State private var isRestoringSession = true
 
     var body: some View {
-        Group {
-            if isRestoringSession {
-                SplashView()
-                    .transition(.opacity)
-            } else if !authViewModel.isAuthenticated {
-                LoginView(viewModel: authViewModel) {
-                    Task { await checkOnboardingStatus() }
-                }
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-            } else if showOnboarding {
-                OnboardingView(viewModel: onboardingViewModel) {
-                    withAnimation(.easeInOut(duration: 0.6)) {
-                        showOnboarding = false
-                    }
-                }
-                .transition(.opacity)
-            } else {
-                MainTabView(
-                    selectedTab: $selectedTab,
-                    onSignOut: {
-                        Task {
-                            await authViewModel.signOut()
-                            onboardingViewModel = OnboardingViewModel()
-                            showOnboarding = false
-                            selectedTab = 0
-                        }
-                    }
-                )
-                .transition(.opacity)
-            }
-        }
-        .animation(.easeInOut(duration: 0.5), value: isRestoringSession)
-        .animation(.easeInOut(duration: 0.5), value: authViewModel.isAuthenticated)
-        .animation(.easeInOut(duration: 0.5), value: showOnboarding)
-        .task {
-            await authViewModel.restoreSession()
-            if authViewModel.isAuthenticated {
-                await checkOnboardingStatus()
-            }
-            isRestoringSession = false
-        }
-    }
-
-    private func checkOnboardingStatus() async {
-        guard let userId = SupabaseService.shared.userId else { return }
-        do {
-            let profile = try await SupabaseService.shared.fetchProfile(userId: userId)
-            if !profile.onboardingCompleted {
-                onboardingViewModel = OnboardingViewModel()
-                showOnboarding = true
-            }
-        } catch {
-            // If we can't fetch, default to showing onboarding for new users
-            onboardingViewModel = OnboardingViewModel()
-            showOnboarding = true
-        }
-    }
-}
-
-// MARK: - Splash
-
-struct SplashView: View {
-    @State private var glow = false
-
-    var body: some View {
-        ZStack {
-            Theme.pageGradient.ignoresSafeArea()
-            VStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Theme.accent.opacity(glow ? 0.5 : 0.2))
-                        .frame(width: 160, height: 160)
-                        .blur(radius: 40)
-                    Image(systemName: "bolt.heart.fill")
-                        .font(.system(size: 64, weight: .bold))
-                        .foregroundStyle(Theme.accent)
-                        .shadow(color: Theme.accent.opacity(0.6), radius: 16)
-                }
-                Text("FITNEO")
-                    .font(.system(size: 36, weight: .black, design: .rounded))
-                    .tracking(6)
-                    .foregroundStyle(.white)
-            }
-        }
-        .preferredColorScheme(.dark)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
-                glow = true
-            }
-        }
+        MainTabView(selectedTab: $selectedTab)
+            .transition(.opacity)
     }
 }
 
@@ -105,11 +13,9 @@ struct SplashView: View {
 
 struct MainTabView: View {
     @Binding var selectedTab: Int
-    var onSignOut: () -> Void
 
-    init(selectedTab: Binding<Int>, onSignOut: @escaping () -> Void) {
+    init(selectedTab: Binding<Int>) {
         self._selectedTab = selectedTab
-        self.onSignOut = onSignOut
 
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
@@ -137,7 +43,7 @@ struct MainTabView: View {
                 .tabItem { Label("Progress", systemImage: "chart.bar.fill") }
                 .tag(3)
 
-            ProfileTab(onSignOut: onSignOut)
+            ProfileTab()
                 .tabItem { Label("Profile", systemImage: "person.fill") }
                 .tag(4)
         }
@@ -193,9 +99,6 @@ private struct PlaceholderTab: View {
 }
 
 private struct ProfileTab: View {
-    var onSignOut: () -> Void
-    @State private var email: String = SupabaseService.shared.currentUserEmail ?? ""
-
     var body: some View {
         ZStack {
             Theme.pageGradient.ignoresSafeArea()
@@ -216,11 +119,9 @@ private struct ProfileTab: View {
                     Text("Profile")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(.white)
-                    if !email.isEmpty {
-                        Text(email)
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.textSecondary)
-                    }
+                    Text("Guest User")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
                 }
 
                 VStack(spacing: 10) {
@@ -231,20 +132,6 @@ private struct ProfileTab: View {
                 .padding(.horizontal, 24)
 
                 Spacer()
-
-                Button {
-                    onSignOut()
-                } label: {
-                    Text("Sign Out")
-                        .font(.headline)
-                        .foregroundStyle(Theme.danger)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .glassCard(cornerRadius: 16)
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
             }
         }
     }
