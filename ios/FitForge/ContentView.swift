@@ -1,164 +1,92 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedTab = 0
+    @State private var store = FitneoStore()
 
     var body: some View {
-        MainTabView(selectedTab: $selectedTab)
-            .transition(.opacity)
-    }
-}
-
-// MARK: - Tabs
-
-struct MainTabView: View {
-    @Binding var selectedTab: Int
-
-    init(selectedTab: Binding<Int>) {
-        self._selectedTab = selectedTab
-
-        let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(Theme.background)
-        appearance.shadowColor = UIColor.white.withAlphaComponent(0.06)
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
-    }
-
-    var body: some View {
-        TabView(selection: $selectedTab) {
-            PlaceholderTab(title: "Home", icon: "house.fill", subtitle: "Your daily AI workout will live here.")
-                .tabItem { Label("Home", systemImage: "house.fill") }
-                .tag(0)
-
-            PlaceholderTab(title: "Workouts", icon: "dumbbell.fill", subtitle: "Workout library coming soon.")
-                .tabItem { Label("Workouts", systemImage: "dumbbell.fill") }
-                .tag(1)
-
-            PlaceholderTab(title: "Nutrition", icon: "leaf.fill", subtitle: "Personalized nutrition plans coming soon.")
-                .tabItem { Label("Nutrition", systemImage: "leaf.fill") }
-                .tag(2)
-
-            PlaceholderTab(title: "Progress", icon: "chart.bar.fill", subtitle: "Track your streak, stats and growth.")
-                .tabItem { Label("Progress", systemImage: "chart.bar.fill") }
-                .tag(3)
-
-            ProfileTab()
-                .tabItem { Label("Profile", systemImage: "person.fill") }
-                .tag(4)
+        Group {
+            if store.onboardingCompleted {
+                RootShell()
+            } else {
+                FitneoOnboardingView { /* state flips via store.onboardingCompleted */ }
+                    .transition(.opacity)
+            }
         }
-        .tint(Theme.accent)
+        .environment(store)
         .preferredColorScheme(.dark)
+        .animation(.easeInOut, value: store.onboardingCompleted)
     }
 }
 
-private struct PlaceholderTab: View {
-    let title: String
-    let icon: String
-    let subtitle: String
+struct RootShell: View {
+    @Environment(FitneoStore.self) private var store
+    @State private var selectedTab = 0
+    @State private var activeProgram: WorkoutProgram?
+    @State private var showJarvis = false
+
+    private let navItems = [
+        ("house.fill", "Home"),
+        ("dumbbell.fill", "Workouts"),
+        ("leaf.fill", "Nutrition"),
+        ("chart.bar.fill", "Progress"),
+        ("person.fill", "Profile")
+    ]
 
     var body: some View {
-        ZStack {
-            Theme.pageGradient.ignoresSafeArea()
+        ZStack(alignment: .bottom) {
+            Theme.background.ignoresSafeArea()
 
-            VStack(spacing: 18) {
-                Spacer()
-                ZStack {
-                    Circle()
-                        .fill(Theme.accent.opacity(0.18))
-                        .frame(width: 120, height: 120)
-                        .blur(radius: 28)
-                    Image(systemName: icon)
-                        .font(.system(size: 44, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 96, height: 96)
-                        .glassCard(cornerRadius: 28)
-                }
+            tabContent
+                .ignoresSafeArea(.keyboard)
 
-                Text(title)
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(.white)
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-
-                Text("Coming soon")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.accent)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Theme.accent.opacity(0.15)))
-                Spacer()
+            FloatingNav(selected: $selectedTab, items: navItems)
+                .padding(.bottom, 8)
+        }
+        .fullScreenCover(item: $activeProgram) { program in
+            ActiveSessionView(program: program) { activeProgram = nil }
+                .environment(store)
+        }
+        .sheet(isPresented: $showJarvis) {
+            JarvisChatView(onStartWorkout: { startAutopilot() })
+                .environment(store)
+                .presentationDetents([.large])
+        }
+        .overlay {
+            if let badge = store.newlyUnlockedBadge {
+                BadgeUnlockOverlay(badge: badge) { store.newlyUnlockedBadge = nil }
+                    .zIndex(10)
             }
+        }
+        .overlay {
+            if store.didLevelUp {
+                LevelUpOverlay(level: store.level, rankTitle: store.rank.title) { store.didLevelUp = false }
+                    .zIndex(11)
+            }
+        }
+        .onChange(of: store.requestedTab) { _, newValue in
+            if let t = newValue { selectedTab = t; store.requestedTab = nil }
         }
     }
-}
 
-private struct ProfileTab: View {
-    var body: some View {
-        ZStack {
-            Theme.pageGradient.ignoresSafeArea()
-            VStack(spacing: 22) {
-                Spacer().frame(height: 20)
-                ZStack {
-                    Circle()
-                        .fill(Theme.accent.opacity(0.2))
-                        .frame(width: 120, height: 120)
-                        .blur(radius: 24)
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 44, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 96, height: 96)
-                        .glassCard(cornerRadius: 28)
-                }
-                VStack(spacing: 4) {
-                    Text("Profile")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(.white)
-                    Text("Guest User")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
-                }
-
-                VStack(spacing: 10) {
-                    InfoRow(icon: "sparkles", title: "Trial Plan", subtitle: "Premium features unlocked")
-                    InfoRow(icon: "bell.fill", title: "Notifications", subtitle: "Coming soon")
-                    InfoRow(icon: "gearshape.fill", title: "Preferences", subtitle: "Coming soon")
-                }
-                .padding(.horizontal, 24)
-
-                Spacer()
-            }
+    @ViewBuilder private var tabContent: some View {
+        switch selectedTab {
+        case 0:
+            DashboardView(selectedTab: $selectedTab,
+                          onStartWorkout: { activeProgram = $0 },
+                          onOpenJarvis: { showJarvis = true })
+        case 1:
+            WorkoutsBrowseView(onStart: { activeProgram = $0 })
+        case 2:
+            NutritionView()
+        case 3:
+            ProgressDashboardView()
+        default:
+            ProfileSettingsView()
         }
     }
-}
 
-private struct InfoRow: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Theme.accent)
-                .frame(width: 40, height: 40)
-                .background(Circle().fill(Theme.accent.opacity(0.15)))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
-                Text(subtitle).font(.caption).foregroundStyle(Theme.textSecondary)
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.footnote)
-                .foregroundStyle(Theme.textTertiary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .glassCard(cornerRadius: 14)
+    private func startAutopilot() {
+        let program = JarvisAutopilot.selectWorkout(store: store)
+        activeProgram = program
     }
 }
