@@ -14,7 +14,7 @@ enum BadgeCatalog {
         Badge(id: "speed_demon", name: "Speed Demon", description: "Complete 10 HIIT sessions", icon: "bolt.circle.fill"),
         Badge(id: "scale_slayer", name: "Scale Slayer", description: "Log a 5kg drop in weight", icon: "scalemass.fill"),
         Badge(id: "consistency_king", name: "Consistency King", description: "Hit 90% consistency", icon: "checkmark.seal.fill"),
-        Badge(id: "jarvis_favorite", name: "Jarvis Favorite", description: "Chat with Jarvis 30 times", icon: "brain.head.profile"),
+        Badge(id: "fitneo_ai_favorite", name: "FITNEO AI Favorite", description: "Chat with FITNEO AI 30 times", icon: "brain.head.profile"),
         Badge(id: "social_climber", name: "Social Climber", description: "Reach the top 3 on the leaderboard", icon: "trophy.fill"),
         Badge(id: "legend_status", name: "Legend Status", description: "Reach Level 6 — Legend", icon: "star.circle.fill")
     ]

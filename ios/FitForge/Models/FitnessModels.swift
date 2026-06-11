@@ -180,7 +180,7 @@ struct EarnedBadge: Identifiable, Codable, Sendable {
 }
 
 enum FitnessRank: Int, CaseIterable, Sendable {
-    case rookie = 1, contender, athlete, beast, elite, legend, jarvisTier
+    case rookie = 1, contender, athlete, beast, elite, legend, fitneoAITier
 
     var title: String {
         switch self {
@@ -190,7 +190,7 @@ enum FitnessRank: Int, CaseIterable, Sendable {
         case .beast: "Beast"
         case .elite: "Elite"
         case .legend: "Legend"
-        case .jarvisTier: "Jarvis Tier"
+        case .fitneoAITier: "FITNEO AI Tier"
         }
     }
 
@@ -202,7 +202,7 @@ enum FitnessRank: Int, CaseIterable, Sendable {
         case .beast: 2500
         case .elite: 5000
         case .legend: 10000
-        case .jarvisTier: 20000
+        case .fitneoAITier: 20000
         }
     }
 
@@ -239,18 +239,18 @@ struct Subscription: Codable, Sendable {
     }
 }
 
-// MARK: - Jarvis
+// MARK: - FITNEO AI
 
-enum JarvisRole: String, Codable, Sendable { case user, coach }
+enum FitneoAIRole: String, Codable, Sendable { case user, coach }
 
-struct JarvisMessage: Identifiable, Codable, Sendable {
+struct FitneoAIMessage: Identifiable, Codable, Sendable {
     let id: UUID
-    let role: JarvisRole
+    let role: FitneoAIRole
     let text: String
     let date: Date
 }
 
-struct JarvisMemory: Codable, Sendable {
+struct FitneoAIMemory: Codable, Sendable {
     var lastWorkoutName: String?
     var lastWorkoutDate: Date?
     var totalWorkoutsAllTime: Int = 0
@@ -304,11 +304,11 @@ struct AppUser: Codable, Sendable {
 struct AppSettings: Codable, Sendable {
     var workoutReminders: Bool = true
     var streakAlerts: Bool = true
-    var jarvisCheckIn: Bool = true
+    var fitneoAICheckIn: Bool = true
     var challengeNotifications: Bool = true
     var leaderboardUpdates: Bool = false
     var voiceMode: Bool = false
-    var jarvisAutoSpeak: Bool = false
+    var fitneoAIAutoSpeak: Bool = false
 }
 
 // MARK: - Color hex helper

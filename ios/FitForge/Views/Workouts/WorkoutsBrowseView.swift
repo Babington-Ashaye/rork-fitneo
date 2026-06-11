@@ -13,6 +13,7 @@ struct WorkoutsBrowseView: View {
     @State private var sportsPhase: SportsPhase = .selectSport
     @State private var showSportsGeneration = false
     @State private var sportsPlan: GeneratedPlan?
+    @State private var showCustomCreator = false
 
     enum SportsPhase { case selectSport, selectLevel, selectPosition, showPlan }
 
@@ -20,7 +21,7 @@ struct WorkoutsBrowseView: View {
         if isSportsMode, let plan = sportsPlan ?? (store.generatedPlan?.isSportsPlan == true ? store.generatedPlan : nil) {
             return []
         }
-        return ExerciseLibrary.programs
+        return store.allPrograms
     }
 
     private var filtered: [WorkoutProgram] {
@@ -63,6 +64,10 @@ struct WorkoutsBrowseView: View {
                 showSportsGeneration = false
             }
         }
+        .fullScreenCover(isPresented: $showCustomCreator) {
+            CustomWorkoutCreator()
+                .environment(store)
+        }
     }
 
     // MARK: - Normal mode
@@ -100,6 +105,27 @@ struct WorkoutsBrowseView: View {
 
                 ScreenTitle(title: "Workouts", subtitle: "Programs tuned to your level")
                     .padding(.horizontal, 20)
+
+                // Create custom workout button
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    showCustomCreator = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(Theme.accent)
+                        Text("Create Custom Workout")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(Theme.textTertiary)
+                    }
+                    .padding(16)
+                    .glassCard(cornerRadius: 16)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
 
                 // Search bar
                 HStack {

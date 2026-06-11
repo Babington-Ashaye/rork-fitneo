@@ -38,7 +38,7 @@ struct RootShell: View {
     @Environment(FitneoStore.self) private var store
     @State private var selectedTab = 0
     @State private var activeProgram: WorkoutProgram?
-    @State private var showJarvis = false
+    @State private var showFitneoAI = false
     @State private var showTrialBanner = true
 
     private let navItems = [
@@ -70,8 +70,8 @@ struct RootShell: View {
             ActiveSessionView(program: program) { activeProgram = nil }
                 .environment(store)
         }
-        .sheet(isPresented: $showJarvis) {
-            JarvisChatView(onStartWorkout: { startAutopilot() })
+        .sheet(isPresented: $showFitneoAI) {
+            FitneoAIChatView(onStartWorkout: { activeProgram = $0 })
                 .environment(store)
                 .presentationDetents([.large])
         }
@@ -97,7 +97,7 @@ struct RootShell: View {
         case 0:
             DashboardView(selectedTab: $selectedTab,
                           onStartWorkout: { activeProgram = $0 },
-                          onOpenJarvis: { showJarvis = true })
+                          onOpenFitneoAI: { showFitneoAI = true })
         case 1:
             WorkoutsBrowseView(onStart: { activeProgram = $0 })
         case 2:
@@ -110,7 +110,7 @@ struct RootShell: View {
     }
 
     private func startAutopilot() {
-        let program = JarvisAutopilot.selectWorkout(store: store)
+        let program = FitneoAIAutopilot.selectWorkout(store: store)
         activeProgram = program
     }
 

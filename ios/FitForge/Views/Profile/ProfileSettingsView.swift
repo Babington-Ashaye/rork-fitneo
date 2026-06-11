@@ -160,11 +160,11 @@ struct ProfileSettingsView: View {
             .padding(.bottom, 6)
             toggleRow("Workout reminders", "bell.fill", $store.settings.workoutReminders)
             toggleRow("Streak alerts", "flame.fill", $store.settings.streakAlerts)
-            toggleRow("Jarvis daily check-in", "brain.head.profile", $store.settings.jarvisCheckIn)
+            toggleRow("FITNEO AI daily check-in", "brain.head.profile", $store.settings.fitneoAICheckIn)
             toggleRow("Challenge notifications", "flag.fill", $store.settings.challengeNotifications)
             Divider().overlay(Color.white.opacity(0.08)).padding(.vertical, 6)
             toggleRow("Voice mode", "mic.fill", $store.settings.voiceMode)
-            toggleRow("Jarvis auto-speak", "speaker.wave.2.fill", $store.settings.jarvisAutoSpeak)
+            toggleRow("FITNEO AI auto-speak", "speaker.wave.2.fill", $store.settings.fitneoAIAutoSpeak)
         }
         .padding(16)
         .glassCard(cornerRadius: 20)

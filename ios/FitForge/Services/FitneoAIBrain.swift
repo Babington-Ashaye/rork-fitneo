@@ -1,8 +1,8 @@
 import Foundation
 
-/// Local rule-based coaching engine for Jarvis.
+/// Local rule-based coaching engine for FITNEO AI.
 /// Detects intents and generates personalized, data-aware responses without a network call.
-enum JarvisIntent: Sendable {
+enum FitneoAIIntent: Sendable {
     case startWorkout
     case pause
     case next
@@ -15,9 +15,9 @@ enum JarvisIntent: Sendable {
     case chat
 }
 
-enum JarvisBrain {
+enum FitneoAIBrain {
 
-    static func detectIntent(_ message: String) -> JarvisIntent {
+    static func detectIntent(_ message: String) -> FitneoAIIntent {
         let m = message.lowercased()
         if m.contains("start workout") || m.contains("train me") || m.contains("let's go") || m.contains("lets go") || m.contains("autopilot") {
             return .startWorkout
@@ -38,9 +38,9 @@ enum JarvisBrain {
 
     /// Generates a personalized coach response using stored data.
     static func respond(to message: String,
-                        intent: JarvisIntent,
+                        intent: FitneoAIIntent,
                         user: AppUser,
-                        memory: JarvisMemory,
+                        memory: FitneoAIMemory,
                         personality: String) -> String {
         let name = user.name
         switch intent {
@@ -59,7 +59,7 @@ enum JarvisBrain {
         case .easier:
             return "Smart call. Reduce to 2 sets, slow the tempo, and rest fully between sets. Consistency beats intensity every time. Next step: start the Full Body Beginner program."
         case .logFood(let food):
-            let f = food.isEmpty ? "that" : "“\(food)”"
+            let f = food.isEmpty ? "that" : "\u{201c}\(food)\u{201d}"
             return "Open the Nutrition tab and search \(f) — I'll calculate the macros instantly. You're averaging \(memory.avgDailyCalories) kcal/day right now."
         case .restDay:
             return "Rest is where growth happens. Logged it. Hydrate, stretch, and sleep well — we go again tomorrow."
@@ -68,12 +68,12 @@ enum JarvisBrain {
         }
     }
 
-    private static func progressSummary(user: AppUser, memory: JarvisMemory) -> String {
+    private static func progressSummary(user: AppUser, memory: FitneoAIMemory) -> String {
         var parts: [String] = []
         parts.append("Here's the read, \(user.name):")
-        parts.append("• \(memory.totalWorkoutsAllTime) total workouts, \(memory.totalWorkoutsThisWeek) this week")
-        parts.append("• \(memory.currentStreak)-day streak (best: \(memory.longestStreak))")
-        parts.append("• Consistency \(memory.consistencyScore)%")
+        parts.append("\u{2022} \(memory.totalWorkoutsAllTime) total workouts, \(memory.totalWorkoutsThisWeek) this week")
+        parts.append("\u{2022} \(memory.currentStreak)-day streak (best: \(memory.longestStreak))")
+        parts.append("\u{2022} Consistency \(memory.consistencyScore)%")
         let close: String
         if memory.currentStreak >= 7 {
             close = "Elite territory. Keep stacking days."
@@ -86,9 +86,8 @@ enum JarvisBrain {
         return parts.joined(separator: "\n")
     }
 
-    private static func chatResponse(message: String, user: AppUser, memory: JarvisMemory, personality: String) -> String {
+    private static func chatResponse(message: String, user: AppUser, memory: FitneoAIMemory, personality: String) -> String {
         let lib = personalityLibrary(personality)
-        // Pick a contextual response, lightly personalized.
         let base = lib.randomElement() ?? "Stay focused and trust the process."
         let goal = user.goals.first ?? "your goal"
         let nudge: String
@@ -120,7 +119,7 @@ enum JarvisBrain {
                 "Every rep is a vote for the person you're becoming.",
                 "Momentum is built one session at a time. Go."
             ]
-        default: // supportive
+        default:
             return [
                 "You're doing great — small steps add up fast.",
                 "Be proud of showing up; that's the hardest part.",
@@ -132,7 +131,7 @@ enum JarvisBrain {
     }
 
     /// Proactive insight surfaced on app open.
-    static func proactiveInsight(user: AppUser, memory: JarvisMemory, loggedToday: Bool, workedOutYesterday: Bool) -> String {
+    static func proactiveInsight(user: AppUser, memory: FitneoAIMemory, loggedToday: Bool, workedOutYesterday: Bool) -> String {
         if memory.currentStreak >= 7 {
             return "\(memory.currentStreak) days straight. Elite territory — keep it alive."
         }

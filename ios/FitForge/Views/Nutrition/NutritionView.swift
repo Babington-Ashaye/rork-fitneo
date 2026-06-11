@@ -5,8 +5,10 @@ struct NutritionView: View {
     @Environment(FitneoStore.self) private var store
     @State private var searchMeal: MealType?
     @State private var showScanner = false
+    @State private var scannerMeal: MealType?
     @State private var scannerImage: UIImage?
     @State private var showAnalysis = false
+    @State private var aiMessages: [UUID: String] = [:]
 
     private var consumed: Int { store.caloriesConsumed(on: Date()) }
     private var remaining: Int { store.user.calorieGoal - consumed }
@@ -29,9 +31,8 @@ struct NutritionView: View {
                 // Scan meal button
                 Button {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    if store.subscription.isPremium {
-                        showScanner = true
-                    }
+                    scannerMeal = nil
+                    showScanner = true
                 } label: {
                     HStack(spacing: 14) {
                         Image(systemName: "camera.fill")
@@ -63,11 +64,18 @@ struct NutritionView: View {
         .scrollIndicators(.hidden)
         .background(Theme.pageGradient.ignoresSafeArea())
         .sheet(item: $searchMeal) { meal in
-            FoodSearchSheet(meal: meal)
+            FoodSearchSheet(meal: meal, onFoodLogged: { entry in
+                generateAIMessage(for: entry)
+            })
         }
         .confirmationDialog("Scan Meal", isPresented: $showScanner, titleVisibility: .visible) {
-            Button("Take Photo") { /* camera */ }
-            Button("Choose from Gallery") { /* photo picker */ }
+            Button("Take Photo") { }
+            Button("Choose from Gallery") { }
+            if let meal = scannerMeal {
+                Button("Add to \(meal.title)") {
+                    scannerMeal = meal
+                }
+            }
             Button("Cancel", role: .cancel) {}
         }
         .onAppear {
@@ -117,38 +125,102 @@ struct NutritionView: View {
                     .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textTertiary)
             }
             ForEach(entries) { entry in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(entry.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
-                        Text("P\(Int(entry.protein)) · C\(Int(entry.carbs)) · F\(Int(entry.fat))")
-                            .font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+                            Text("P\(Int(entry.protein)) · C\(Int(entry.carbs)) · F\(Int(entry.fat))")
+                                .font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
+                        }
+                        Spacer()
+                        Text("\(entry.calories)").font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.textSecondary)
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            store.deleteFood(entry)
+                        } label: {
+                            Image(systemName: "minus.circle.fill").foregroundStyle(Theme.danger.opacity(0.8))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    Spacer()
-                    Text("\(entry.calories)").font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.textSecondary)
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        store.deleteFood(entry)
-                    } label: {
-                        Image(systemName: "minus.circle.fill").foregroundStyle(Theme.danger.opacity(0.8))
+                    if let aiMsg = aiMessages[entry.id] {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(Theme.accent)
+                                .frame(width: 6, height: 6)
+                            Text(aiMsg)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Theme.accent)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.accent.opacity(0.08)))
                     }
-                    .buttonStyle(.plain)
                 }
                 .padding(.vertical, 4)
             }
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                searchMeal = meal
-            } label: {
-                HStack {
-                    Image(systemName: "plus.circle.fill").foregroundStyle(Theme.accent)
-                    Text("Add food").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.accent)
-                    Spacer()
+            HStack(spacing: 8) {
+                // Add food button
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    searchMeal = meal
+                } label: {
+                    HStack {
+                        Image(systemName: "plus.circle.fill").foregroundStyle(Theme.accent)
+                        Text("Add food").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.accent)
+                        Spacer()
+                    }
                 }
+                .buttonStyle(.plain)
+
+                // Scan button per meal section
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    scannerMeal = meal
+                    showScanner = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "camera.fill").font(.system(size: 12))
+                        Text("Scan").font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundStyle(Theme.accent)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Capsule().fill(Theme.accent.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(16)
         .glassCard(cornerRadius: 20)
+    }
+
+    private func generateAIMessage(for entry: FoodEntry) {
+        let name = entry.name.lowercased()
+        let goal = store.user.goals.first ?? "your goal"
+        let remaining = store.user.calorieGoal - store.caloriesConsumed(on: Date())
+        let message: String
+
+        if name.contains("chicken") || name.contains("salmon") || name.contains("tuna") || name.contains("egg") || name.contains("turkey") || name.contains("shrimp") || name.contains("steak") {
+            message = "Great protein choice. This supports your \(goal) goal perfectly."
+        } else if name.contains("chocolate") || name.contains("pizza") || name.contains("burger") || name.contains("cake") || name.contains("ice cream") {
+            message = "Noted. You have \(remaining) kcal remaining today. Balance with a high-protein meal next."
+        } else if name.contains("oat") || name.contains("rice") || name.contains("pasta") || name.contains("bread") || name.contains("sweet potato") {
+            message = "Excellent complex carbs to fuel your training. Well done."
+        } else if name.contains("protein") || name.contains("shake") || name.contains("whey") {
+            message = "Smart choice. Your muscles will thank you for this post-workout fuel."
+        } else if name.contains("salad") || name.contains("broccoli") || name.contains("spinach") || name.contains("kale") {
+            message = "Loaded with micronutrients. Great for recovery and overall health."
+        } else if name.contains("avocado") || name.contains("almond") || name.contains("peanut butter") || name.contains("olive oil") {
+            message = "Quality healthy fats. Moderation keeps these working in your favor."
+        } else {
+            let calPct = Double(entry.calories) / Double(max(1, store.user.calorieGoal)) * 100
+            if calPct > 25 {
+                message = "This is a substantial meal. You have \(remaining) kcal left for the day."
+            } else {
+                message = "Logged. Keep building quality habits — you're doing great."
+            }
+        }
+
+        aiMessages[entry.id] = message
     }
 }
 
@@ -158,6 +230,7 @@ struct FoodSearchSheet: View {
     @Environment(FitneoStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let meal: MealType
+    var onFoodLogged: ((FoodEntry) -> Void)?
     @State private var query = ""
     @State private var portionFor: FoodItem?
 
@@ -170,7 +243,7 @@ struct FoodSearchSheet: View {
                 Text("Add to \(meal.title)").font(.system(size: 20, weight: .bold)).foregroundStyle(.white).padding(.top, 12)
                 HStack {
                     Image(systemName: "magnifyingglass").foregroundStyle(Theme.textTertiary)
-                    TextField("Search foods…", text: $query)
+                    TextField("Search foods\u{2026}", text: $query)
                         .foregroundStyle(.white).tint(Theme.accent)
                 }
                 .padding(14)
@@ -187,7 +260,7 @@ struct FoodSearchSheet: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(item.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
-                                        Text("\(item.category) · \(item.serving)").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                                        Text("\(item.category) \u{00b7} \(item.serving)").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
                                     }
                                     Spacer()
                                     Text("\(item.calories) kcal").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.accent)
@@ -207,6 +280,9 @@ struct FoodSearchSheet: View {
         .sheet(item: $portionFor) { item in
             PortionSheet(item: item) { portion in
                 store.logFood(item, meal: meal, portion: portion)
+                if let last = store.foodEntries.last {
+                    onFoodLogged?(last)
+                }
                 portionFor = nil
                 dismiss()
             }
@@ -226,7 +302,7 @@ struct PortionSheet: View {
             Theme.pageGradient.ignoresSafeArea()
             VStack(spacing: 18) {
                 Text(item.name).font(.system(size: 20, weight: .bold)).foregroundStyle(.white).padding(.top, 18)
-                Text("\(Int(Double(item.calories) * portion)) kcal · \(item.serving)")
+                Text("\(Int(Double(item.calories) * portion)) kcal \u{00b7} \(item.serving)")
                     .font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
                 HStack(spacing: 10) {
                     ForEach(options, id: \.self) { o in
@@ -234,7 +310,7 @@ struct PortionSheet: View {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             portion = o
                         } label: {
-                            Text("\(o == 1 ? "1" : String(format: "%g", o))×")
+                            Text("\(o == 1 ? "1" : String(format: "%g", o))\u{00d7}")
                                 .font(.system(size: 15, weight: .bold))
                                 .foregroundStyle(portion == o ? .white : Theme.textSecondary)
                                 .frame(maxWidth: .infinity).padding(.vertical, 14)

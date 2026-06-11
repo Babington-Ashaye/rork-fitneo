@@ -4,7 +4,7 @@ struct DashboardView: View {
     @Environment(FitneoStore.self) private var store
     @Binding var selectedTab: Int
     var onStartWorkout: (WorkoutProgram) -> Void
-    var onOpenJarvis: () -> Void
+    var onOpenFitneoAI: () -> Void
 
     @AppStorage("fitneo_myplan_expanded") private var myPlanExpanded: Bool = false
     @State private var selectedPlanWeek = 0
@@ -19,13 +19,13 @@ struct DashboardView: View {
     }
 
     private var recommended: WorkoutProgram {
-        JarvisAutopilot.selectWorkout(store: store)
+        FitneoAIAutopilot.selectWorkout(store: store)
     }
 
     private var insight: String {
-        JarvisBrain.proactiveInsight(
+        FitneoAIBrain.proactiveInsight(
             user: store.user,
-            memory: store.jarvisMemory,
+            memory: store.fitneoAIMemory,
             loggedToday: !store.entries(for: Date()).isEmpty,
             workedOutYesterday: store.workoutsThisWeek > 0
         )
@@ -95,7 +95,7 @@ struct DashboardView: View {
                 PillButton(title: "Quick Start", icon: "play.fill") { onStartWorkout(recommended) }
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onOpenJarvis()
+                    onOpenFitneoAI()
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: "brain.head.profile")
@@ -203,14 +203,14 @@ struct DashboardView: View {
                 Image(systemName: "brain.head.profile").foregroundStyle(Theme.accent)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("Jarvis Insight").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.accent)
+                Text("FITNEO AI Insight").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.accent)
                 Text(insight).font(.system(size: 14, weight: .medium)).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
         .padding(18)
         .glassCard(cornerRadius: 22)
-        .onTapGesture { onOpenJarvis() }
+        .onTapGesture { onOpenFitneoAI() }
     }
 
     // MARK: - My Plan section (collapsible)
@@ -353,7 +353,7 @@ struct DashboardView: View {
     private var generatePlanCard: some View {
         Button {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            onOpenJarvis()
+            onOpenFitneoAI()
         } label: {
             HStack(spacing: 14) {
                 ZStack {

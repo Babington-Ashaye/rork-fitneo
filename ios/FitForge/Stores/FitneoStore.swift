@@ -32,7 +32,7 @@ final class FitneoStore {
     var xp: Int {
         didSet { save(xp, key: Keys.xp) }
     }
-    var messages: [JarvisMessage] {
+    var messages: [FitneoAIMessage] {
         didSet { save(messages, key: Keys.messages) }
     }
     var coachPersonality: String {
@@ -49,7 +49,7 @@ final class FitneoStore {
 
     var newlyUnlockedBadge: Badge?
     var didLevelUp: Bool = false
-    var requestedTab: Int?            // for cross-screen navigation (Jarvis -> tab)
+    var requestedTab: Int?            // for cross-screen navigation (FITNEO AI -> tab)
     var prefilledFoodSearch: String?
     var generatedPlan: GeneratedPlan? {
         didSet { save(generatedPlan, key: Keys.plan) }
@@ -59,6 +59,9 @@ final class FitneoStore {
     }
     var demoMode: Bool {
         didSet { UserDefaults.standard.set(demoMode, forKey: Keys.demoMode) }
+    }
+    var customPrograms: [WorkoutProgram] {
+        didSet { save(customPrograms, key: Keys.customPrograms) }
     }
 
     // MARK: - Init
@@ -72,9 +75,10 @@ final class FitneoStore {
         self.weightEntries = Self.load([WeightEntry].self, key: Keys.weight) ?? []
         self.earnedBadges = Self.load([EarnedBadge].self, key: Keys.badges) ?? []
         self.xp = UserDefaults.standard.object(forKey: Keys.xp) as? Int ?? 0
-        self.messages = Self.load([JarvisMessage].self, key: Keys.messages) ?? []
+        self.messages = Self.load([FitneoAIMessage].self, key: Keys.messages) ?? []
         self.generatedPlan = Self.load(GeneratedPlan.self, key: Keys.plan)
         self.sportsSelection = Self.load(SportSelection.self, key: Keys.sportsSelection) ?? SportSelection()
+        self.customPrograms = Self.load([WorkoutProgram].self, key: Keys.customPrograms) ?? []
         self.coachPersonality = UserDefaults.standard.string(forKey: Keys.personality) ?? "motivational"
         self.onboardingCompleted = UserDefaults.standard.bool(forKey: Keys.onboarding)
         self.demoMode = UserDefaults.standard.bool(forKey: Keys.demoMode)
@@ -87,8 +91,8 @@ final class FitneoStore {
         }
 
         if messages.isEmpty {
-            messages = [JarvisMessage(id: UUID(), role: .coach,
-                text: "I'm Jarvis, your AI coach. I track your training, nutrition and recovery. Ask me anything or say “train me” to start.",
+            messages = [FitneoAIMessage(id: UUID(), role: .coach,
+                text: "I'm FITNEO AI, your personal fitness coach. I track your training, nutrition and recovery. Ask me anything or say \"train me\" to start.",
                 date: Date())]
         }
     }
@@ -115,7 +119,6 @@ final class FitneoStore {
         guard !days.isEmpty else { return 0 }
         var streak = 0
         var cursor = Calendar.current.startOfDay(for: Date())
-        // Allow streak to count if worked out today OR yesterday (grace).
         if !days.contains(Self.dayKey(cursor)) {
             cursor = Calendar.current.date(byAdding: .day, value: -1, to: cursor)!
             if !days.contains(Self.dayKey(cursor)) { return 0 }
@@ -162,7 +165,6 @@ final class FitneoStore {
     }
 
     var consistencyScore: Int {
-        // Last 4 weeks: how many of the targeted days were hit.
         let target = max(1, user.weeklyWorkoutGoal * 4)
         let cal = Calendar.current
         let fourWeeksAgo = cal.date(byAdding: .day, value: -28, to: Date())!
@@ -192,10 +194,10 @@ final class FitneoStore {
         return total / grouped.count
     }
 
-    // MARK: - Jarvis memory snapshot
+    // MARK: - FITNEO AI memory snapshot
 
-    var jarvisMemory: JarvisMemory {
-        JarvisMemory(
+    var fitneoAIMemory: FitneoAIMemory {
+        FitneoAIMemory(
             lastWorkoutName: workouts.last?.name,
             lastWorkoutDate: workouts.last?.completedAt,
             totalWorkoutsAllTime: workouts.count,
@@ -207,6 +209,10 @@ final class FitneoStore {
             consistencyScore: consistencyScore,
             chatCount: messages.filter { $0.role == .user }.count
         )
+    }
+
+    var allPrograms: [WorkoutProgram] {
+        ExerciseLibrary.programs + customPrograms
     }
 
     // MARK: - Actions
@@ -248,7 +254,6 @@ final class FitneoStore {
             loggedAt: Date()
         )
         foodEntries.append(entry)
-        // 50 XP if all meals logged today
         let mealsToday = Set(entries(for: Date()).map { $0.mealType })
         if mealsToday.count >= 4 { addXP(50) }
         checkBadges()
@@ -279,6 +284,14 @@ final class FitneoStore {
         if level > before {
             didLevelUp = true
         }
+    }
+
+    func addCustomProgram(_ program: WorkoutProgram) {
+        customPrograms.append(program)
+    }
+
+    func removeCustomProgram(id: String) {
+        customPrograms.removeAll { $0.id == id }
     }
 
     func startTrial() {
@@ -313,20 +326,17 @@ final class FitneoStore {
         if workouts.filter({ $0.category == .strength }).count >= 20 { unlock("strength_surge") }
         if workouts.filter({ $0.category == .hiit }).count >= 10 { unlock("speed_demon") }
         if consistencyScore >= 90 { unlock("consistency_king") }
-        if jarvisMemory.chatCount >= 30 { unlock("jarvis_favorite") }
+        if fitneoAIMemory.chatCount >= 30 { unlock("fitneo_ai_favorite") }
         if level >= 6 { unlock("legend_status") }
 
-        // weight drop 5kg
         if let first = weightEntries.first?.weight, let last = weightEntries.last?.weight, first - last >= 5 {
             unlock("scale_slayer")
         }
-        // nutrition 14-day streak
         let loggedDays = Set(foodEntries.map { Self.dayKey($0.loggedAt) })
         if loggedDays.count >= 14 { unlock("nutrition_master") }
     }
 
     func loadDemoData() {
-        // Pre-fill 7 workouts over past 2 weeks
         let now = Date()
         let cal = Calendar.current
         let demoNames = ["Full Body Beginner", "Cardio Blast", "Core Crusher", "Upper Body Strength", "HIIT Burn", "Home No-Equipment", "Morning Energy Boost"]
@@ -345,7 +355,6 @@ final class FitneoStore {
             workouts.append(completed)
         }
 
-        // 3 days of sample nutrition
         let sampleFoods: [(String, MealType, Int)] = [
             ("Oatmeal", .breakfast, 350), ("Chicken Rice Bowl", .lunch, 650),
             ("Protein Shake", .snacks, 200), ("Scrambled Eggs Toast", .breakfast, 400),
@@ -359,7 +368,6 @@ final class FitneoStore {
                 carbs: Double(cals) * 0.12, fat: Double(cals) * 0.04, loggedAt: date))
         }
 
-        // Sample weight trend
         for i in 0..<6 {
             guard let date = cal.date(byAdding: .day, value: -(i * 5), to: now) else { continue }
             weightEntries.append(WeightEntry(id: UUID(), weight: 75.0 - Double(i) * 0.4, date: date))
@@ -385,8 +393,9 @@ final class FitneoStore {
         demoMode = false
         generatedPlan = nil
         sportsSelection = SportSelection()
-        messages = [JarvisMessage(id: UUID(), role: .coach,
-            text: "Fresh start. I'm Jarvis — let's build your fitness story from scratch.", date: Date())]
+        customPrograms = []
+        messages = [FitneoAIMessage(id: UUID(), role: .coach,
+            text: "Fresh start. I'm FITNEO AI — let's build your fitness story from scratch.", date: Date())]
     }
 
     func exportJSON() -> String {
@@ -420,7 +429,8 @@ final class FitneoStore {
         static let sportsSelection = "fitneo_sports"
         static let water = "fitneo_water"
         static let demoMode = "fitneo_demo"
-        static let all = [user, settings, subscription, workouts, nutrition, weight, badges, xp, messages, personality, onboarding, plan, sportsSelection, water, demoMode]
+        static let customPrograms = "fitneo_custom_programs"
+        static let all = [user, settings, subscription, workouts, nutrition, weight, badges, xp, messages, personality, onboarding, plan, sportsSelection, water, demoMode, customPrograms]
     }
 
     private struct WaterLog: Codable, Sendable {
