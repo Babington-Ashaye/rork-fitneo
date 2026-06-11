@@ -12,16 +12,31 @@ struct ProfileSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
+                // Demo mode banner
+                if store.demoMode {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.black)
+                        Text("Demo Mode — Sample Data")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.black)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(red: 1, green: 0.78, blue: 0.2)))
+                    .padding(.horizontal, 20)
+                }
+
                 profileHeader
                 subscriptionCard
                 badgesPreview
                 NavRow(icon: "trophy.fill", title: "Leaderboard", subtitle: "See where you rank") { showLeaderboard = true }
                 NavRow(icon: "person.crop.circle", title: "Edit Profile", subtitle: "Name, stats, goals") { showEdit = true }
                 settingsCard
+                demoModeToggle
                 accountCard
                 Color.clear.frame(height: 90)
             }
-            .padding(.horizontal, 20)
             .padding(.top, 8)
         }
         .scrollIndicators(.hidden)
@@ -80,11 +95,13 @@ struct ProfileSettingsView: View {
                     .frame(width: 44, height: 44)
                     .background(Circle().fill((sub.isPremium ? Color(red: 1, green: 0.78, blue: 0.2) : Color.white).opacity(0.12)))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(sub.isPremium ? "Premium Active" : "FITNEO Free").font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
+                    Text(planTitle).font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
                     if let days = sub.daysRemaining, sub.status == .trial {
                         Text("\(days) days left in your free trial").font(.system(size: 12)).foregroundStyle(Theme.accent)
+                    } else if sub.status == .active {
+                        Text("Active").font(.system(size: 12)).foregroundStyle(Theme.accent)
                     } else {
-                        Text(sub.isPremium ? "All features unlocked" : "Tap to start free trial").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                        Text("Tap to start free trial").font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
                     }
                 }
                 Spacer()
@@ -94,6 +111,13 @@ struct ProfileSettingsView: View {
             .glassCard(cornerRadius: 20)
         }
         .buttonStyle(.plain)
+    }
+
+    private var planTitle: String {
+        let sub = store.subscription
+        if sub.status == .trial { return "FITNEO Elite Trial" }
+        if sub.status == .active { return "FITNEO Elite" }
+        return "FITNEO Free"
     }
 
     private var badgesPreview: some View {
@@ -141,6 +165,31 @@ struct ProfileSettingsView: View {
             Divider().overlay(Color.white.opacity(0.08)).padding(.vertical, 6)
             toggleRow("Voice mode", "mic.fill", $store.settings.voiceMode)
             toggleRow("Jarvis auto-speak", "speaker.wave.2.fill", $store.settings.jarvisAutoSpeak)
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 20)
+    }
+
+    private var demoModeToggle: some View {
+        @Bindable var store = store
+        return VStack(spacing: 4) {
+            HStack(spacing: 12) {
+                Image(systemName: "gearshape.2.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color(red: 1, green: 0.78, blue: 0.2))
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Demo Mode").font(.system(size: 15)).foregroundStyle(.white)
+                    Text("Pre-fills sample data for testing").font(.system(size: 11)).foregroundStyle(Theme.textTertiary)
+                }
+                Spacer()
+                Toggle("", isOn: $store.demoMode)
+                    .labelsHidden()
+                    .tint(Color(red: 1, green: 0.78, blue: 0.2))
+                    .onChange(of: store.demoMode) { _, val in
+                        if val { store.loadDemoData() }
+                    }
+            }
         }
         .padding(16)
         .glassCard(cornerRadius: 20)

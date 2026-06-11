@@ -6,6 +6,9 @@ struct DashboardView: View {
     var onStartWorkout: (WorkoutProgram) -> Void
     var onOpenJarvis: () -> Void
 
+    @AppStorage("fitneo_myplan_expanded") private var myPlanExpanded: Bool = false
+    @State private var selectedPlanWeek = 0
+
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
@@ -33,7 +36,9 @@ struct DashboardView: View {
             VStack(spacing: 18) {
                 header
                 XPBar(level: store.level, rankTitle: store.rank.title, progress: store.levelProgress, xpInto: store.xpIntoLevel, xpSpan: store.xpForNextLevel)
+                if let plan = store.generatedPlan { myPlanSection(plan) }
                 heroCard
+                if store.generatedPlan == nil { generatePlanCard }
                 statsRow
                 goalSection
                 waterTracker
@@ -92,12 +97,18 @@ struct DashboardView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     onOpenJarvis()
                 } label: {
-                    Image(systemName: "brain.head.profile")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 54, height: 54)
-                        .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.05)))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.accent.opacity(0.4), lineWidth: 1))
+                    VStack(spacing: 4) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 54, height: 54)
+                            .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.05)))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.accent.opacity(0.4), lineWidth: 1))
+                        Text("AI")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Theme.accent)
+                            .tracking(1)
+                    }
                 }
                 .buttonStyle(.plain)
             }
@@ -200,6 +211,168 @@ struct DashboardView: View {
         .padding(18)
         .glassCard(cornerRadius: 22)
         .onTapGesture { onOpenJarvis() }
+    }
+
+    // MARK: - My Plan section (collapsible)
+
+    @ViewBuilder
+    private func myPlanSection(_ plan: GeneratedPlan) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Collapsed header — always visible
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    myPlanExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(Theme.accent)
+                        .font(.system(size: 14))
+                    Text("MY PLAN")
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.accent)
+                    Text(plan.planName)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Spacer()
+                    if plan.isSportsPlan, let sport = plan.sportName {
+                        Text(sport.uppercased())
+                            .font(.system(size: 10, weight: .bold))
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(Capsule().fill(Theme.coral.opacity(0.2)))
+                            .foregroundStyle(Theme.coral)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .rotationEffect(.degrees(myPlanExpanded ? 180 : 0))
+                        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: myPlanExpanded)
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 54)
+            }
+            .buttonStyle(.plain)
+            .glassCard(cornerRadius: myPlanExpanded ? 22 : 16)
+
+            // Expanded content
+            if myPlanExpanded {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(plan.coachMessage)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
+
+                    let weeks = plan.weeklyStructure
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 8) {
+                            ForEach(Array(weeks.enumerated()), id: \.offset) { idx, week in
+                                Button {
+                                    withAnimation(.spring(response: 0.3)) { selectedPlanWeek = idx }
+                                } label: {
+                                    VStack(spacing: 4) {
+                                        Text("Week \(week.weekNumber)")
+                                            .font(.system(size: 13, weight: .bold))
+                                        Text(week.theme)
+                                            .font(.system(size: 10))
+                                    }
+                                    .foregroundStyle(selectedPlanWeek == idx ? .white : Theme.textSecondary)
+                                    .padding(.horizontal, 16).padding(.vertical, 10)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .fill(selectedPlanWeek == idx ? Theme.accent.opacity(0.2) : Color.white.opacity(0.04))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(selectedPlanWeek == idx ? Theme.accent.opacity(0.5) : Color.white.opacity(0.06), lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+
+                    if selectedPlanWeek < weeks.count {
+                        let week = weeks[selectedPlanWeek]
+                        ForEach(week.days) { day in
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if let pid = day.programID, let prog = ExerciseLibrary.program(id: pid) {
+                                    onStartWorkout(prog)
+                                }
+                            } label: {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(day.programID != nil ? Theme.accent.opacity(0.15) : Color.white.opacity(0.04))
+                                            .frame(width: 42, height: 42)
+                                        if day.programID != nil {
+                                            Image(systemName: "figure.strengthtraining.traditional")
+                                                .font(.system(size: 16)).foregroundStyle(Theme.accent)
+                                        } else {
+                                            Image(systemName: "moon.zzz.fill")
+                                                .font(.system(size: 16)).foregroundStyle(Theme.textTertiary)
+                                        }
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack {
+                                            Text("Day \(day.dayNumber)")
+                                                .font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
+                                            Text("· \(day.focus)")
+                                                .font(.system(size: 13)).foregroundStyle(Theme.accent)
+                                        }
+                                        Text(day.notes)
+                                            .font(.system(size: 12)).foregroundStyle(Theme.textTertiary).lineLimit(1)
+                                    }
+                                    Spacer()
+                                    if day.programID != nil {
+                                        Image(systemName: "play.circle.fill")
+                                            .font(.system(size: 24)).foregroundStyle(Theme.accent)
+                                    }
+                                }
+                                .padding(14)
+                                .glassCard(cornerRadius: 16)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: myPlanExpanded)
+    }
+
+    private var generatePlanCard: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            onOpenJarvis()
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(Theme.accent.opacity(0.15)).frame(width: 48, height: 48)
+                    Image(systemName: "brain.head.profile").font(.system(size: 22)).foregroundStyle(Theme.accent)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("FITNEO AI").font(.system(size: 11, weight: .bold)).tracking(1.5).foregroundStyle(Theme.accent)
+                    Text("Generate My Plan").font(.system(size: 17, weight: .bold)).foregroundStyle(.white)
+                    Text("Get your personalized 4-week AI workout plan")
+                        .font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(Theme.textTertiary)
+            }
+            .padding(18)
+            .glassCard(cornerRadius: 22)
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder private var recentActivity: some View {

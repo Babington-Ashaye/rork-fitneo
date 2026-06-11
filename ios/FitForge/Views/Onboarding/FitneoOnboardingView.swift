@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FitneoOnboardingView: View {
     @Environment(FitneoStore.self) private var store
-    var onFinish: () -> Void
+    var onFinish: (OnboardingData) -> Void
 
     @State private var step = 0
     @State private var name = ""
@@ -253,6 +253,16 @@ struct FitneoOnboardingView: View {
     }
 
     private func finish() {
+        let data = OnboardingData(
+            goal: .buildMuscle, fitnessLevel: level == .beginner ? .beginner : .someExperience,
+            equipment: .none, focusAreas: [], sessionLength: .thirty,
+            weight: weight, weightUnit: weightUnit == "kg" ? .kg : .lbs,
+            height: height, heightUnit: .cm, dietType: .standard,
+            coachPersonality: .motivational, workoutTime: .morning,
+            sleepQuality: .good, activityLevel: .moderatelyActive,
+            targetPhysique: .athleticStrong, motivationStyles: [],
+            language: .english, theme: .dark
+        )
         store.user.name = name.isEmpty ? "Athlete" : name
         store.user.age = Int(age)
         store.user.weight = weight
@@ -261,7 +271,6 @@ struct FitneoOnboardingView: View {
         store.user.fitnessLevel = level
         store.user.goals = goals.isEmpty ? ["Stay Active"] : Array(goals)
         store.user.equipment = equipment.isEmpty ? ["No Equipment"] : Array(equipment)
-        store.onboardingCompleted = true
-        onFinish()
+        onFinish(data)
     }
 }

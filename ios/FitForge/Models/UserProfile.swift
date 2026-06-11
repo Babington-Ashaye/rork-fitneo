@@ -37,6 +37,18 @@ struct OnboardingData: Codable, Sendable, Equatable {
     var motivationStyles: [MotivationStyle] = []
     var language: AppLanguage = .english
     var theme: AppTheme = .dark
+    // New onboarding additions
+    var workoutDuration: WorkoutDuration?
+    var trainingDaysPerWeek: Int?
+    var trainingStyles: [TrainingStyle] = []
+    var movementExperience: MovementExperience = MovementExperience()
+    var recoveryQuality: RecoveryQuality?
+    // Extended onboarding additions
+    var biggestChallenge: BiggestChallenge?
+    var trainingExperience: [TrainingProgramExperience] = []
+    var injuries: [InjuryType] = []
+    var bodyMeasurements: BodyMeasurements?
+    var pastObstacles: [StoppingObstacle] = []
 
     enum Goal: String, Codable, CaseIterable, Sendable {
         case loseFat = "lose_fat"
@@ -321,6 +333,206 @@ struct OnboardingData: Codable, Sendable, Equatable {
             case .dark: "moon.fill"
             case .light: "sun.max.fill"
             case .system: "circle.lefthalf.filled"
+            }
+        }
+    }
+
+    // MARK: - New onboarding enums
+
+    enum WorkoutDuration: String, Codable, CaseIterable, Sendable {
+        case fifteenToTwenty = "15-20"
+        case twentyToThirty = "20-30"
+        case thirtyToFortyFive = "30-45"
+        case fortyFiveToSixty = "45-60"
+        case sixtyPlus = "60+"
+        var title: String {
+            switch self {
+            case .fifteenToTwenty: "15 to 20 minutes"
+            case .twentyToThirty: "20 to 30 minutes"
+            case .thirtyToFortyFive: "30 to 45 minutes"
+            case .fortyFiveToSixty: "45 to 60 minutes"
+            case .sixtyPlus: "60 minutes or more"
+            }
+        }
+    }
+
+    enum TrainingStyle: String, Codable, CaseIterable, Sendable {
+        case strength = "strength_training"
+        case hiit
+        case cardio
+        case coreAbs = "core_abs"
+        case flexibility = "flexibility_mobility"
+        case mixed = "mixed_balanced"
+        var title: String {
+            switch self {
+            case .strength: "Strength Training"
+            case .hiit: "HIIT"
+            case .cardio: "Cardio"
+            case .coreAbs: "Core and Abs"
+            case .flexibility: "Flexibility and Mobility"
+            case .mixed: "Mixed and Balanced"
+            }
+        }
+        var icon: String {
+            switch self {
+            case .strength: "dumbbell.fill"
+            case .hiit: "bolt.fill"
+            case .cardio: "figure.run"
+            case .coreAbs: "figure.core.training"
+            case .flexibility: "figure.yoga"
+            case .mixed: "figure.mixed.cardio"
+            }
+        }
+    }
+
+    struct MovementExperience: Codable, Sendable, Equatable {
+        var barbellDeadlift: Bool = false
+        var pullUps: Bool = false
+        var overheadPress: Bool = false
+        var bulgarianSplitSquat: Bool = false
+        var boxJumps: Bool = false
+
+        static let movements: [(key: WritableKeyPath<MovementExperience, Bool>, name: String, icon: String)] = [
+            (\.barbellDeadlift, "Barbell Deadlift", "figure.strengthtraining.traditional"),
+            (\.pullUps, "Pull-ups", "figure.pullup"),
+            (\.overheadPress, "Overhead Press", "figure.strengthtraining.traditional"),
+            (\.bulgarianSplitSquat, "Bulgarian Split Squat", "figure.cross.training"),
+            (\.boxJumps, "Box Jumps", "figure.jump.rope")
+        ]
+    }
+
+    enum RecoveryQuality: String, Codable, CaseIterable, Sendable {
+        case excellent = "excellent_recovery"
+        case average = "average_recovery"
+        case tired = "often_tired"
+        case injured = "recovering_injury"
+        var title: String {
+            switch self {
+            case .excellent: "I sleep well and recover fast"
+            case .average: "Average sleep and recovery"
+            case .tired: "I often feel tired or sore"
+            case .injured: "I am recovering from an injury"
+            }
+        }
+        var subtitle: String {
+            switch self {
+            case .excellent: "7+ hours, feel fresh daily"
+            case .average: "6-7 hours, moderate energy"
+            case .tired: "Under 6 hours or frequent fatigue"
+            case .injured: "Working through or rehabbing"
+            }
+        }
+    }
+
+    enum BiggestChallenge: String, Codable, CaseIterable, Sendable {
+        case consistency = "staying_consistent"
+        case dontKnowHow = "dont_know_how"
+        case lackOfTime = "lack_of_time"
+        case lowEnergy = "low_energy"
+        case diet = "diet_nutrition"
+        case recovery = "recovering_properly"
+        case injury = "previous_injury"
+        var title: String {
+            switch self {
+            case .consistency: "Staying consistent and not skipping sessions"
+            case .dontKnowHow: "Not knowing what to do or how to train"
+            case .lackOfTime: "Lack of time"
+            case .lowEnergy: "Low energy or motivation"
+            case .diet: "Diet and nutrition"
+            case .recovery: "Recovering properly between sessions"
+            case .injury: "Previous injury or physical limitation"
+            }
+        }
+    }
+
+    enum TrainingProgramExperience: String, Codable, CaseIterable, Sendable {
+        case pushPullLegs = "push_pull_legs"
+        case upperLower = "upper_lower_split"
+        case fullBody = "full_body_training"
+        case hiit = "hiit_programs"
+        case strength = "strength_powerlifting"
+        case bodybuilding = "bodybuilding_hypertrophy"
+        case none = "none_of_above"
+        var title: String {
+            switch self {
+            case .pushPullLegs: "Push Pull Legs"
+            case .upperLower: "Upper Lower Split"
+            case .fullBody: "Full Body Training"
+            case .hiit: "HIIT Programs"
+            case .strength: "Strength and Powerlifting Focus"
+            case .bodybuilding: "Bodybuilding and Hypertrophy Focus"
+            case .none: "None of the above"
+            }
+        }
+        var icon: String {
+            switch self {
+            case .pushPullLegs: "arrow.triangle.branch"
+            case .upperLower: "arrow.up.arrow.down"
+            case .fullBody: "figure.mixed.cardio"
+            case .hiit: "bolt.fill"
+            case .strength: "figure.strengthtraining.traditional"
+            case .bodybuilding: "figure.arms.open"
+            case .none: "circle.slash"
+            }
+        }
+    }
+
+    enum InjuryType: String, Codable, CaseIterable, Sendable {
+        case none = "no_injuries"
+        case lowerBack = "lower_back"
+        case knees = "knee_pain"
+        case shoulders = "shoulder_pain"
+        case hips = "hip_pain"
+        case wrists = "wrist_pain"
+        case surgery = "recent_surgery"
+        case other = "other_describe"
+        var title: String {
+            switch self {
+            case .none: "No injuries or limitations"
+            case .lowerBack: "Lower back pain or sensitivity"
+            case .knees: "Knee pain or injury"
+            case .shoulders: "Shoulder pain or injury"
+            case .hips: "Hip pain or tightness"
+            case .wrists: "Wrist pain or injury"
+            case .surgery: "Recent surgery or rehabilitation"
+            case .other: "Other — I will describe it to FITNEO AI in chat"
+            }
+        }
+    }
+
+    struct BodyMeasurements: Codable, Sendable, Equatable {
+        var chest: Double?
+        var waist: Double?
+        var hips: Double?
+        var arms: Double?
+        var thighs: Double?
+        var unit: MeasurementUnit = .cm
+
+        enum MeasurementUnit: String, Codable, CaseIterable, Sendable {
+            case cm, inches
+            var title: String { rawValue.capitalized }
+        }
+    }
+
+    enum StoppingObstacle: String, Codable, CaseIterable, Sendable {
+        case firstAttempt = "first_attempt"
+        case consistency = "lack_consistency"
+        case noPlan = "no_clear_plan"
+        case injuries = "injuries_setbacks"
+        case nutrition = "poor_nutrition"
+        case time = "lack_of_time"
+        case motivation = "low_motivation"
+        case wrongLevel = "too_hard_or_easy"
+        var title: String {
+            switch self {
+            case .firstAttempt: "Nothing — this is my first serious attempt"
+            case .consistency: "Lack of consistency"
+            case .noPlan: "No clear plan or direction"
+            case .injuries: "Injuries or physical setbacks"
+            case .nutrition: "Poor nutrition habits"
+            case .time: "Lack of time"
+            case .motivation: "Low motivation or mental barriers"
+            case .wrongLevel: "Previous programs were too hard or too easy"
             }
         }
     }

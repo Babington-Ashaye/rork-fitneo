@@ -8,11 +8,13 @@ final class OnboardingViewModel {
     var isComplete = false
     var errorMessage: String?
 
-    /// Step map (20 total, indices 0..19):
+    /// Step map (30 total, indices 0..29):
     /// 0 Welcome • 1 Goal • 2 Level • 3 Calib1 • 4 Equipment • 5 Focus • 6 Duration
-    /// 7 Stats • 8 Calib2 • 9 Diet • 10 Coach • 11 Time • 12 Sleep • 13 Calib3
-    /// 14 Activity • 15 Physique • 16 Motivation • 17 Language • 18 Theme • 19 Completion
-    let totalSteps = 20
+    /// 7 Stats • 8 Calib2 • 9 Diet • 10 Coach • 11 Time • 12 Sleep • 13 GoalsProjection
+    /// 14 Activity • 15 Physique • 16 Motivation • 17 Language • 18 Theme
+    /// 19 WorkoutDuration • 20 TrainingDays • 21 TrainingStyles • 22 MovementExperience • 23 Recovery
+    /// 24 BiggestChallenge • 25 TrainingExperience • 26 Injury • 27 BodyMeasurements • 28 WhatStoppedYou • 29 Completion
+    let totalSteps = 30
 
     private let service = SupabaseService.shared
 
@@ -38,17 +40,27 @@ final class OnboardingViewModel {
         case 16: return !data.motivationStyles.isEmpty
         case 17: return true
         case 18: return true
+        case 19: return data.workoutDuration != nil
+        case 20: return data.trainingDaysPerWeek != nil
+        case 21: return !data.trainingStyles.isEmpty
+        case 22: return true
+        case 23: return data.recoveryQuality != nil
+        case 24: return data.biggestChallenge != nil
+        case 25: return !data.trainingExperience.isEmpty
+        case 26: return !data.injuries.isEmpty
+        case 27: return true // body measurements are optional
+        case 28: return !data.pastObstacles.isEmpty
         default: return true
         }
     }
 
     /// True when the screen advances itself (no Continue button).
     var isAutoStep: Bool {
-        currentStep == 0 || currentStep == 3 || currentStep == 8 || currentStep == 13 || currentStep == 19
+        currentStep == 0 || currentStep == 3 || currentStep == 8 || currentStep == 13
     }
 
-    /// The Theme step (18) is the last user-input screen → tapping its CTA finishes onboarding.
-    var isFinishStep: Bool { currentStep == 18 }
+    /// The last user-input screen before completion.
+    var isFinishStep: Bool { currentStep == 28 }
 
     func next() {
         guard currentStep < totalSteps - 1 else { return }
@@ -85,7 +97,7 @@ final class OnboardingViewModel {
             try await service.setOnboardingCompleted(true, userId: userId)
             await service.startTrialSubscription(userId: userId)
             isComplete = true
-            withAnimation(.easeInOut(duration: 0.5)) { currentStep = 19 }
+            withAnimation(.easeInOut(duration: 0.5)) { currentStep = 29 }
         } catch {
             errorMessage = "Failed to save your profile. Please try again."
         }

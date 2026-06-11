@@ -14,7 +14,7 @@ struct OnboardingView: View {
                 .allowsHitTesting(false)
 
             VStack(spacing: 0) {
-                if viewModel.currentStep > 0 && viewModel.currentStep < 19 {
+                if viewModel.currentStep > 0 && viewModel.currentStep < 30 {
                     OnboardingProgressBar(progress: viewModel.progress)
                         .padding(.horizontal, 24)
                         .padding(.top, 16)
@@ -38,7 +38,7 @@ struct OnboardingView: View {
 
     private var shouldShowFooter: Bool {
         switch viewModel.currentStep {
-        case 0, 3, 8, 13, 19: return false // welcome / calibrations / completion
+        case 0, 3, 8, 13, 29: return false // welcome / calibrations / completion
         default: return true
         }
     }
@@ -134,7 +134,17 @@ struct OnboardingView: View {
         case 16: MotivationStep(data: $viewModel.data)
         case 17: LanguageStep(data: $viewModel.data)
         case 18: ThemeStep(data: $viewModel.data)
-        case 19: CompletionStep(onFinished: onComplete)
+        case 19: WorkoutDurationStep(data: $viewModel.data)
+        case 20: TrainingDaysStep(data: $viewModel.data)
+        case 21: TrainingStylesStep(data: $viewModel.data)
+        case 22: MovementExperienceStep(data: $viewModel.data)
+        case 23: RecoveryStep(data: $viewModel.data)
+        case 24: BiggestChallengeStep(data: $viewModel.data)
+        case 25: TrainingExperienceStep(data: $viewModel.data)
+        case 26: InjuryStep(data: $viewModel.data)
+        case 27: BodyMeasurementsStep(data: $viewModel.data)
+        case 28: StoppedBeforeStep(data: $viewModel.data)
+        case 29: CompletionStep(onFinished: onComplete)
         default: EmptyView()
         }
     }
@@ -683,6 +693,325 @@ private struct CompletionStep: View {
                 try? await Task.sleep(for: .seconds(2.4))
                 await MainActor.run { onFinished() }
             }
+        }
+    }
+}
+
+// MARK: - New onboarding steps (added to end of flow)
+
+private struct WorkoutDurationStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Session Duration", aiLabel: nil, question: "How much time can you dedicate per session?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.WorkoutDuration.allCases, id: \.self) { d in
+                    SelectableCard(title: d.title, isSelected: data.workoutDuration == d) {
+                        data.workoutDuration = d
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct TrainingDaysStep: View {
+    @Binding var data: OnboardingData
+    private let daysOptions = [2, 3, 4, 5, 6]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Training Schedule", aiLabel: nil, question: "How many days per week can you train?")
+            VStack(spacing: 10) {
+                ForEach(daysOptions, id: \.self) { days in
+                    SelectableCard(
+                        title: "\(days) days",
+                        subtitle: days <= 3 ? "Great for beginners" : days >= 5 ? "For dedicated athletes" : "Balanced routine",
+                        isSelected: data.trainingDaysPerWeek == days
+                    ) {
+                        data.trainingDaysPerWeek = days
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct TrainingStylesStep: View {
+    @Binding var data: OnboardingData
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Training Style", aiLabel: nil, question: "What type of training do you prefer?")
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(OnboardingData.TrainingStyle.allCases, id: \.self) { style in
+                    GridCard(title: style.title, icon: style.icon, isSelected: data.trainingStyles.contains(style)) {
+                        if data.trainingStyles.contains(style) {
+                            data.trainingStyles.removeAll { $0 == style }
+                        } else {
+                            data.trainingStyles.append(style)
+                        }
+                    }
+                }
+            }
+            Text("Select all that apply")
+                .font(.caption)
+                .foregroundStyle(Theme.textTertiary)
+        }
+    }
+}
+
+private struct MovementExperienceStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Movement Comfort", aiLabel: nil, question: "Are you comfortable with these movements?")
+            VStack(spacing: 4) {
+                ForEach(OnboardingData.MovementExperience.movements, id: \.name) { movement in
+                    HStack(spacing: 14) {
+                        Image(systemName: movement.icon)
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 36)
+                        Text(movement.name)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { data.movementExperience[keyPath: movement.key] },
+                            set: { data.movementExperience[keyPath: movement.key] = $0 }
+                        ))
+                        .labelsHidden()
+                        .tint(Theme.accent)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .glassCard(cornerRadius: 14)
+                }
+            }
+        }
+    }
+}
+
+private struct RecoveryStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Recovery & Lifestyle", aiLabel: nil, question: "How would you describe your recovery?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.RecoveryQuality.allCases, id: \.self) { r in
+                    SelectableCard(title: r.title, subtitle: r.subtitle, isSelected: data.recoveryQuality == r) {
+                        data.recoveryQuality = r
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Extended onboarding steps
+
+private struct BiggestChallengeStep: View {
+    @Binding var data: OnboardingData
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Your Challenge", aiLabel: nil, question: "What is your biggest challenge with fitness?")
+            VStack(spacing: 10) {
+                ForEach(OnboardingData.BiggestChallenge.allCases, id: \.self) { c in
+                    SelectableCard(title: c.title, isSelected: data.biggestChallenge == c) {
+                        data.biggestChallenge = c
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct TrainingExperienceStep: View {
+    @Binding var data: OnboardingData
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Training History", aiLabel: nil, question: "Have you followed any of these training styles before?")
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(OnboardingData.TrainingProgramExperience.allCases, id: \.self) { exp in
+                    GridCard(title: exp.title, icon: exp.icon, isSelected: data.trainingExperience.contains(exp)) {
+                        if exp == .none {
+                            data.trainingExperience = [.none]
+                        } else {
+                            data.trainingExperience.removeAll { $0 == .none }
+                            if data.trainingExperience.contains(exp) {
+                                data.trainingExperience.removeAll { $0 == exp }
+                            } else {
+                                data.trainingExperience.append(exp)
+                            }
+                        }
+                    }
+                }
+            }
+            Text("Select all that apply")
+                .font(.caption)
+                .foregroundStyle(Theme.textTertiary)
+        }
+    }
+}
+
+private struct InjuryStep: View {
+    @Binding var data: OnboardingData
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Health Check", aiLabel: nil, question: "Do you have any injuries or physical limitations we should know about?")
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(OnboardingData.InjuryType.allCases, id: \.self) { injury in
+                    GridCard(title: injury.title, icon: "bandage.fill", isSelected: data.injuries.contains(injury)) {
+                        if injury == .none {
+                            data.injuries = [.none]
+                        } else {
+                            data.injuries.removeAll { $0 == .none }
+                            if data.injuries.contains(injury) {
+                                data.injuries.removeAll { $0 == injury }
+                            } else {
+                                data.injuries.append(injury)
+                            }
+                        }
+                    }
+                }
+            }
+            Text("Select all that apply")
+                .font(.caption)
+                .foregroundStyle(Theme.textTertiary)
+        }
+    }
+}
+
+private struct BodyMeasurementsStep: View {
+    @Binding var data: OnboardingData
+    @State private var measurements = OnboardingData.BodyMeasurements()
+    @State private var chestText = ""
+    @State private var waistText = ""
+    @State private var hipsText = ""
+    @State private var armsText = ""
+    @State private var thighsText = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Body Measurements (Optional)", aiLabel: nil, question: "Would you like to add your starting measurements?")
+            Text("This helps FITNEO AI track your progress more accurately.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+
+            VStack(spacing: 14) {
+                measurementRow(label: "Chest", value: $chestText) { measurements.chest = Double($0) }
+                measurementRow(label: "Waist", value: $waistText) { measurements.waist = Double($0) }
+                measurementRow(label: "Hips", value: $hipsText) { measurements.hips = Double($0) }
+                measurementRow(label: "Arms", value: $armsText) { measurements.arms = Double($0) }
+                measurementRow(label: "Thighs", value: $thighsText) { measurements.thighs = Double($0) }
+            }
+
+            HStack(spacing: 10) {
+                ForEach(OnboardingData.BodyMeasurements.MeasurementUnit.allCases, id: \.self) { unit in
+                    Button {
+                        measurements.unit = unit
+                    } label: {
+                        Text(unit.title)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(measurements.unit == unit ? .white : Theme.textSecondary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(measurements.unit == unit ? Theme.accent.opacity(0.2) : Color.white.opacity(0.05))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Button {
+                withAnimation { measurements = OnboardingData.BodyMeasurements() }
+            } label: {
+                Text("Skip for now")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.accent)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
+        }
+        .onChange(of: chestText) { _, _ in saveMeasurements() }
+        .onChange(of: waistText) { _, _ in saveMeasurements() }
+        .onChange(of: hipsText) { _, _ in saveMeasurements() }
+        .onChange(of: armsText) { _, _ in saveMeasurements() }
+        .onChange(of: thighsText) { _, _ in saveMeasurements() }
+    }
+
+    private func measurementRow(label: String, value: Binding<String>, _ setter: (String) -> Void) -> some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 100, alignment: .leading)
+            TextField("0", text: value)
+                .keyboardType(.decimalPad)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.trailing)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+            Text(measurements.unit.title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.textTertiary)
+                .frame(width: 40)
+        }
+    }
+
+    private func saveMeasurements() {
+        var m = OnboardingData.BodyMeasurements()
+        m.unit = measurements.unit
+        if let v = Double(chestText), v > 0 { m.chest = v }
+        if let v = Double(waistText), v > 0 { m.waist = v }
+        if let v = Double(hipsText), v > 0 { m.hips = v }
+        if let v = Double(armsText), v > 0 { m.arms = v }
+        if let v = Double(thighsText), v > 0 { m.thighs = v }
+        measurements = m
+        if m.chest != nil || m.waist != nil || m.hips != nil || m.arms != nil || m.thighs != nil {
+            data.bodyMeasurements = m
+        }
+    }
+}
+
+private struct StoppedBeforeStep: View {
+    @Binding var data: OnboardingData
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            StepHeader(kicker: "Past Experience", aiLabel: nil, question: "What has stopped you from reaching your fitness goals in the past?")
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(OnboardingData.StoppingObstacle.allCases, id: \.self) { obstacle in
+                    GridCard(title: obstacle.title, icon: "exclamationmark.triangle.fill", isSelected: data.pastObstacles.contains(obstacle)) {
+                        if obstacle == .firstAttempt {
+                            data.pastObstacles = [.firstAttempt]
+                        } else {
+                            data.pastObstacles.removeAll { $0 == .firstAttempt }
+                            if data.pastObstacles.contains(obstacle) {
+                                data.pastObstacles.removeAll { $0 == obstacle }
+                            } else {
+                                data.pastObstacles.append(obstacle)
+                            }
+                        }
+                    }
+                }
+            }
+            Text("Select all that apply")
+                .font(.caption)
+                .foregroundStyle(Theme.textTertiary)
         }
     }
 }

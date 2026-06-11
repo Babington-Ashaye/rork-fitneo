@@ -15,6 +15,8 @@ struct ActiveSessionView: View {
     @State private var elapsed = 0
     @State private var paused = false
     @State private var finished = false
+    @AppStorage("fitneo_show_exercise_video") private var showVideo: Bool = true
+    @State private var currentVideoURL: URL? = nil
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -98,6 +100,76 @@ struct ActiveSessionView: View {
 
     private var exerciseCard: some View {
         VStack(spacing: 16) {
+            // Video player area (top of card)
+            if showVideo {
+                ZStack(alignment: .topTrailing) {
+                    VideoPlayerView(
+                        videoURL: currentVideoURL,
+                        exerciseName: current.name,
+                        isPaused: paused
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    // Hide Video button
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showVideo = false
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "eye.slash.fill")
+                                .font(.system(size: 10))
+                            Text("Hide Video")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundStyle(Theme.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                                .opacity(0.6)
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(8)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            }
+
+            // Show Video button (when video is hidden)
+            if !showVideo {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showVideo = true
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "eye.fill")
+                            .font(.system(size: 10))
+                        Text("Show Video")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(Theme.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Theme.accent.opacity(0.12))
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(Theme.accent.opacity(0.25), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Existing exercise content (unchanged)
             Text(current.muscleGroup.title.uppercased())
                 .font(.system(size: 12, weight: .bold)).tracking(2)
                 .padding(.horizontal, 12).padding(.vertical, 5)
@@ -118,6 +190,7 @@ struct ActiveSessionView: View {
         .padding(24)
         .glassCard(cornerRadius: 26)
         .padding(.horizontal, 20)
+        .animation(.easeInOut(duration: 0.2), value: showVideo)
     }
 
     private func infoBlock(_ icon: String, _ text: String, tint: Color = Theme.accent) -> some View {
@@ -167,10 +240,8 @@ struct ActiveSessionView: View {
             currentSet += 1
             startRest()
         } else {
-            // move to next exercise
             if exerciseIndex < exercises.count - 1 {
                 startRest()
-                // currentSet reset happens on rest end via flag; simpler: reset now and advance
                 exerciseIndex += 1
                 currentSet = 1
             } else {
@@ -194,11 +265,13 @@ struct ActiveSessionView: View {
     private func nextExercise() {
         guard exerciseIndex < exercises.count - 1 else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        currentVideoURL = nil
         exerciseIndex += 1; currentSet = 1; endRest()
     }
     private func previousExercise() {
         guard exerciseIndex > 0 else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        currentVideoURL = nil
         exerciseIndex -= 1; currentSet = 1; endRest()
     }
 

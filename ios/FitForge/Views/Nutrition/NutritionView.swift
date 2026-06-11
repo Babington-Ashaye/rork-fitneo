@@ -1,8 +1,12 @@
 import SwiftUI
+import PhotosUI
 
 struct NutritionView: View {
     @Environment(FitneoStore.self) private var store
     @State private var searchMeal: MealType?
+    @State private var showScanner = false
+    @State private var scannerImage: UIImage?
+    @State private var showAnalysis = false
 
     private var consumed: Int { store.caloriesConsumed(on: Date()) }
     private var remaining: Int { store.user.calorieGoal - consumed }
@@ -19,7 +23,35 @@ struct NutritionView: View {
         ScrollView {
             VStack(spacing: 18) {
                 ScreenTitle(title: "Nutrition", subtitle: Date().formatted(.dateTime.weekday(.wide).month().day()))
+
                 summaryCard
+
+                // Scan meal button
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    if store.subscription.isPremium {
+                        showScanner = true
+                    }
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 48, height: 48)
+                            .background(Circle().fill(Theme.accent.opacity(0.15)))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Scan Meal").font(.system(size: 17, weight: .bold)).foregroundStyle(.white)
+                            Text("FITNEO AI analyses your food instantly")
+                                .font(.system(size: 12)).foregroundStyle(Theme.textTertiary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(Theme.textTertiary)
+                    }
+                    .padding(18)
+                    .glassCard(cornerRadius: 22)
+                }
+                .buttonStyle(.plain)
+
                 ForEach(MealType.allCases, id: \.self) { meal in
                     mealSection(meal)
                 }
@@ -32,6 +64,11 @@ struct NutritionView: View {
         .background(Theme.pageGradient.ignoresSafeArea())
         .sheet(item: $searchMeal) { meal in
             FoodSearchSheet(meal: meal)
+        }
+        .confirmationDialog("Scan Meal", isPresented: $showScanner, titleVisibility: .visible) {
+            Button("Take Photo") { /* camera */ }
+            Button("Choose from Gallery") { /* photo picker */ }
+            Button("Cancel", role: .cancel) {}
         }
         .onAppear {
             if let prefill = store.prefilledFoodSearch {
@@ -114,6 +151,8 @@ struct NutritionView: View {
         .glassCard(cornerRadius: 20)
     }
 }
+
+// MARK: - Food search & portion sheets
 
 struct FoodSearchSheet: View {
     @Environment(FitneoStore.self) private var store

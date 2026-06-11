@@ -2,14 +2,30 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var store = FitneoStore()
+    @State private var showPlanGeneration = false
+    @State private var onboardingData = OnboardingData()
 
     var body: some View {
         Group {
-            if store.onboardingCompleted {
+            if showPlanGeneration {
+                PlanGenerationView(onboardingData: onboardingData) { plan in
+                    store.generatedPlan = plan
+                    store.onboardingCompleted = true
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        showPlanGeneration = false
+                    }
+                }
+                .transition(.opacity)
+            } else if store.onboardingCompleted {
                 RootShell()
             } else {
-                FitneoOnboardingView { /* state flips via store.onboardingCompleted */ }
-                    .transition(.opacity)
+                FitneoOnboardingView { data in
+                    onboardingData = data
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        showPlanGeneration = true
+                    }
+                }
+                .transition(.opacity)
             }
         }
         .environment(store)
@@ -23,6 +39,7 @@ struct RootShell: View {
     @State private var selectedTab = 0
     @State private var activeProgram: WorkoutProgram?
     @State private var showJarvis = false
+    @State private var showTrialBanner = true
 
     private let navItems = [
         ("house.fill", "Home"),
@@ -36,8 +53,15 @@ struct RootShell: View {
         ZStack(alignment: .bottom) {
             Theme.background.ignoresSafeArea()
 
-            tabContent
-                .ignoresSafeArea(.keyboard)
+            VStack(spacing: 0) {
+                // Trial banner
+                if showTrialBanner, let days = store.subscription.daysRemaining, store.subscription.status == .trial {
+                    trialBanner(days: days)
+                }
+
+                tabContent
+                    .ignoresSafeArea(.keyboard)
+            }
 
             FloatingNav(selected: $selectedTab, items: navItems)
                 .padding(.bottom, 8)
@@ -88,5 +112,27 @@ struct RootShell: View {
     private func startAutopilot() {
         let program = JarvisAutopilot.selectWorkout(store: store)
         activeProgram = program
+    }
+
+    private func trialBanner(days: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "crown.fill")
+                .foregroundStyle(Color(red: 1, green: 0.78, blue: 0.2))
+            Text("\(days) days left in your free trial")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+            Spacer()
+            Button("Upgrade") {
+                selectedTab = 4
+            }
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(Theme.accent)
+            .padding(.horizontal, 12).padding(.vertical, 5)
+            .background(Capsule().fill(Theme.accent.opacity(0.15)))
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(days <= 3 ? Theme.danger.opacity(0.85) : days <= 7 ? Color(red: 1, green: 0.78, blue: 0.2).opacity(0.85) : Theme.accent.opacity(0.85))
+        .animation(.easeInOut, value: days)
     }
 }

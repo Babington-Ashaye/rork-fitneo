@@ -51,6 +51,15 @@ final class FitneoStore {
     var didLevelUp: Bool = false
     var requestedTab: Int?            // for cross-screen navigation (Jarvis -> tab)
     var prefilledFoodSearch: String?
+    var generatedPlan: GeneratedPlan? {
+        didSet { save(generatedPlan, key: Keys.plan) }
+    }
+    var sportsSelection: SportSelection {
+        didSet { save(sportsSelection, key: Keys.sportsSelection) }
+    }
+    var demoMode: Bool {
+        didSet { UserDefaults.standard.set(demoMode, forKey: Keys.demoMode) }
+    }
 
     // MARK: - Init
 
@@ -64,8 +73,11 @@ final class FitneoStore {
         self.earnedBadges = Self.load([EarnedBadge].self, key: Keys.badges) ?? []
         self.xp = UserDefaults.standard.object(forKey: Keys.xp) as? Int ?? 0
         self.messages = Self.load([JarvisMessage].self, key: Keys.messages) ?? []
+        self.generatedPlan = Self.load(GeneratedPlan.self, key: Keys.plan)
+        self.sportsSelection = Self.load(SportSelection.self, key: Keys.sportsSelection) ?? SportSelection()
         self.coachPersonality = UserDefaults.standard.string(forKey: Keys.personality) ?? "motivational"
         self.onboardingCompleted = UserDefaults.standard.bool(forKey: Keys.onboarding)
+        self.demoMode = UserDefaults.standard.bool(forKey: Keys.demoMode)
 
         let waterLog = Self.load(WaterLog.self, key: Keys.water)
         if let log = waterLog, log.date == Self.dayKey(Date()) {
@@ -313,6 +325,50 @@ final class FitneoStore {
         if loggedDays.count >= 14 { unlock("nutrition_master") }
     }
 
+    func loadDemoData() {
+        // Pre-fill 7 workouts over past 2 weeks
+        let now = Date()
+        let cal = Calendar.current
+        let demoNames = ["Full Body Beginner", "Cardio Blast", "Core Crusher", "Upper Body Strength", "HIIT Burn", "Home No-Equipment", "Morning Energy Boost"]
+        let demoIDs = ["full_body_beginner", "cardio_blast", "core_crusher", "upper_body_strength", "hiit_burn", "home_no_equipment", "morning_energy"]
+        let demoCats: [WorkoutCategory] = [.strength, .cardio, .core, .strength, .hiit, .strength, .flexibility]
+
+        for i in 0..<7 {
+            let daysAgo = (6 - i) * 2
+            guard let date = cal.date(byAdding: .day, value: -daysAgo, to: now) else { continue }
+            let completed = CompletedWorkout(
+                id: UUID(), programID: demoIDs[i], name: demoNames[i],
+                category: demoCats[i], completedAt: date, durationSeconds: 1800 + i * 120,
+                xpEarned: 120 + i * 20, caloriesBurned: 200 + i * 30,
+                setsCompleted: 12 + i, muscleGroups: [.fullBody]
+            )
+            workouts.append(completed)
+        }
+
+        // 3 days of sample nutrition
+        let sampleFoods: [(String, MealType, Int)] = [
+            ("Oatmeal", .breakfast, 350), ("Chicken Rice Bowl", .lunch, 650),
+            ("Protein Shake", .snacks, 200), ("Scrambled Eggs Toast", .breakfast, 400),
+            ("Grilled Salmon Salad", .lunch, 550), ("Greek Yogurt Parfait", .snacks, 180),
+            ("Tuna Sandwich", .lunch, 450)
+        ]
+        for (j, (name, meal, cals)) in sampleFoods.enumerated() {
+            guard let date = cal.date(byAdding: .day, value: -(j % 3 + 1), to: now) else { continue }
+            foodEntries.append(FoodEntry(id: UUID(), foodID: "sample", name: name,
+                mealType: meal, portion: 1, calories: cals, protein: Double(cals) * 0.08,
+                carbs: Double(cals) * 0.12, fat: Double(cals) * 0.04, loggedAt: date))
+        }
+
+        // Sample weight trend
+        for i in 0..<6 {
+            guard let date = cal.date(byAdding: .day, value: -(i * 5), to: now) else { continue }
+            weightEntries.append(WeightEntry(id: UUID(), weight: 75.0 - Double(i) * 0.4, date: date))
+        }
+        weightEntries.sort { $0.date < $1.date }
+
+        addXP(800)
+    }
+
     func resetAllData() {
         for key in Keys.all { UserDefaults.standard.removeObject(forKey: key) }
         user = .default
@@ -326,6 +382,9 @@ final class FitneoStore {
         waterGlasses = 0
         coachPersonality = "motivational"
         onboardingCompleted = false
+        demoMode = false
+        generatedPlan = nil
+        sportsSelection = SportSelection()
         messages = [JarvisMessage(id: UUID(), role: .coach,
             text: "Fresh start. I'm Jarvis — let's build your fitness story from scratch.", date: Date())]
     }
@@ -357,8 +416,11 @@ final class FitneoStore {
         static let messages = "fitneo_messages"
         static let personality = "fitneo_personality"
         static let onboarding = "fitneo_onboarding"
+        static let plan = "fitneo_plan"
+        static let sportsSelection = "fitneo_sports"
         static let water = "fitneo_water"
-        static let all = [user, settings, subscription, workouts, nutrition, weight, badges, xp, messages, personality, onboarding, water]
+        static let demoMode = "fitneo_demo"
+        static let all = [user, settings, subscription, workouts, nutrition, weight, badges, xp, messages, personality, onboarding, plan, sportsSelection, water, demoMode]
     }
 
     private struct WaterLog: Codable, Sendable {
