@@ -493,7 +493,11 @@ struct FitneoOnboardingView: View {
     private func stepHeader(_ tag: String, _ title: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(tag).font(.system(size: 12, weight: .bold)).tracking(2).foregroundStyle(Theme.accent)
-            Text(title).font(.system(size: 26, weight: .bold)).foregroundStyle(.white)
+            Text(title)
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(nil)
         }
     }
 
@@ -583,13 +587,15 @@ struct FitneoOnboardingView: View {
     }
 
     private func advance() {
-        if step >= totalSteps - 1 {
-            // Go to subscription step
-            withAnimation(.spring(response: 0.4)) { step = totalSteps }
-            return
-        }
+        // Must check step >= totalSteps FIRST — when step is already at totalSteps
+        // the previous ordering would short-circuit and never show the paywall.
         if step >= totalSteps {
             showPaywall = true
+            return
+        }
+        if step == totalSteps - 1 {
+            // Advance to the subscription preview step
+            withAnimation(.spring(response: 0.4)) { step = totalSteps }
             return
         }
         withAnimation(.spring(response: 0.4)) { step += 1 }

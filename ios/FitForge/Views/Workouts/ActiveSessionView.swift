@@ -19,6 +19,7 @@ struct ActiveSessionView: View {
     @State private var currentVideoURL: URL? = nil
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private let videoService = ExerciseVideoService.shared
 
     private var exercises: [Exercise] { ExerciseLibrary.exercises(ids: program.exerciseIDs) }
     private var current: Exercise { exercises[min(exerciseIndex, exercises.count - 1)] }
@@ -35,6 +36,11 @@ struct ActiveSessionView: View {
             }
         }
         .onReceive(ticker) { _ in tick() }
+        .onAppear {
+            videoService.preloadIfNeeded()
+            updateVideoURL()
+        }
+        .onChange(of: exerciseIndex) { _, _ in updateVideoURL() }
     }
 
     private var sessionView: some View {
@@ -260,6 +266,12 @@ struct ActiveSessionView: View {
     private func endRest() {
         withAnimation { resting = false }
         restRemaining = 0
+    }
+
+    private func updateVideoURL() {
+        // Discard previous video immediately before loading new one
+        currentVideoURL = nil
+        currentVideoURL = videoService.videoURL(for: current.name)
     }
 
     private func nextExercise() {

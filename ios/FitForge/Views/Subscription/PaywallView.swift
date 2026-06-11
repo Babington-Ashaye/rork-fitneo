@@ -9,7 +9,7 @@ struct PaywallView: View {
 
     var body: some View {
         ZStack {
-            Theme.pageGradient.ignoresSafeArea()
+            Theme.background.ignoresSafeArea()
             if activated {
                 successView
             } else {
@@ -22,34 +22,36 @@ struct PaywallView: View {
     private var content: some View {
         ScrollView {
             VStack(spacing: 22) {
-                // Crown icon
-                ZStack {
-                    Circle()
-                        .fill(selectedTier == .elite ? Color(red: 1, green: 0.78, blue: 0.2).opacity(0.2) : Theme.accent.opacity(0.2))
-                        .frame(width: 110, height: 110)
-                        .blur(radius: 16)
-                    Image(systemName: selectedTier == .elite ? "crown.fill" : "sparkles")
-                        .font(.system(size: 50))
-                        .foregroundStyle(selectedTier == .elite ? Color(red: 1, green: 0.78, blue: 0.2) : Theme.accent)
-                }
-                .padding(.top, 20)
+                // Logo + heading
+                VStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(Theme.accent.opacity(0.15))
+                            .frame(width: 80, height: 80)
+                            .blur(radius: 12)
+                        Image(systemName: "bolt.heart.fill")
+                            .font(.system(size: 38))
+                            .foregroundStyle(Theme.accent)
+                            .shadow(color: Theme.accent.opacity(0.5), radius: 10)
+                    }
+                    .padding(.top, 16)
 
-                VStack(spacing: 6) {
-                    Text(selectedTier == .elite ? "FITNEO Elite" : "FITNEO Pro")
-                        .font(.system(size: 28, weight: .bold))
+                    Text("Choose Your Plan")
+                        .font(.system(size: 26, weight: .bold))
                         .foregroundStyle(.white)
-                    Text("1 month free trial included")
-                        .font(.system(size: 15))
+                    Text("Start your 1 month free trial today")
+                        .font(.system(size: 14))
                         .foregroundStyle(Theme.textSecondary)
                 }
 
-                // Tier selector
+                // Tier selector tabs
                 HStack(spacing: 10) {
-                    tierButton(.pro, title: "Pro", price: isYearly ? "$3.33/mo" : "$4.99/mo")
-                    tierButton(.elite, title: "Elite", price: isYearly ? "$6.67/mo" : "$9.99/mo")
+                    tierTab(.pro, title: "Pro", price: isYearly ? "$3.33/mo" : "$4.99/mo")
+                    tierTab(.elite, title: "Elite", price: isYearly ? "$6.67/mo" : "$9.99/mo")
                 }
+                .padding(.horizontal, 4)
 
-                // Yearly toggle
+                // Yearly / Monthly toggle
                 HStack(spacing: 12) {
                     Text("Monthly")
                         .font(.system(size: 13, weight: isYearly ? .regular : .bold))
@@ -68,62 +70,48 @@ struct PaywallView: View {
                             .background(Capsule().fill(Theme.success.opacity(0.15)))
                     }
                 }
-                .padding(.horizontal, 20)
 
-                // Total price
-                Text(isYearly
-                     ? (selectedTier == .elite ? "$79.99/year" : "$39.99/year")
-                     : (selectedTier == .elite ? "$9.99/month" : "$4.99/month"))
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(.white)
+                // Plan cards
+                VStack(spacing: 16) {
+                    // --- Pro card ---
+                    planCard(
+                        tier: .pro,
+                        name: "FITNEO Pro",
+                        icon: "sparkles",
+                        accent: Theme.accent,
+                        monthlyPrice: "$4.99",
+                        yearlyPrice: "$39.99",
+                        features: proFeatures,
+                        isBestValue: false
+                    )
 
-                // Feature list
-                let features = selectedTier == .elite ? eliteFeatures : proFeatures
-                VStack(alignment: .leading, spacing: 14) {
-                    ForEach(features, id: \.self) { f in
-                        HStack(spacing: 12) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(selectedTier == .elite ? Color(red: 1, green: 0.78, blue: 0.2) : Theme.accent)
-                            Text(f).font(.system(size: 15, weight: .medium)).foregroundStyle(.white)
-                            Spacer()
-                        }
-                    }
-                }
-                .padding(20)
-                .glassCard(cornerRadius: 22)
-                .overlay(
-                    selectedTier == .elite ?
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color(red: 1, green: 0.78, blue: 0.2).opacity(0.4), lineWidth: 1.5)
-                    : nil
-                )
-
-                // Best value badge
-                if selectedTier == .elite {
-                    Text("BEST VALUE")
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(2)
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 14).padding(.vertical, 5)
-                        .background(Capsule().fill(Color(red: 1, green: 0.78, blue: 0.2)))
+                    // --- Elite card ---
+                    planCard(
+                        tier: .elite,
+                        name: "FITNEO Elite",
+                        icon: "crown.fill",
+                        accent: Color(red: 1, green: 0.78, blue: 0.2),
+                        monthlyPrice: "$9.99",
+                        yearlyPrice: "$79.99",
+                        features: eliteFeatures,
+                        isBestValue: true
+                    )
                 }
 
                 // CTA
-                PillButton(title: "Start Free Trial", icon: "sparkles") {
-                    store.subscription = Subscription(
-                        status: .trial,
-                        startDate: Date(),
-                        expiryDate: Calendar.current.date(byAdding: .day, value: 30, to: Date())
-                    )
+                PillButton(title: "Start Your Free Month — No charge today", icon: "sparkles") {
+                    store.startTrial()
                     withAnimation(.spring) { activated = true }
                 }
+                .padding(.top, 4)
 
+                // Disclaimer
                 VStack(spacing: 4) {
-                    Text("After 30 days, choose Pro at $4.99 or Elite at $9.99")
+                    Text("After 30 days choose your plan. Cancel anytime.")
                         .font(.system(size: 12))
-                        .foregroundStyle(Theme.textTertiary)
+                        .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
-                    Text("Cancel anytime. Billed through the App Store.")
+                    Text("Billed through the App Store.")
                         .font(.system(size: 11))
                         .foregroundStyle(Theme.textTertiary)
                 }
@@ -140,11 +128,8 @@ struct PaywallView: View {
                 }
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Theme.accent)
-                .padding(.bottom, 16)
+                .padding(.bottom, 8)
 
-                Button("Maybe Later") { dismiss() }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.textTertiary)
                 Color.clear.frame(height: 20)
             }
             .padding(.horizontal, 20)
@@ -152,44 +137,137 @@ struct PaywallView: View {
         .scrollIndicators(.hidden)
     }
 
-    private func tierButton(_ tier: SubscriptionTier, title: String, price: String) -> some View {
+    // MARK: - Plan card
+
+    private func planCard(
+        tier: SubscriptionTier,
+        name: String,
+        icon: String,
+        accent: Color,
+        monthlyPrice: String,
+        yearlyPrice: String,
+        features: [String],
+        isBestValue: Bool
+    ) -> some View {
+        let isSelected = selectedTier == tier
+
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.3)) { selectedTier = tier }
+        } label: {
+            VStack(alignment: .leading, spacing: 14) {
+                // Header row
+                HStack(spacing: 10) {
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(accent)
+                    Text(name)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white)
+                    Spacer()
+
+                    if isBestValue {
+                        Text("BEST VALUE")
+                            .font(.system(size: 9, weight: .bold))
+                            .tracking(1.5)
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Color(red: 1, green: 0.78, blue: 0.2)))
+                    }
+
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(isSelected ? accent : Theme.textTertiary)
+                }
+
+                // Price
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(isYearly ? yearlyPrice : monthlyPrice)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.white)
+                    Text(isYearly ? "/year" : "/month")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+
+                // Features
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(features, id: \.self) { f in
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(accent)
+                                .padding(.top, 2)
+                            Text(f)
+                                .font(.system(size: 14))
+                                .foregroundStyle(Theme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(isSelected ? accent.opacity(0.06) : Color.white.opacity(0.03))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(
+                        isSelected
+                            ? (isBestValue ? accent.opacity(0.5) : accent.opacity(0.35))
+                            : Color.white.opacity(0.08),
+                        lineWidth: isSelected ? (isBestValue ? 2 : 1.5) : 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Tier tabs (compact picker above cards)
+
+    private func tierTab(_ tier: SubscriptionTier, title: String, price: String) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.spring(response: 0.3)) { selectedTier = tier }
         } label: {
-            VStack(spacing: 6) {
-                HStack(spacing: 6) {
+            VStack(spacing: 4) {
+                HStack(spacing: 5) {
                     if tier == .elite {
                         Image(systemName: "crown.fill")
-                            .font(.system(size: 12))
+                            .font(.system(size: 10))
                             .foregroundStyle(Color(red: 1, green: 0.78, blue: 0.2))
                     }
                     Text(title)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(selectedTier == tier ? .white : Theme.textSecondary)
                 }
                 Text(price)
-                    .font(.system(size: 13))
+                    .font(.system(size: 12))
                     .foregroundStyle(selectedTier == tier ? Theme.accent : Theme.textTertiary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(selectedTier == tier
-                          ? (tier == .elite ? Color(red: 1, green: 0.78, blue: 0.2).opacity(0.15) : Theme.accent.opacity(0.15))
+                          ? (tier == .elite ? Color(red: 1, green: 0.78, blue: 0.2).opacity(0.12) : Theme.accent.opacity(0.12))
                           : Color.white.opacity(0.03))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 14)
                     .stroke(selectedTier == tier
-                            ? (tier == .elite ? Color(red: 1, green: 0.78, blue: 0.2).opacity(0.5) : Theme.accent.opacity(0.5))
+                            ? (tier == .elite ? Color(red: 1, green: 0.78, blue: 0.2).opacity(0.4) : Theme.accent.opacity(0.4))
                             : Color.white.opacity(0.06),
                             lineWidth: selectedTier == tier ? 1.5 : 1)
             )
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: - Feature lists
 
     private let proFeatures = [
         "All standard workout programs",
@@ -208,10 +286,12 @@ struct PaywallView: View {
         "Elite Physique program (8-week system)",
         "Power & Conditioning program",
         "Bodyweight Beast program",
-        "Nutrition Scanner & Coach meal scoring",
+        "Nutrition Scanner & AI meal coach",
         "Advanced body metrics",
         "Priority FITNEO AI & exclusive Elite badge"
     ]
+
+    // MARK: - Success view
 
     private var successView: some View {
         VStack(spacing: 20) {
