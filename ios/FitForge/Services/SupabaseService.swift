@@ -8,20 +8,20 @@ enum AuthError: Error, LocalizedError {
     case invalidCredentials
     case emailAlreadyExists
     case networkError
-    case unknown
+    case unknown(String)
     case notAuthenticated
     case googleSignInFailed
     case profileCreationFailed
 
     var errorDescription: String? {
         switch self {
-        case .invalidCredentials: "Invalid email or password."
-        case .emailAlreadyExists: "An account with this email already exists."
-        case .networkError: "Network error. Please check your connection."
-        case .unknown: "Something went wrong. Please try again."
-        case .notAuthenticated: "Please sign in to continue."
-        case .googleSignInFailed: "Google sign-in failed. Please try again."
-        case .profileCreationFailed: "Failed to create your profile."
+        case .invalidCredentials: return "Invalid email or password."
+        case .emailAlreadyExists: return "An account with this email already exists."
+        case .networkError: return "Network error. Please check your connection."
+        case .unknown(let msg): return msg
+        case .notAuthenticated: return "Please sign in to continue."
+        case .googleSignInFailed: return "Google sign-in failed. Please try again."
+        case .profileCreationFailed: return "Failed to create your profile."
         }
     }
 }
@@ -188,17 +188,31 @@ final class SupabaseService {
             if let session = response.session {
                 return try await ensureProfileExists(userId: session.user.id, email: session.user.email, displayName: displayName)
             }
+            // No session returned — email confirmation may be pending or user already exists
             let user = response.user
             try? await upsertProfile(userId: user.id, email: user.email ?? email, displayName: displayName)
             return UserProfile(id: user.id, email: user.email ?? email, displayName: displayName, onboardingCompleted: false, createdAt: Date())
+        } catch let authErr as AuthError {
+            throw authErr
         } catch {
-            throw mapAuthError(error)
+            // Show the REAL Supabase error on screen
+            throw AuthError.unknown(error.localizedDescription)
         }
     }
 
     func signIn(email: String, password: String) async throws -> UserProfile {
-        let session = try await client.auth.signIn(email: email, password: password)
-        return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
+        do {
+            let session = try await client.auth.signIn(email: email, password: password)
+            return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
+        } catch let authErr as AuthError {
+            throw authErr
+        } catch {
+            let message = error.localizedDescription.lowercased()
+            if message.contains("invalid") || message.contains("credentials") {
+                throw AuthError.invalidCredentials
+            }
+            throw AuthError.unknown(error.localizedDescription)
+        }
     }
 
     func signInWithGoogle() async throws -> UserProfile {
@@ -224,14 +238,6 @@ final class SupabaseService {
 
     func resetPassword(email: String) async throws {
         try await client.auth.resetPasswordForEmail(email)
-    }
-
-    private nonisolated func mapAuthError(_ error: Error) -> AuthError {
-        let message = error.localizedDescription.lowercased()
-        if message.contains("invalid") || message.contains("credentials") { return .invalidCredentials }
-        if message.contains("already") || message.contains("registered") { return .emailAlreadyExists }
-        if message.contains("network") || message.contains("connection") { return .networkError }
-        return .unknown
     }
 
     // MARK: - Profile
