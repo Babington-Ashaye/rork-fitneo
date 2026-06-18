@@ -1,7 +1,7 @@
 import Foundation
 
 /// Direct Gemini API integration for FITNEO AI features.
-/// Uses gemini-2.0-flash for text generation and vision analysis.
+/// Uses gemini-2.0-flash-lite for text generation and vision analysis.
 @MainActor
 final class GeminiService: Sendable {
     static let shared = GeminiService()
@@ -11,7 +11,7 @@ final class GeminiService: Sendable {
 
     private init() {
         let key = AppConfig.geminiAPIKey
-        self.endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(key)"
+        self.endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=\(key)"
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 60
         config.timeoutIntervalForResource = 90
@@ -31,6 +31,23 @@ final class GeminiService: Sendable {
                     "parts": [["text": prompt]]
                 ]
             ]
+        ]
+
+        let responseJSON = await sendRequest(body: body)
+        guard let responseJSON = responseJSON else {
+            return "DEBUG: sendRequest returned nil — check network or API key"
+        }
+        return extractText(from: responseJSON)
+    }
+
+    // MARK: - Text generation with history (for memory)
+
+    func generateTextWithHistory(messages: [[String: Any]], systemPrompt: String) async -> String {
+        let body: [String: Any] = [
+            "systemInstruction": [
+                "parts": [["text": systemPrompt]]
+            ],
+            "contents": messages
         ]
 
         let responseJSON = await sendRequest(body: body)
@@ -68,7 +85,6 @@ final class GeminiService: Sendable {
 
     private func sendRequest(body: [String: Any]) async -> [String: Any]? {
         guard let url = URL(string: endpoint) else {
-            print("[GeminiService] Invalid endpoint URL")
             return ["__error__": "Invalid endpoint URL"]
         }
 
@@ -102,7 +118,6 @@ final class GeminiService: Sendable {
     }
 
     private func extractText(from json: [String: Any]) -> String {
-        // Show real error in chat bubble for debugging
         if let error = json["__error__"] as? String {
             return "DEBUG: \(error)"
         }
