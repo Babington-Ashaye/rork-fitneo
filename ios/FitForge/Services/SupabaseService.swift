@@ -197,12 +197,8 @@ final class SupabaseService {
     }
 
     func signIn(email: String, password: String) async throws -> UserProfile {
-        do {
-            let session = try await client.auth.signIn(email: email, password: password)
-            return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
-        } catch {
-            throw mapAuthError(error)
-        }
+        let session = try await client.auth.signIn(email: email, password: password)
+        return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
     }
 
     func signInWithGoogle() async throws -> UserProfile {
@@ -224,6 +220,10 @@ final class SupabaseService {
 
     func signOut() async throws {
         try await client.auth.signOut()
+    }
+
+    func resetPassword(email: String) async throws {
+        try await client.auth.resetPasswordForEmail(email)
     }
 
     private nonisolated func mapAuthError(_ error: Error) -> AuthError {

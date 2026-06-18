@@ -5,9 +5,19 @@ struct ContentView: View {
     @State private var showPlanGeneration = false
     @State private var onboardingData = OnboardingData()
 
+    // Auth
+    @State private var isCheckingSession = true
+    @State private var needsAuth = true
+    @State private var showSignUp = false
+    @State private var showSignIn = false
+
     var body: some View {
         Group {
-            if showPlanGeneration {
+            if isCheckingSession {
+                checkingView
+            } else if needsAuth {
+                welcomeAuthView
+            } else if showPlanGeneration {
                 PlanGenerationView(onboardingData: onboardingData) { plan in
                     store.generatedPlan = plan
                     store.onboardingCompleted = true
@@ -31,6 +41,126 @@ struct ContentView: View {
         .environment(store)
         .preferredColorScheme(.dark)
         .animation(.easeInOut, value: store.onboardingCompleted)
+        .fullScreenCover(isPresented: $showSignUp) {
+            SignUpView(onAuthSuccess: handleAuthResult)
+        }
+        .fullScreenCover(isPresented: $showSignIn) {
+            SignInView(onAuthSuccess: handleAuthResult)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showSignIn)) { _ in
+            showSignUp = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                showSignIn = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showSignUp)) { _ in
+            showSignIn = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                showSignUp = true
+            }
+        }
+        .task {
+            await checkSession()
+        }
+    }
+
+    // MARK: - Session check
+
+    private var checkingView: some View {
+        ZStack {
+            Theme.background.ignoresSafeArea()
+            ProgressView()
+                .tint(Theme.accent)
+                .scaleEffect(1.2)
+        }
+    }
+
+    private func checkSession() async {
+        let hasSession = await SupabaseService.shared.hasValidSession()
+        try? await Task.sleep(for: .seconds(0.6))
+        await MainActor.run {
+            needsAuth = !hasSession
+            isCheckingSession = false
+        }
+    }
+
+    // MARK: - Welcome / Auth
+
+    private var welcomeAuthView: some View {
+        ZStack {
+            Theme.pageGradient.ignoresSafeArea()
+            Theme.glowGradient
+                .frame(width: 500, height: 500)
+                .offset(y: -260)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            VStack(spacing: 20) {
+                Spacer()
+
+                VStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(Theme.accent.opacity(0.25))
+                            .frame(width: 160, height: 160)
+                            .blur(radius: 30)
+                        Image(systemName: "bolt.heart.fill")
+                            .font(.system(size: 70))
+                            .foregroundStyle(Theme.accent)
+                            .shadow(color: Theme.accent, radius: 20)
+                    }
+                    Text("FITNEO")
+                        .font(.system(size: 44, weight: .black, design: .rounded))
+                        .tracking(6)
+                        .foregroundStyle(.white)
+                    Text("Your AI-Powered Fitness OS")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+
+                Spacer()
+
+                VStack(spacing: 14) {
+                    PillButton(title: "Get Started", icon: "arrow.right") {
+                        showSignUp = true
+                    }
+
+                    Button {
+                        showSignIn = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("Already have an account?")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.textTertiary)
+                            Text("Sign In")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 24)
+
+                Spacer().frame(height: 30)
+            }
+            .frame(maxWidth: min(UIScreen.main.bounds.width - 40, 400))
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Auth result handler
+
+    private func handleAuthResult(needsOnboarding: Bool) {
+        showSignUp = false
+        showSignIn = false
+        withAnimation(.easeInOut(duration: 0.4)) {
+            needsAuth = false
+            if needsOnboarding {
+                store.onboardingCompleted = false
+            } else {
+                store.onboardingCompleted = true
+            }
+        }
     }
 }
 
@@ -107,11 +237,6 @@ struct RootShell: View {
         default:
             ProfileSettingsView()
         }
-    }
-
-    private func startAutopilot() {
-        let program = FitneoAIAutopilot.selectWorkout(store: store)
-        activeProgram = program
     }
 
     private func trialBanner(days: Int) -> some View {

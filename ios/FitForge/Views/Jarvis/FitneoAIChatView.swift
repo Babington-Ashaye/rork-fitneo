@@ -63,7 +63,7 @@ struct FitneoAIChatView: View {
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text("FITNEO AI").font(.system(size: 18, weight: .bold)).foregroundStyle(.white)
-                Text("AI Coach \u{00b7} Gemini").font(.system(size: 12)).foregroundStyle(Theme.accent)
+                Text("AI Coach · Gemini").font(.system(size: 12)).foregroundStyle(Theme.accent)
             }
             Spacer()
             Button { dismiss() } label: {
@@ -96,7 +96,7 @@ struct FitneoAIChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("Message FITNEO AI\u{2026}", text: $input)
+            TextField("Message FITNEO AI…", text: $input)
                 .foregroundStyle(.white).tint(Theme.accent)
                 .padding(.horizontal, 16).padding(.vertical, 12)
                 .background(Capsule().fill(Color.white.opacity(0.06)))
@@ -119,7 +119,6 @@ struct FitneoAIChatView: View {
         guard let uid = SupabaseService.shared.userId else { return }
         let history = await SupabaseService.shared.fetchChatHistory(userId: uid, limit: 50)
         guard !history.isEmpty else { return }
-        // Merge history into store messages, avoiding duplicates
         var existing = Set(store.messages.map { $0.text })
         for msg in history where !existing.contains(msg.text) {
             store.messages.append(msg)
@@ -152,28 +151,59 @@ struct FitneoAIChatView: View {
         if isWorkoutRequest, case .chat = intent {
             handleWorkoutGeneration(trimmed)
         } else if case .chat = intent {
-            // Use Gemini for general chat
             handleGeminiChat(trimmed)
         } else {
-            // Local intent handling
-            let reply = FitneoAIBrain.respond(to: trimmed, intent: intent, user: store.user, memory: store.fitneoAIMemory, personality: store.coachPersonality)
-            Task {
-                try? await Task.sleep(for: .seconds(1.0))
-                typing = false
-                let coachMsg = FitneoAIMessage(id: UUID(), role: .coach, text: reply, date: Date())
-                store.messages.append(coachMsg)
-                if let uid = SupabaseService.shared.userId {
-                    await SupabaseService.shared.saveChatMessage(role: "coach", content: reply, userId: uid)
-                }
-                store.checkBadges()
+            // Local intent handling — push directly to Gemini with context
+            handleLocalIntent(intent, message: trimmed)
+        }
+    }
 
-                if case .startWorkout = intent {
-                    try? await Task.sleep(for: .seconds(0.6))
-                    dismiss()
-                    onStartWorkout(FitneoAIAutopilot.selectWorkout(store: store))
-                }
-                if case .logFood = intent { store.requestedTab = 2 }
+    // MARK: - Local intent → Gemini
+
+    private func handleLocalIntent(_ intent: FitneoAIIntent, message: String) {
+        Task {
+            let systemPrompt = buildChatSystemPrompt()
+            let contextualPrompt: String
+            switch intent {
+            case .startWorkout: contextualPrompt = "The user wants to start a workout. Respond accordingly. \(message)"
+            case .pause: contextualPrompt = "User asked to pause: \(message)"
+            case .next: contextualPrompt = "User asked to skip/next: \(message)"
+            case .tired: contextualPrompt = "User is feeling tired/fatigued: \(message)"
+            case .progress: contextualPrompt = "User wants a progress update: \(message)"
+            case .harder: contextualPrompt = "User wants harder training: \(message)"
+            case .easier: contextualPrompt = "User wants easier training: \(message)"
+            case .restDay: contextualPrompt = "User wants rest/recovery: \(message)"
+            case .logFood(let food): contextualPrompt = "User wants to log food '\(food)': \(message)"
+            case .chat: contextualPrompt = message
             }
+
+            let geminiReply = await GeminiService.shared.generateText(
+                prompt: contextualPrompt,
+                systemPrompt: systemPrompt
+            )
+
+            typing = false
+
+            let reply: String
+            if geminiReply.isEmpty {
+                reply = "I'm having trouble connecting right now. Please try again."
+            } else {
+                reply = geminiReply
+            }
+
+            let coachMsg = FitneoAIMessage(id: UUID(), role: .coach, text: reply, date: Date())
+            store.messages.append(coachMsg)
+            if let uid = SupabaseService.shared.userId {
+                await SupabaseService.shared.saveChatMessage(role: "coach", content: reply, userId: uid)
+            }
+            store.checkBadges()
+
+            if case .startWorkout = intent {
+                try? await Task.sleep(for: .seconds(0.6))
+                dismiss()
+                onStartWorkout(FitneoAIAutopilot.selectWorkout(store: store))
+            }
+            if case .logFood = intent { store.requestedTab = 2 }
         }
     }
 
@@ -207,7 +237,7 @@ struct FitneoAIChatView: View {
                 return
             }
 
-            // Fallback to local matching/generation
+            // Fallback to local matching/generation (NOT hardcoded chat responses)
             try? await Task.sleep(for: .seconds(1.2))
             typing = false
 
@@ -239,16 +269,11 @@ struct FitneoAIChatView: View {
                 systemPrompt: systemPrompt
             )
 
-            try? await Task.sleep(for: .seconds(0.5))
             typing = false
 
             let reply: String
             if geminiReply.isEmpty {
-                // Fallback to local brain
-                reply = FitneoAIBrain.respond(
-                    to: message, intent: .chat, user: store.user,
-                    memory: store.fitneoAIMemory, personality: store.coachPersonality
-                )
+                reply = "I'm having trouble connecting right now. Please try again."
             } else {
                 reply = geminiReply
             }
@@ -274,22 +299,22 @@ struct FitneoAIChatView: View {
         }()
 
         return """
-        You are FITNEO AI, an elite AI fitness coach. You have full memory of the user's fitness journey.
-        You speak confidently, motivationally, and precisely — like a world-class personal trainer who also has the analytical mind of a sports scientist.
-        Never be generic. Always reference specific user data. Keep responses under 120 words unless doing a full plan.
-        Always end with one actionable next step.
-
-        User profile:
+        You are FITNEO AI, a world-class personal fitness coach. You know this user personally:
         - Name: \(user.name)
+        - Fitness goal: \(user.goals.first ?? "Stay active")
         - Fitness level: \(user.fitnessLevel.title)
-        - Primary goal: \(user.goals.first ?? "Stay active")
-        - Equipment: \(user.equipment.joined(separator: ", "))
         - Current streak: \(memory.currentStreak) days
+
+        Additional context:
+        - Equipment: \(user.equipment.joined(separator: ", "))
         - Workouts this week: \(memory.totalWorkoutsThisWeek) of \(user.weeklyWorkoutGoal)
         - Total workouts: \(memory.totalWorkoutsAllTime)
         - Consistency: \(memory.consistencyScore)%
         - Injuries: \(injuries.isEmpty ? "None reported" : injuries.joined(separator: ", "))
         - Last 5 workouts: \(lastWorkouts)
+
+        Respond in a conversational, motivating, and personalized way. Keep responses under 150 words.
+        If the user asks for a workout give them a specific plan. If they describe pain or injury advise them to rest that muscle group.
         """
     }
 
