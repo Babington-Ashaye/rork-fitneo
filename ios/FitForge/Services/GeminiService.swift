@@ -20,8 +20,6 @@ final class GeminiService: Sendable {
 
     // MARK: - Text generation
 
-    /// Sends a prompt with a system instruction to Gemini and returns the response text.
-    /// Returns an empty string on failure (caller should fall back to local logic).
     func generateText(prompt: String, systemPrompt: String) async -> String {
         let body: [String: Any] = [
             "systemInstruction": [
@@ -35,15 +33,15 @@ final class GeminiService: Sendable {
             ]
         ]
 
-        guard let responseJSON = await sendRequest(body: body) else { return "" }
-
+        let responseJSON = await sendRequest(body: body)
+        guard let responseJSON = responseJSON else {
+            return "DEBUG: sendRequest returned nil — check network or API key"
+        }
         return extractText(from: responseJSON)
     }
 
     // MARK: - Vision analysis
 
-    /// Analyses a base64-encoded JPEG image with the given prompt.
-    /// Returns an empty string on failure.
     func analyzeImage(base64ImageString: String, prompt: String) async -> String {
         let body: [String: Any] = [
             "contents": [
@@ -63,7 +61,6 @@ final class GeminiService: Sendable {
         ]
 
         guard let responseJSON = await sendRequest(body: body) else { return "" }
-
         return extractText(from: responseJSON)
     }
 
@@ -72,7 +69,7 @@ final class GeminiService: Sendable {
     private func sendRequest(body: [String: Any]) async -> [String: Any]? {
         guard let url = URL(string: endpoint) else {
             print("[GeminiService] Invalid endpoint URL")
-            return nil
+            return ["__error__": "Invalid endpoint URL"]
         }
 
         var request = URLRequest(url: url)
@@ -82,41 +79,40 @@ final class GeminiService: Sendable {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         } catch {
-            print("[GeminiService] Failed to encode request body: \(error)")
-            return nil
+            return ["__error__": "Failed to encode body: \(error.localizedDescription)"]
         }
 
         do {
             let (data, response) = try await session.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("[GeminiService] Non-HTTP response")
-                return nil
+                return ["__error__": "Non-HTTP response"]
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
-                if let errorString = String(data: data, encoding: .utf8) {
-                    print("[GeminiService] HTTP \(httpResponse.statusCode): \(errorString)")
-                }
-                return nil
+                let errorString = String(data: data, encoding: .utf8) ?? "no error body"
+                return ["__error__": "HTTP \(httpResponse.statusCode): \(errorString)"]
             }
 
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             return json
         } catch {
-            print("[GeminiService] Request failed: \(error)")
-            return nil
+            return ["__error__": "Request failed: \(error.localizedDescription)"]
         }
     }
 
     private func extractText(from json: [String: Any]) -> String {
+        // Show real error in chat bubble for debugging
+        if let error = json["__error__"] as? String {
+            return "DEBUG: \(error)"
+        }
+
         guard let candidates = json["candidates"] as? [[String: Any]],
               let first = candidates.first,
               let content = first["content"] as? [String: Any],
               let parts = content["parts"] as? [[String: Any]],
               let text = parts.first?["text"] as? String else {
-            print("[GeminiService] Unexpected response format: \(json)")
-            return ""
+            return "DEBUG: Unexpected response format: \(json)"
         }
         return text
     }
