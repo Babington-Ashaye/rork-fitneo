@@ -173,7 +173,6 @@ struct SignUpView: View {
                                 .foregroundStyle(Theme.textTertiary)
                             Button {
                                 dismiss()
-                                // Delegate will handle presenting SignInView
                                 NotificationCenter.default.post(name: .showSignIn, object: nil)
                             } label: {
                                 Text("Sign In")
@@ -219,7 +218,8 @@ struct SignUpView: View {
                 generalError = error.localizedDescription
             }
         } catch {
-            generalError = "Something went wrong. Please try again."
+            // Shows the REAL error instead of the generic message — for debugging
+            generalError = error.localizedDescription
         }
     }
 
