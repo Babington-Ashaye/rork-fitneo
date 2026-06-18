@@ -607,6 +607,20 @@ struct FitneoOnboardingView: View {
         ]
         let sessionLen = OnboardingData.SessionLength(rawValue: sessionLenMap[sessionDuration ?? "30-45"] ?? "30") ?? .thirty
 
+        let dict: [String: Any] = [
+            "injuries": Array(injuries),
+            "dietary_prefs": Array(dietaryPrefs),
+            "coaching_style": coachingStyle ?? "",
+            "long_term_vision": longTermVision ?? "",
+            "workout_time": workoutTimeOfDay ?? "",
+            "past_obstacles": Array(pastObstacles),
+            "motivation": motivation ?? ""
+        ]
+        if let jsonData = try? JSONSerialization.data(withJSONObject: dict) {
+            UserDefaults.standard.set(jsonData, forKey: "fitneo_onboarding_answers")
+        }
+        UserDefaults.standard.set(Array(injuries), forKey: "fitneo_onboarding_injuries")
+
         let data = OnboardingData(
             goal: goals.contains("Build Muscle") ? .buildMuscle : goals.contains("Lose Weight") ? .loseFat : goals.contains("Athletic Performance") ? .athleticPerformance : .maintainTone,
             fitnessLevel: level == .beginner ? .beginner : .someExperience,
@@ -697,6 +711,16 @@ struct FitneoOnboardingView: View {
         store.user.fitnessLevel = level
         store.user.goals = goals.isEmpty ? ["Stay Active"] : Array(goals)
         store.user.equipment = equipment.isEmpty ? ["No Equipment"] : Array(equipment)
+
+        // Save to Supabase
+        if let uid = SupabaseService.shared.userId {
+            Task {
+                await SupabaseService.shared.saveOnboardingAnswers(data, userId: uid)
+                try? await SupabaseService.shared.setOnboardingCompleted(true, userId: uid)
+                await SupabaseService.shared.startTrialSubscription(userId: uid)
+            }
+        }
+
         onFinish(data)
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// AI service abstraction layer. Uses Anthropic via Rork proxy for plan generation.
+/// AI service abstraction layer. Uses Google Gemini for plan generation and nutrition analysis.
 /// Falls back to local generation if the API is unavailable.
 enum PlanGenerationService {
 
@@ -18,10 +18,15 @@ enum PlanGenerationService {
     static func generateFitnessPlan(onboarding: OnboardingData) async throws -> GeneratedPlan {
         let profile = buildProfileJSON(onboarding)
         let systemPrompt = fitnessSystemPrompt + "\n\nUser profile:\n\(profile)"
-
         let userMessage = "Generate a 4-week workout plan for this user based on their profile."
 
-        if let json = try? await callAnthropicAPI(system: systemPrompt, user: userMessage),
+        let response = await GeminiService.shared.generateText(
+            prompt: userMessage,
+            systemPrompt: systemPrompt
+        )
+
+        if !response.isEmpty,
+           let json = extractJSON(from: response),
            let plan = try? decodePlan(json, isSports: false) {
             return plan
         }
@@ -36,10 +41,15 @@ enum PlanGenerationService {
         let profile = buildProfileJSON(onboarding)
         let positionText = position.map { "Position: \($0)" } ?? "No specific position"
         let systemPrompt = sportsSystemPrompt(sport: sport.title, level: level.title, position: positionText) + "\n\nUser profile:\n\(profile)"
-
         let userMessage = "Generate a 4-week sport-specific training plan for this athlete."
 
-        if let json = try? await callAnthropicAPI(system: systemPrompt, user: userMessage),
+        let response = await GeminiService.shared.generateText(
+            prompt: userMessage,
+            systemPrompt: systemPrompt
+        )
+
+        if !response.isEmpty,
+           let json = extractJSON(from: response),
            let plan = try? decodePlan(json, isSports: true, sportName: sport.title, position: position) {
             return plan
         }
@@ -50,101 +60,106 @@ enum PlanGenerationService {
     // MARK: - Nutrition scan
 
     static func analyzeMeal(base64Image: String) async throws -> NutritionAnalysisResult {
-        let systemPrompt = """
-        You are FITNEO AI, a certified sports nutritionist. Analyze the meal in this image carefully.
-        Return only a valid JSON object with no markdown and no additional text.
-        The JSON must contain: foods as an array where each item has name, portion, calories, protein, carbs, fat, fiber, sugar.
+        let prompt = """
+        Identify the food in this image and estimate its nutritional values per serving.
+        Respond ONLY in valid JSON with no markdown and no extra text.
+        The JSON must have exactly these keys: foods as an array where each item has name, portion, calories, protein, carbs, fat, fiber, sugar.
         Also include totals with calories, protein, carbs, fat, fiber, sugar.
         Also include confidence as an integer from 0 to 100.
         Also include mealType as one of "breakfast", "lunch", "dinner", or "snacks".
         """
 
-        let json = try await callAnthropicVisionAPI(system: systemPrompt, base64Image: base64Image)
-        return try decodeNutrition(json)
-    }
+        let response = await GeminiService.shared.analyzeImage(
+            base64ImageString: base64Image,
+            prompt: prompt
+        )
 
-    // MARK: - Anthropic API via Rork proxy
-
-    private static func callAnthropicAPI(system: String, user: String) async throws -> String {
-        let toolkitURL = Config.EXPO_PUBLIC_TOOLKIT_URL
-        let secret = Config.EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY
-
-        var request = URLRequest(url: URL(string: "\(toolkitURL)/v1/chat/completions")!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(secret)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 60
-
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "messages": [
-                ["role": "system", "content": system],
-                ["role": "user", "content": user]
-            ],
-            "max_tokens": 2000,
-            "temperature": 0.7
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, _) = try await URLSession.shared.data(for: request)
-
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let first = choices.first,
-              let message = first["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            throw AIServiceError.invalidResponse
+        if !response.isEmpty,
+           let json = extractJSON(from: response) {
+            return try decodeNutrition(json)
         }
 
-        // Extract JSON from content (may be wrapped in markdown)
-        return extractJSON(from: content)
+        throw AIServiceError.invalidResponse
     }
 
-    private static func callAnthropicVisionAPI(system: String, base64Image: String) async throws -> String {
-        let toolkitURL = Config.EXPO_PUBLIC_TOOLKIT_URL
-        let secret = Config.EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY
+    // MARK: - Workout generation from chat
 
-        var request = URLRequest(url: URL(string: "\(toolkitURL)/v1/chat/completions")!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(secret)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 90
+    /// Generates a workout based on a natural-language request from the user.
+    /// Returns a matching program ID if found, or a full custom workout spec.
+    static func generateWorkoutFromChat(request: String, user: AppUser, store: FitneoStore, programIDs: [String]) async -> WorkoutProgram? {
+        let systemPrompt = """
+        You are FITNEO AI, a professional fitness coach. Generate a complete workout plan based on the user description and profile.
+        Respond ONLY in valid JSON with no markdown and no extra text. The JSON must have these keys:
+        name as a string, category as a string (one of: strength, hiit, cardio, core, flexibility, elite),
+        estimatedMinutes as an Int, exercises as an array where each object has name as a string, sets as an Int, reps as an Int, restSeconds as an Int, and notes as a string.
+        Use only exercises that correspond to the available program IDs: \(programIDs.joined(separator: ", ")).
+        If an existing program already matches the user's request, return instead a JSON object with matchFound as true and programID as the matching program ID.
+        """
 
-        let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "messages": [
-                ["role": "system", "content": system],
-                ["role": "user", "content": [
-                    ["type": "image_url", "image_url": ["url": "data:image/jpeg;base64,\(base64Image)"]],
-                    ["type": "text", "text": "Analyze this meal."]
-                ]]
-            ],
-            "max_tokens": 1500,
-            "temperature": 0.3
-        ]
+        let userPrompt = "User fitness level: \(user.fitnessLevel.title). Equipment: \(user.equipment.joined(separator: ", ")). Goals: \(user.goals.joined(separator: ", ")). Request: \(request)"
 
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = await GeminiService.shared.generateText(
+            prompt: userPrompt,
+            systemPrompt: systemPrompt
+        )
 
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let first = choices.first,
-              let message = first["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            throw AIServiceError.invalidResponse
+        // Parse AI-generated workout
+        guard !response.isEmpty,
+              let json = extractJSON(from: response),
+              let data = json.data(using: .utf8) else {
+            return nil
         }
 
-        return extractJSON(from: content)
+        // Check if it's a match recommendation
+        if let matchObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let matchFound = matchObj["matchFound"] as? Bool, matchFound,
+           let programID = matchObj["programID"] as? String {
+            return store.allPrograms.first { $0.id == programID }
+        }
+
+        // Try to decode as a custom workout
+        if let aiWorkout = try? JSONDecoder().decode(AIGeneratedWorkout.self, from: data) {
+            let category = WorkoutCategory(rawValue: aiWorkout.category) ?? .strength
+            // Map exercise names to existing exercise IDs
+            let allExercises = ExerciseLibrary.exercises
+            var exerciseIDs: [String] = []
+            for ex in aiWorkout.exercises {
+                if let match = allExercises.first(where: {
+                    $0.name.lowercased().contains(ex.name.lowercased()) ||
+                    ex.name.lowercased().contains($0.name.lowercased())
+                }) {
+                    exerciseIDs.append(match.id)
+                }
+            }
+            guard !exerciseIDs.isEmpty else { return nil }
+
+            let program = WorkoutProgram(
+                id: "ai_gen_\(UUID().uuidString.prefix(8))",
+                name: aiWorkout.name,
+                category: category,
+                difficulty: user.fitnessLevel,
+                durationMinutes: aiWorkout.estimatedMinutes,
+                description: aiWorkout.notes,
+                muscleGroups: category == .hiit ? [.cardio, .fullBody] :
+                              category == .core ? [.core] : [.fullBody],
+                exerciseIDs: exerciseIDs,
+                isPremium: false
+            )
+            store.addCustomProgram(program)
+            return program
+        }
+
+        return nil
     }
 
-    // MARK: - Helpers
+    // MARK: - Gemini helpers
 
-    private static func extractJSON(from content: String) -> String {
-        if let start = content.firstIndex(of: "{"),
-           let end = content.lastIndex(of: "}") {
-            return String(content[start...end])
+    private static func extractJSON(from content: String) -> String? {
+        guard let start = content.firstIndex(of: "{"),
+              let end = content.lastIndex(of: "}") else {
+            return nil
         }
-        return content
+        return String(content[start...end])
     }
 
     private static func decodePlan(_ json: String, isSports: Bool, sportName: String? = nil, position: String? = nil) throws -> GeneratedPlan {
@@ -182,7 +197,7 @@ enum PlanGenerationService {
         return try JSONDecoder().decode(NutritionAnalysisResult.self, from: data)
     }
 
-    // MARK: - Local fallback plans
+    // MARK: - Local fallback plans (unchanged)
 
     static func generateLocalPlan(onboarding: OnboardingData) -> GeneratedPlan {
         let level = onboarding.fitnessLevel ?? .someExperience
@@ -298,7 +313,6 @@ enum PlanGenerationService {
         return notes[day % notes.count]
     }
 
-    // Plan templates
     private static func beginnerPlan(days: Int) -> [String?] {
         days <= 2 ? ["full_body_beginner", "mobility_flex"] :
         days <= 3 ? ["full_body_beginner", "cardio_blast", "mobility_flex"] :
@@ -414,6 +428,23 @@ enum PlanGenerationService {
     }
 }
 
+// MARK: - AI-generated workout model
+
+struct AIGeneratedWorkout: Codable, Sendable {
+    let name: String
+    let category: String
+    let estimatedMinutes: Int
+    let exercises: [AIExercise]
+    let notes: String
+}
+
+struct AIExercise: Codable, Sendable {
+    let name: String
+    let sets: Int
+    let reps: Int
+    let restSeconds: Int
+}
+
 // MARK: - Nutrition analysis result
 
 struct NutritionAnalysisResult: Codable, Sendable {
@@ -456,8 +487,6 @@ struct NutritionTotals: Codable, Sendable {
     let fiber: Double
     let sugar: Double
 }
-
-// MARK: - Errors
 
 enum AIServiceError: Error, LocalizedError {
     case invalidResponse

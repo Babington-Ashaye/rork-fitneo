@@ -2,6 +2,8 @@ import Foundation
 import Supabase
 import AuthenticationServices
 
+// MARK: - Auth errors
+
 enum AuthError: Error, LocalizedError {
     case invalidCredentials
     case emailAlreadyExists
@@ -24,13 +26,135 @@ enum AuthError: Error, LocalizedError {
     }
 }
 
+// MARK: - Supabase Codable DTOs (nonisolated for background use)
+
+private struct ProfileRow: Codable {
+    let id: UUID
+    let email: String
+    let display_name: String?
+    let onboarding_completed: Bool?
+    let created_at: String?
+}
+
+private struct ProfileUpsert: Codable {
+    let id: UUID
+    let email: String
+    let display_name: String
+    let onboarding_completed: Bool
+    let created_at: String
+}
+
+private struct ProfileUpdate: Codable {
+    let fitness_level: String?
+    let primary_goal: String?
+    let height_cm: Double?
+    let weight_kg: Double?
+    let goal_weight_kg: Double?
+    let onboarding_completed: Bool?
+    let last_workout_date: String?
+}
+
+private struct WorkoutSessionInsert: Codable {
+    let user_id: UUID
+    let session_name: String
+    let started_at: String
+    let completed_at: String
+    let duration_seconds: Int
+    let total_sets_completed: Int
+    let calories_burned: Int
+    let xp_earned: Int
+}
+
+private struct SetLogInsert: Codable {
+    let session_id: String
+    let exercise_name: String
+    let set_number: Int
+    let reps_completed: Int
+    let weight_kg: Double
+}
+
+private struct LeaderboardUpsert: Codable {
+    let user_id: UUID
+    let display_name: String
+    let avatar_color: String
+    let total_xp: Int
+    let current_streak: Int
+    let workouts_this_week: Int
+    let last_updated: String
+}
+
+private struct NutritionLogInsert: Codable {
+    let user_id: UUID
+    let log_date: String
+    let meal_type: String
+    let food_name: String
+    let serving_size: String
+    let calories: Int
+    let protein_g: Double
+    let carbs_g: Double
+    let fat_g: Double
+    let scan_method: String
+}
+
+private struct BodyMetricInsert: Codable {
+    let user_id: UUID
+    let weight_kg: Double
+    let recorded_date: String
+}
+
+private struct XPTransactionInsert: Codable {
+    let user_id: UUID
+    let amount: Int
+    let reason: String
+    let created_at: String
+}
+
+private struct BadgeUpsert: Codable {
+    let user_id: UUID
+    let badge_id: String
+    let badge_name: String
+    let earned_at: String
+}
+
+private struct ChatMessageInsert: Codable {
+    let user_id: UUID
+    let role: String
+    let content: String
+    let created_at: String
+}
+
+private struct ChatMessageRow: Codable {
+    let role: String
+    let content: String
+    let created_at: String?
+}
+
+private struct SubscriptionUpsert: Codable {
+    let user_id: UUID
+    let plan: String
+    let status: String
+    let started_at: String
+}
+
+private struct WorkoutTemplateInsert: Codable {
+    let user_id: UUID
+    let program_name: String
+    let category: String
+    let difficulty: Int
+    let duration_minutes: Int
+    let description: String
+    let exercise_ids: [String]
+    let is_premium: Bool
+    let is_template: Bool
+    let created_at: String
+}
+
+// MARK: - SupabaseService
+
 @Observable
 @MainActor
 final class SupabaseService {
     static let shared = SupabaseService()
-
-    private let supabaseURL = URL(string: "https://sokjybielakrristebam.supabase.co")!
-    private let supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNva2p5YmllbGFrcnJpc3RlYmFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjc0NjQsImV4cCI6MjA5MzY0MzQ2NH0.qjWolwo-MXw4YSET1iZZxu6RpS8AcfUViqWxdYDds08"
 
     let client: SupabaseClient
 
@@ -39,7 +163,10 @@ final class SupabaseService {
     var currentUserEmail: String? { client.auth.currentSession?.user.email }
 
     private init() {
-        self.client = SupabaseClient(supabaseURL: supabaseURL, supabaseKey: supabaseKey)
+        self.client = SupabaseClient(
+            supabaseURL: URL(string: AppConfig.supabaseURL)!,
+            supabaseKey: AppConfig.supabaseAnonKey
+        )
     }
 
     // MARK: - Session
@@ -49,18 +176,21 @@ final class SupabaseService {
         return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
     }
 
+    func hasValidSession() async -> Bool {
+        (try? await client.auth.session) != nil
+    }
+
     // MARK: - Auth
 
-    func signUp(email: String, password: String) async throws -> UserProfile {
+    func signUp(email: String, password: String, displayName: String? = nil) async throws -> UserProfile {
         do {
             let response = try await client.auth.signUp(email: email, password: password)
-            // If email confirmation is on, session may be nil — use the returned user directly.
             if let session = response.session {
-                return try await ensureProfileExists(userId: session.user.id, email: session.user.email)
+                return try await ensureProfileExists(userId: session.user.id, email: session.user.email, displayName: displayName)
             }
             let user = response.user
-            try? await upsertProfile(userId: user.id, email: user.email ?? email, displayName: nil)
-            return UserProfile(id: user.id, email: user.email ?? email, displayName: nil, onboardingCompleted: false, createdAt: Date())
+            try? await upsertProfile(userId: user.id, email: user.email ?? email, displayName: displayName)
+            return UserProfile(id: user.id, email: user.email ?? email, displayName: displayName, onboardingCompleted: false, createdAt: Date())
         } catch {
             throw mapAuthError(error)
         }
@@ -104,33 +234,25 @@ final class SupabaseService {
         return .unknown
     }
 
-    // MARK: - Profile (user_profiles table)
+    // MARK: - Profile
 
-    private struct ProfileRow: Codable {
-        let id: UUID
-        let email: String
-        let display_name: String?
-        let onboarding_completed: Bool?
-        let created_at: Date?
-    }
-
-    func ensureProfileExists(userId: UUID, email: String?) async throws -> UserProfile {
+    func ensureProfileExists(userId: UUID, email: String?, displayName: String? = nil) async throws -> UserProfile {
         if let existing = try? await fetchProfile(userId: userId) {
             return existing
         }
-        try? await upsertProfile(userId: userId, email: email, displayName: nil)
+        try? await upsertProfile(userId: userId, email: email, displayName: displayName)
         return try await fetchProfile(userId: userId)
     }
 
     private func upsertProfile(userId: UUID, email: String?, displayName: String?) async throws {
-        let row = ProfileRow(
+        let row = ProfileUpsert(
             id: userId,
             email: email ?? "",
-            display_name: displayName,
+            display_name: displayName ?? (email ?? ""),
             onboarding_completed: false,
-            created_at: Date()
+            created_at: ISO8601DateFormatter().string(from: Date())
         )
-        try await client.from("user_profiles").insert(row).execute()
+        try await client.from("user_profiles").upsert(row).execute()
     }
 
     func fetchProfile(userId: UUID) async throws -> UserProfile {
@@ -142,12 +264,17 @@ final class SupabaseService {
             .execute()
             .value
 
+        let date: Date = {
+            guard let ts = row.created_at else { return Date() }
+            return ISO8601DateFormatter().date(from: ts) ?? Date()
+        }()
+
         return UserProfile(
             id: row.id,
             email: row.email,
             displayName: row.display_name,
             onboardingCompleted: row.onboarding_completed ?? false,
-            createdAt: row.created_at ?? Date()
+            createdAt: date
         )
     }
 
@@ -161,86 +288,228 @@ final class SupabaseService {
 
     // MARK: - Onboarding answers
 
-    private struct OnboardingPayload: Codable {
-        let user_id: UUID
-        let goal: String?
-        let fitness_level: String?
-        let equipment: String?
-        let focus_areas: [String]
-        let session_length: String?
-        let weight: Double
-        let weight_unit: String
-        let height: Double
-        let height_unit: String
-        let diet_type: String?
-        let coach_personality: String?
-        let workout_time: String?
-        let sleep_quality: String?
-        let activity_level: String?
-        let target_physique: String?
-        let motivation_styles: [String]
-        let language: String
-        let theme: String
-        let updated_at: Date
-    }
-
-    func saveOnboardingProgress(_ data: OnboardingData, userId: UUID) async {
-        let payload = OnboardingPayload(
-            user_id: userId,
-            goal: data.goal?.rawValue,
+    func saveOnboardingAnswers(_ data: OnboardingData, userId: UUID) async {
+        let update = ProfileUpdate(
             fitness_level: data.fitnessLevel?.rawValue,
-            equipment: data.equipment?.rawValue,
-            focus_areas: data.focusAreas.map(\.rawValue),
-            session_length: data.sessionLength?.rawValue,
-            weight: data.weight,
-            weight_unit: data.weightUnit.rawValue,
-            height: data.height,
-            height_unit: data.heightUnit.rawValue,
-            diet_type: data.dietType?.rawValue,
-            coach_personality: data.coachPersonality?.rawValue,
-            workout_time: data.workoutTime?.rawValue,
-            sleep_quality: data.sleepQuality?.rawValue,
-            activity_level: data.activityLevel?.rawValue,
-            target_physique: data.targetPhysique?.rawValue,
-            motivation_styles: data.motivationStyles.map(\.rawValue),
-            language: data.language.rawValue,
-            theme: data.theme.rawValue,
-            updated_at: Date()
+            primary_goal: data.goal?.rawValue,
+            height_cm: data.heightUnit == .cm ? data.height : data.height * 2.54,
+            weight_kg: data.weightUnit == .kg ? data.weight : data.weight * 0.453592,
+            goal_weight_kg: data.weight,
+            onboarding_completed: true,
+            last_workout_date: nil
         )
-
-        // Best-effort: ignore failure so onboarding can complete in-memory
-        // and user can retry later. Logged for debugging.
         do {
             try await client
                 .from("user_profiles")
-                .update(payload)
+                .update(update)
                 .eq("id", value: userId)
                 .execute()
         } catch {
-            print("[FITNEO] Failed to save onboarding progress: \(error)")
+            print("[SupabaseService] Failed to update profile after onboarding: \(error)")
         }
     }
 
-    // MARK: - Subscriptions (trial)
+    // MARK: - Workout sessions
 
-    private struct SubscriptionRow: Codable {
-        let user_id: UUID
-        let plan: String
-        let status: String
-        let started_at: Date
+    func saveWorkoutSession(_ workout: CompletedWorkout, userId: UUID) async {
+        let fmt = ISO8601DateFormatter()
+        let startedAt = workout.completedAt.addingTimeInterval(-Double(workout.durationSeconds))
+        let row = WorkoutSessionInsert(
+            user_id: userId,
+            session_name: workout.name,
+            started_at: fmt.string(from: startedAt),
+            completed_at: fmt.string(from: workout.completedAt),
+            duration_seconds: workout.durationSeconds,
+            total_sets_completed: workout.setsCompleted,
+            calories_burned: workout.caloriesBurned,
+            xp_earned: workout.xpEarned
+        )
+        do { try await client.from("workout_sessions").insert(row).execute() }
+        catch { print("[SupabaseService] Failed to save workout session: \(error)") }
     }
 
+    func saveSetLog(sessionId: String, exerciseName: String, setNumber: Int, reps: Int, weightKg: Double = 0) async {
+        let row = SetLogInsert(
+            session_id: sessionId,
+            exercise_name: exerciseName,
+            set_number: setNumber,
+            reps_completed: reps,
+            weight_kg: weightKg
+        )
+        do { try await client.from("session_sets_log").insert(row).execute() }
+        catch { print("[SupabaseService] Failed to save set log: \(error)") }
+    }
+
+    func updateProfileAfterWorkout(xpEarned: Int, userId: UUID) async {
+        let update = ProfileUpdate(
+            fitness_level: nil, primary_goal: nil, height_cm: nil, weight_kg: nil,
+            goal_weight_kg: nil, onboarding_completed: nil,
+            last_workout_date: ISO8601DateFormatter().string(from: Date())
+        )
+        do {
+            try await client
+                .from("user_profiles")
+                .update(update)
+                .eq("id", value: userId)
+                .execute()
+        } catch {
+            print("[SupabaseService] Failed to update profile after workout: \(error)")
+        }
+    }
+
+    // MARK: - Leaderboard
+
+    func syncLeaderboard(xp: Int, streak: Int, workoutsThisWeek: Int, userId: UUID, displayName: String) async {
+        let row = LeaderboardUpsert(
+            user_id: userId,
+            display_name: displayName,
+            avatar_color: "#0A84FF",
+            total_xp: xp,
+            current_streak: streak,
+            workouts_this_week: workoutsThisWeek,
+            last_updated: ISO8601DateFormatter().string(from: Date())
+        )
+        do { try await client.from("leaderboard_entries").upsert(row).execute() }
+        catch { print("[SupabaseService] Failed to sync leaderboard: \(error)") }
+    }
+
+    func fetchLeaderboard(by tab: String = "xp") async -> [[String: Any]] {
+        let column = tab == "streak" ? "current_streak" : tab == "weekly" ? "workouts_this_week" : "total_xp"
+        do {
+            let response = try await client
+                .from("leaderboard_entries")
+                .select()
+                .order(column, ascending: false)
+                .limit(50)
+                .execute()
+            return (try? JSONSerialization.jsonObject(with: response.data) as? [[String: Any]]) ?? []
+        } catch {
+            print("[SupabaseService] Failed to fetch leaderboard: \(error)")
+            return []
+        }
+    }
+
+    // MARK: - Nutrition
+
+    func saveFoodLog(entry: FoodEntry, userId: UUID) async {
+        let row = NutritionLogInsert(
+            user_id: userId,
+            log_date: FitneoStore.dayKey(entry.loggedAt),
+            meal_type: entry.mealType.rawValue,
+            food_name: entry.name,
+            serving_size: "\(entry.portion)x",
+            calories: entry.calories,
+            protein_g: entry.protein,
+            carbs_g: entry.carbs,
+            fat_g: entry.fat,
+            scan_method: "manual"
+        )
+        do { try await client.from("nutrition_logs").insert(row).execute() }
+        catch { print("[SupabaseService] Failed to save food log: \(error)") }
+    }
+
+    // MARK: - Body metrics
+
+    func saveWeightEntry(weight: Double, date: Date, userId: UUID) async {
+        let row = BodyMetricInsert(
+            user_id: userId,
+            weight_kg: weight,
+            recorded_date: ISO8601DateFormatter().string(from: date)
+        )
+        do { try await client.from("body_metrics").insert(row).execute() }
+        catch { print("[SupabaseService] Failed to save weight: \(error)") }
+    }
+
+    // MARK: - XP
+
+    func saveXPTransaction(amount: Int, reason: String, userId: UUID) async {
+        let row = XPTransactionInsert(
+            user_id: userId,
+            amount: amount,
+            reason: reason,
+            created_at: ISO8601DateFormatter().string(from: Date())
+        )
+        do { try await client.from("xp_transactions").insert(row).execute() }
+        catch { print("[SupabaseService] Failed to save XP: \(error)") }
+    }
+
+    // MARK: - Badges
+
+    func saveBadge(badgeId: String, badgeName: String, userId: UUID) async {
+        let row = BadgeUpsert(
+            user_id: userId,
+            badge_id: badgeId,
+            badge_name: badgeName,
+            earned_at: ISO8601DateFormatter().string(from: Date())
+        )
+        do { try await client.from("badges").upsert(row).execute() }
+        catch { print("[SupabaseService] Failed to save badge: \(error)") }
+    }
+
+    // MARK: - AI chat messages
+
+    func saveChatMessage(role: String, content: String, userId: UUID) async {
+        let row = ChatMessageInsert(
+            user_id: userId,
+            role: role,
+            content: content,
+            created_at: ISO8601DateFormatter().string(from: Date())
+        )
+        do { try await client.from("ai_chat_messages").insert(row).execute() }
+        catch { print("[SupabaseService] Failed to save chat message: \(error)") }
+    }
+
+    func fetchChatHistory(userId: UUID, limit: Int = 50) async -> [FitneoAIMessage] {
+        do {
+            let rows: [ChatMessageRow] = try await client
+                .from("ai_chat_messages")
+                .select()
+                .eq("user_id", value: userId)
+                .order("created_at", ascending: true)
+                .limit(limit)
+                .execute()
+                .value
+
+            return rows.compactMap { row in
+                let role: FitneoAIRole = row.role == "user" ? .user : .coach
+                let date = row.created_at.flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
+                return FitneoAIMessage(id: UUID(), role: role, text: row.content, date: date)
+            }
+        } catch {
+            print("[SupabaseService] Failed to fetch chat history: \(error)")
+            return []
+        }
+    }
+
+    // MARK: - Subscriptions
+
     func startTrialSubscription(userId: UUID) async {
-        let row = SubscriptionRow(
+        let row = SubscriptionUpsert(
             user_id: userId,
             plan: "trial",
             status: "active",
-            started_at: Date()
+            started_at: ISO8601DateFormatter().string(from: Date())
         )
-        do {
-            try await client.from("subscriptions").insert(row).execute()
-        } catch {
-            print("[FITNEO] Failed to start trial subscription: \(error)")
-        }
+        do { try await client.from("subscriptions").upsert(row).execute() }
+        catch { print("[SupabaseService] Failed to start trial: \(error)") }
+    }
+
+    // MARK: - Workout templates
+
+    func saveWorkoutTemplate(_ program: WorkoutProgram, userId: UUID) async {
+        let row = WorkoutTemplateInsert(
+            user_id: userId,
+            program_name: program.name,
+            category: program.category.rawValue,
+            difficulty: program.difficulty.rawValue,
+            duration_minutes: program.durationMinutes,
+            description: program.description,
+            exercise_ids: program.exerciseIDs,
+            is_premium: program.isPremium,
+            is_template: true,
+            created_at: ISO8601DateFormatter().string(from: Date())
+        )
+        do { try await client.from("workout_programs").insert(row).execute() }
+        catch { print("[SupabaseService] Failed to save template: \(error)") }
     }
 }

@@ -82,7 +82,7 @@ final class OnboardingViewModel {
         guard let userId = service.userId else { return }
         let snapshot = data
         Task.detached { [snapshot] in
-            await SupabaseService.shared.saveOnboardingProgress(snapshot, userId: userId)
+            await SupabaseService.shared.saveOnboardingAnswers(snapshot, userId: userId)
         }
     }
 
@@ -92,7 +92,7 @@ final class OnboardingViewModel {
             errorMessage = "You must be signed in."
             return
         }
-        await service.saveOnboardingProgress(data, userId: userId)
+        await service.saveOnboardingAnswers(data, userId: userId)
         do {
             try await service.setOnboardingCompleted(true, userId: userId)
             await service.startTrialSubscription(userId: userId)

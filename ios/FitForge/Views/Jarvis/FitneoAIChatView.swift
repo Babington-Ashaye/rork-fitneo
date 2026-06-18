@@ -49,6 +49,9 @@ struct FitneoAIChatView: View {
             }
         }
         .presentationDragIndicator(.visible)
+        .task {
+            await loadChatHistory()
+        }
     }
 
     private var header: some View {
@@ -60,7 +63,7 @@ struct FitneoAIChatView: View {
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text("FITNEO AI").font(.system(size: 18, weight: .bold)).foregroundStyle(.white)
-                Text("AI Coach · online").font(.system(size: 12)).foregroundStyle(Theme.accent)
+                Text("AI Coach \u{00b7} Gemini").font(.system(size: 12)).foregroundStyle(Theme.accent)
             }
             Spacer()
             Button { dismiss() } label: {
@@ -93,7 +96,7 @@ struct FitneoAIChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("Message FITNEO AI…", text: $input)
+            TextField("Message FITNEO AI\u{2026}", text: $input)
                 .foregroundStyle(.white).tint(Theme.accent)
                 .padding(.horizontal, 16).padding(.vertical, 12)
                 .background(Capsule().fill(Color.white.opacity(0.06)))
@@ -110,32 +113,60 @@ struct FitneoAIChatView: View {
         .background(.ultraThinMaterial.opacity(0.5))
     }
 
+    // MARK: - Actions
+
+    private func loadChatHistory() async {
+        guard let uid = SupabaseService.shared.userId else { return }
+        let history = await SupabaseService.shared.fetchChatHistory(userId: uid, limit: 50)
+        guard !history.isEmpty else { return }
+        // Merge history into store messages, avoiding duplicates
+        var existing = Set(store.messages.map { $0.text })
+        for msg in history where !existing.contains(msg.text) {
+            store.messages.append(msg)
+            existing.insert(msg.text)
+        }
+    }
+
     private func send(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        store.messages.append(FitneoAIMessage(id: UUID(), role: .user, text: trimmed, date: Date()))
+        let userMsg = FitneoAIMessage(id: UUID(), role: .user, text: trimmed, date: Date())
+        store.messages.append(userMsg)
         input = ""
         aiWorkoutCard = nil
 
-        // Check if this is a workout generation request
+        // Save user message to Supabase
+        if let uid = SupabaseService.shared.userId {
+            Task { await SupabaseService.shared.saveChatMessage(role: "user", content: trimmed, userId: uid) }
+        }
+
+        // Detect if this is a workout generation request
         let lower = trimmed.lowercased()
         let isWorkoutRequest = lower.contains("generate") || lower.contains("create") || lower.contains("make me") || lower.contains("build") || lower.contains("workout") || lower.contains("leg day") || lower.contains("chest") || lower.contains("back") || lower.contains("arm") || lower.contains("hiit") || lower.contains("cardio") || lower.contains("strength")
 
         let intent = FitneoAIBrain.detectIntent(trimmed)
-        store.checkBadges()
 
         typing = true
 
         if isWorkoutRequest, case .chat = intent {
-            // Try to generate or find matching workout
             handleWorkoutGeneration(trimmed)
+        } else if case .chat = intent {
+            // Use Gemini for general chat
+            handleGeminiChat(trimmed)
         } else {
+            // Local intent handling
             let reply = FitneoAIBrain.respond(to: trimmed, intent: intent, user: store.user, memory: store.fitneoAIMemory, personality: store.coachPersonality)
             Task {
                 try? await Task.sleep(for: .seconds(1.0))
                 typing = false
-                store.messages.append(FitneoAIMessage(id: UUID(), role: .coach, text: reply, date: Date()))
+                let coachMsg = FitneoAIMessage(id: UUID(), role: .coach, text: reply, date: Date())
+                store.messages.append(coachMsg)
+                if let uid = SupabaseService.shared.userId {
+                    await SupabaseService.shared.saveChatMessage(role: "coach", content: reply, userId: uid)
+                }
+                store.checkBadges()
+
                 if case .startWorkout = intent {
                     try? await Task.sleep(for: .seconds(0.6))
                     dismiss()
@@ -147,7 +178,6 @@ struct FitneoAIChatView: View {
     }
 
     private func handleWorkoutGeneration(_ request: String) {
-        // First, look for matching existing programs
         let allPrograms = store.allPrograms
         let lower = request.lowercased()
         let matches = allPrograms.filter { p in
@@ -157,32 +187,116 @@ struct FitneoAIChatView: View {
             p.muscleGroups.contains(where: { lower.contains($0.title.lowercased()) })
         }
 
+        // Try AI generation via Gemini
         Task {
+            if let aiResult = await PlanGenerationService.generateWorkoutFromChat(
+                request: request,
+                user: store.user,
+                store: store,
+                programIDs: ExerciseLibrary.programs.map { $0.id }
+            ) {
+                try? await Task.sleep(for: .seconds(0.6))
+                typing = false
+                let reply = "I created \"\(aiResult.name)\" just for you — \(aiResult.durationMinutes) minutes, \(aiResult.difficulty.title) level, \(aiResult.exerciseIDs.count) exercises. Tap below to start. This workout is saved in your library."
+                let coachMsg = FitneoAIMessage(id: UUID(), role: .coach, text: reply, date: Date())
+                store.messages.append(coachMsg)
+                aiWorkoutCard = aiResult
+                if let uid = SupabaseService.shared.userId {
+                    await SupabaseService.shared.saveChatMessage(role: "coach", content: reply, userId: uid)
+                }
+                return
+            }
+
+            // Fallback to local matching/generation
             try? await Task.sleep(for: .seconds(1.2))
             typing = false
 
             if let bestMatch = matches.first {
-                store.messages.append(FitneoAIMessage(id: UUID(), role: .coach,
-                    text: "Found it! \(bestMatch.name) matches your request — \(bestMatch.durationMinutes) minutes, \(bestMatch.difficulty.title) level. Tap below to start.",
-                    date: Date()))
+                let reply = "Found it! \(bestMatch.name) matches your request — \(bestMatch.durationMinutes) minutes, \(bestMatch.difficulty.title) level. Tap below to start."
+                store.messages.append(FitneoAIMessage(id: UUID(), role: .coach, text: reply, date: Date()))
                 aiWorkoutCard = bestMatch
+                if let uid = SupabaseService.shared.userId {
+                    await SupabaseService.shared.saveChatMessage(role: "coach", content: reply, userId: uid)
+                }
             } else {
-                // Generate a custom workout on the spot
                 let generated = generateCustomWorkout(for: request)
                 store.addCustomProgram(generated)
-                store.messages.append(FitneoAIMessage(id: UUID(), role: .coach,
-                    text: "I created \"\(generated.name)\" just for you — \(generated.durationMinutes) minutes, \(generated.difficulty.title) level, \(generated.exerciseIDs.count) exercises. Tap below to start. This workout is now saved in your library.",
-                    date: Date()))
+                let reply = "I created \"\(generated.name)\" just for you — \(generated.durationMinutes) minutes, \(generated.difficulty.title) level, \(generated.exerciseIDs.count) exercises. Tap below to start. This workout is now saved in your library."
+                store.messages.append(FitneoAIMessage(id: UUID(), role: .coach, text: reply, date: Date()))
                 aiWorkoutCard = generated
+                if let uid = SupabaseService.shared.userId {
+                    await SupabaseService.shared.saveChatMessage(role: "coach", content: reply, userId: uid)
+                }
             }
         }
+    }
+
+    private func handleGeminiChat(_ message: String) {
+        Task {
+            let systemPrompt = buildChatSystemPrompt()
+            let geminiReply = await GeminiService.shared.generateText(
+                prompt: message,
+                systemPrompt: systemPrompt
+            )
+
+            try? await Task.sleep(for: .seconds(0.5))
+            typing = false
+
+            let reply: String
+            if geminiReply.isEmpty {
+                // Fallback to local brain
+                reply = FitneoAIBrain.respond(
+                    to: message, intent: .chat, user: store.user,
+                    memory: store.fitneoAIMemory, personality: store.coachPersonality
+                )
+            } else {
+                reply = geminiReply
+            }
+
+            let coachMsg = FitneoAIMessage(id: UUID(), role: .coach, text: reply, date: Date())
+            store.messages.append(coachMsg)
+            if let uid = SupabaseService.shared.userId {
+                await SupabaseService.shared.saveChatMessage(role: "coach", content: reply, userId: uid)
+            }
+            store.checkBadges()
+        }
+    }
+
+    private func buildChatSystemPrompt() -> String {
+        let user = store.user
+        let memory = store.fitneoAIMemory
+        let injuries = store.demoMode ? [] :
+            (UserDefaults.standard.stringArray(forKey: "fitneo_onboarding_injuries") ?? [])
+
+        let lastWorkouts: String = {
+            let recent = store.workouts.suffix(5).map { $0.name }
+            return recent.isEmpty ? "None yet" : recent.joined(separator: ", ")
+        }()
+
+        return """
+        You are FITNEO AI, an elite AI fitness coach. You have full memory of the user's fitness journey.
+        You speak confidently, motivationally, and precisely — like a world-class personal trainer who also has the analytical mind of a sports scientist.
+        Never be generic. Always reference specific user data. Keep responses under 120 words unless doing a full plan.
+        Always end with one actionable next step.
+
+        User profile:
+        - Name: \(user.name)
+        - Fitness level: \(user.fitnessLevel.title)
+        - Primary goal: \(user.goals.first ?? "Stay active")
+        - Equipment: \(user.equipment.joined(separator: ", "))
+        - Current streak: \(memory.currentStreak) days
+        - Workouts this week: \(memory.totalWorkoutsThisWeek) of \(user.weeklyWorkoutGoal)
+        - Total workouts: \(memory.totalWorkoutsAllTime)
+        - Consistency: \(memory.consistencyScore)%
+        - Injuries: \(injuries.isEmpty ? "None reported" : injuries.joined(separator: ", "))
+        - Last 5 workouts: \(lastWorkouts)
+        """
     }
 
     private func generateCustomWorkout(for request: String) -> WorkoutProgram {
         let lower = request.lowercased()
         let allExercises = ExerciseLibrary.exercises
 
-        // Determine category and exercises based on keywords
         let isHIIT = lower.contains("hiit") || lower.contains("cardio") || lower.contains("burn")
         let isLegs = lower.contains("leg") || lower.contains("squat") || lower.contains("lower")
         let isUpper = lower.contains("chest") || lower.contains("upper") || lower.contains("arm") || lower.contains("push")
@@ -225,6 +339,8 @@ struct FitneoAIChatView: View {
         )
     }
 }
+
+// MARK: - Shared components
 
 struct AIWorkoutCard: View {
     let program: WorkoutProgram

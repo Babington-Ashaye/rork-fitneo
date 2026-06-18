@@ -238,6 +238,19 @@ final class FitneoStore {
         workouts.append(completed)
         addXP(earned)
         checkBadges()
+
+        // Sync to Supabase
+        if let uid = SupabaseService.shared.userId {
+            Task {
+                await SupabaseService.shared.saveWorkoutSession(completed, userId: uid)
+                await SupabaseService.shared.saveXPTransaction(amount: earned, reason: "Workout: \(program.name)", userId: uid)
+                await SupabaseService.shared.updateProfileAfterWorkout(xpEarned: earned, userId: uid)
+                await SupabaseService.shared.syncLeaderboard(
+                    xp: xp, streak: currentStreak, workoutsThisWeek: workoutsThisWeek,
+                    userId: uid, displayName: user.name
+                )
+            }
+        }
     }
 
     func logFood(_ item: FoodItem, meal: MealType, portion: Double) {
@@ -257,6 +270,10 @@ final class FitneoStore {
         let mealsToday = Set(entries(for: Date()).map { $0.mealType })
         if mealsToday.count >= 4 { addXP(50) }
         checkBadges()
+
+        if let uid = SupabaseService.shared.userId {
+            Task { await SupabaseService.shared.saveFoodLog(entry: entry, userId: uid) }
+        }
     }
 
     func deleteFood(_ entry: FoodEntry) {
@@ -269,6 +286,13 @@ final class FitneoStore {
         user.weight = weight
         addXP(20)
         checkBadges()
+
+        if let uid = SupabaseService.shared.userId {
+            Task {
+                await SupabaseService.shared.saveWeightEntry(weight: weight, date: date, userId: uid)
+                await SupabaseService.shared.saveXPTransaction(amount: 20, reason: "Weight log", userId: uid)
+            }
+        }
     }
 
     func addWater() {
@@ -283,6 +307,9 @@ final class FitneoStore {
         xp += amount
         if level > before {
             didLevelUp = true
+        }
+        if let uid = SupabaseService.shared.userId {
+            Task { await SupabaseService.shared.saveXPTransaction(amount: amount, reason: "Activity", userId: uid) }
         }
     }
 
@@ -312,6 +339,9 @@ final class FitneoStore {
         earnedBadges.append(EarnedBadge(id: id, earnedAt: Date()))
         if let badge = BadgeCatalog.badge(id: id) {
             newlyUnlockedBadge = badge
+            if let uid = SupabaseService.shared.userId {
+                Task { await SupabaseService.shared.saveBadge(badgeId: badge.id, badgeName: badge.name, userId: uid) }
+            }
         }
     }
 
