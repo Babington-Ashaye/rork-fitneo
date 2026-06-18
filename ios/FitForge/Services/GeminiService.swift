@@ -1,7 +1,7 @@
 import Foundation
 
 /// Direct Gemini API integration for FITNEO AI features.
-/// Usesgemini-2.0-flash for text generation and vision analysis.
+/// Uses gemini-2.0-flash for text generation and vision analysis.
 @MainActor
 final class GeminiService: Sendable {
     static let shared = GeminiService()
