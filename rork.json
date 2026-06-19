@@ -2,9 +2,12 @@
   "$schema": "https://rork.com/schema/rork.json",
   "apps": [
     {
-      "name": "FitForge",
+      "name": "FitNEO",
       "path": "ios",
-      "framework": "swift"
+      "framework": "swift",
+      "settings": {
+        "displayName": "FITNEO"
+      }
     }
   ]
 }
