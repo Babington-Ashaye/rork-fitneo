@@ -8,12 +8,14 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { colors } from "@/lib/theme";
 import { AppOpenAdGate } from "@/components/AppOpenAdGate";
+import { WebViewportGuard } from "@/components/WebViewportGuard";
 import { useSubscription } from "@/context/SubscriptionContext";
 import { subscribeToNotificationNavigation } from "@/lib/notifications";
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
+      <WebViewportGuard />
       <AuthProvider>
         <RootNavigator />
       </AuthProvider>

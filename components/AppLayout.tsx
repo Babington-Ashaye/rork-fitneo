@@ -61,25 +61,35 @@ export function AppLayout({
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1
+    flex: 1,
+    maxWidth: "100%",
+    width: "100%"
   },
   contentRegion: {
     flex: 1,
-    overflow: "hidden"
+    maxWidth: "100%",
+    overflow: "hidden",
+    width: "100%"
   },
   scroll: {
-    flex: 1
+    flex: 1,
+    maxWidth: "100%",
+    width: "100%"
   },
   scrollContent: {
     flexGrow: 1,
     gap: 18,
+    maxWidth: "100%",
     paddingHorizontal: spacing.screen,
-    paddingTop: 8
+    paddingTop: 8,
+    width: "100%"
   },
   staticContent: {
     flex: 1,
     gap: 18,
+    maxWidth: "100%",
     paddingHorizontal: spacing.screen,
-    paddingTop: 8
+    paddingTop: 8,
+    width: "100%"
   }
 });

@@ -3,7 +3,9 @@ import { Link, router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
+import { AuthNotice } from "@/components/AuthNotice";
 import { useAuth } from "@/context/AuthContext";
+import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
 import { colors, radii } from "@/lib/theme";
 
 export default function SignUpScreen() {
@@ -63,7 +65,17 @@ export default function SignUpScreen() {
           onChangeText={setPassword}
           underlineColorAndroid="transparent"
         />
-        {localError || error ? <Text style={styles.error}>{localError ?? error}</Text> : null}
+        {!isSupabaseConfigured ? (
+          <AuthNotice
+            icon="cloud-offline"
+            title="Secure sign-up is waiting on configuration"
+            message={`Missing ${[
+              !supabaseConfigStatus.hasUrl ? "EXPO_PUBLIC_SUPABASE_URL" : null,
+              !supabaseConfigStatus.hasAnonKey ? "EXPO_PUBLIC_SUPABASE_ANON_KEY" : null
+            ].filter(Boolean).join(" and ")}. Add it in Vercel Environment Variables, then redeploy with a clean build cache.`}
+          />
+        ) : null}
+        {localError || error ? <AuthNotice icon="alert-circle" title="Sign-up needs attention" message={localError ?? error ?? ""} danger /> : null}
         <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={submit} style={[styles.primaryButton, isLoading && styles.disabled]}>
           {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.primaryText}>Create Account</Text>}
         </TouchableOpacity>
@@ -132,12 +144,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minHeight: 52,
     paddingHorizontal: 16
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 12,
-    lineHeight: 17,
-    textAlign: "center"
   },
   primaryButton: {
     alignItems: "center",

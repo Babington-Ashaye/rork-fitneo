@@ -2,12 +2,21 @@ import { Session, User } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { Platform } from "react-native";
+import { isSupabaseConfigured, missingSupabaseConfigMessage, supabase } from "@/lib/supabase";
 import { secureStorage } from "@/lib/secureStorage";
 
 const LOCAL_ONBOARDING_KEY = "fitneo.local.onboarding_completed";
 const LEGAL_ACCEPTANCE_PREFIX = "fitneo.legal.accepted";
 WebBrowser.maybeCompleteAuthSession();
+
+function getOAuthRedirectUrl() {
+  if (Platform.OS === "web" && typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}/auth/callback`;
+  }
+
+  return Linking.createURL("auth/callback");
+}
 
 export type AuthProfile = {
   id: string;
@@ -190,7 +199,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setIsLoading(true);
     try {
       if (!isSupabaseConfigured) {
-        setError("Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to enable live login.");
+        setError(missingSupabaseConfigMessage);
         return false;
       }
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -213,7 +222,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setIsLoading(true);
     try {
       if (!isSupabaseConfigured) {
-        setError("Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to enable live sign up.");
+        setError(missingSupabaseConfigMessage);
         return false;
       }
       const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
@@ -238,10 +247,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setIsLoading(true);
     try {
       if (!isSupabaseConfigured) {
-        throw new Error("Supabase is not configured for Google sign-in.");
+        throw new Error(missingSupabaseConfigMessage);
       }
 
-      const redirectTo = Linking.createURL("auth/callback");
+      const redirectTo = getOAuthRedirectUrl();
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {

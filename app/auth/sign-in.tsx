@@ -4,8 +4,10 @@ import { Link, router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
+import { AuthNotice } from "@/components/AuthNotice";
 import { TouchableCard } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
+import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
 import { colors, radii } from "@/lib/theme";
 
 export default function SignInScreen() {
@@ -83,7 +85,18 @@ export default function SignInScreen() {
             <Text style={styles.forgot}>Forgot Password?</Text>
           </TouchableOpacity>
 
-          {localError || error ? <Text style={styles.error}>{localError ?? error}</Text> : null}
+          {!isSupabaseConfigured ? (
+            <AuthNotice
+              icon="cloud-offline"
+              title="Secure login is waiting on configuration"
+              message={`Missing ${[
+                !supabaseConfigStatus.hasUrl ? "EXPO_PUBLIC_SUPABASE_URL" : null,
+                !supabaseConfigStatus.hasAnonKey ? "EXPO_PUBLIC_SUPABASE_ANON_KEY" : null
+              ].filter(Boolean).join(" and ")}. Add it in Vercel Environment Variables, then redeploy with a clean build cache.`}
+            />
+          ) : null}
+
+          {localError || error ? <AuthNotice icon="alert-circle" title="Sign-in needs attention" message={localError ?? error ?? ""} danger /> : null}
 
           <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={submit} style={[styles.primaryButton, isLoading && styles.disabled]}>
             {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.primaryText}>Sign In</Text>}
@@ -251,12 +264,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 13,
     fontWeight: "700"
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 12,
-    lineHeight: 17,
-    textAlign: "center"
   },
   primaryButton: {
     alignItems: "center",
