@@ -12,7 +12,7 @@ import {
   fetchChatSessions,
   saveChatMessage
 } from "@/lib/api";
-import { streamFitneoCoach } from "@/lib/edgeFunctions";
+import { askFitneoCoachWithRetry } from "@/lib/edgeFunctions";
 import { colors, radii } from "@/lib/theme";
 import { useSubscription } from "@/context/SubscriptionContext";
 
@@ -29,6 +29,7 @@ export default function CoachScreen() {
   const [isSending, setIsSending] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   async function newChat() {
@@ -96,6 +97,7 @@ export default function CoachScreen() {
 
     setPrompt("");
     setError(null);
+    setLastFailedPrompt(null);
     setIsSending(true);
     setStreamingText("");
     try {
@@ -123,11 +125,11 @@ export default function CoachScreen() {
         // Chat persistence must never block the live coaching request.
       }
 
-      const response = await streamFitneoCoach(cleanPrompt, {
+      const response = await askFitneoCoachWithRetry(cleanPrompt, {
         sessionId: session.id,
         history: conversation,
         onChunk: setStreamingText
-      });
+      }, 2);
       if (response.error || !response.data?.message) {
         throw new Error(response.error ?? "FITNEO AI returned an empty response.");
       }
@@ -146,7 +148,8 @@ export default function CoachScreen() {
       }
       setStreamingText("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "FITNEO AI could not respond.");
+      setLastFailedPrompt(cleanPrompt);
+      setError(err instanceof Error ? err.message : "FITNEO AI is busy right now. Please try again in a moment.");
     } finally {
       setIsSending(false);
     }
@@ -219,7 +222,17 @@ export default function CoachScreen() {
             )}
           </View>
         ) : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <View style={styles.errorCard}>
+            <Ionicons name="cloud-offline" size={16} color={colors.gold} />
+            <Text style={styles.errorText}>{error}</Text>
+            {lastFailedPrompt ? (
+              <TouchableOpacity activeOpacity={0.78} style={styles.retryButton} onPress={() => void sendPrompt(lastFailedPrompt)}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
       </ScrollView>
 
       <ScrollView horizontal style={styles.suggestionScroller} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestions}>
@@ -257,7 +270,7 @@ export default function CoachScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: "#070B14", gap: 10, paddingBottom: 12 },
+  screen: { backgroundColor: "#070B14", gap: 10, paddingBottom: 110 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   iconButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", width: 38 },
   aiIdentity: { alignItems: "center", flexDirection: "row", gap: 10 },
@@ -269,21 +282,24 @@ const styles = StyleSheet.create({
   historyTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "800" },
   newChat: { color: colors.accent, fontSize: 13, fontWeight: "800" },
   sessionList: { gap: 8 },
-  messages: { flex: 1 },
-  messageContent: { flexGrow: 1, gap: 12, justifyContent: "flex-end", paddingBottom: 8, paddingTop: 18 },
+  messages: { flex: 1, zIndex: 1 },
+  messageContent: { flexGrow: 1, gap: 12, justifyContent: "flex-end", paddingBottom: 18, paddingTop: 18 },
   bubble: { borderRadius: 20, maxWidth: "90%", paddingHorizontal: 16, paddingVertical: 13 },
   userBubble: { alignSelf: "flex-end", backgroundColor: "#253044", borderBottomRightRadius: 6 },
   assistantBubble: { alignSelf: "flex-start", backgroundColor: "transparent", borderBottomLeftRadius: 5, paddingLeft: 4 },
   messageText: { color: colors.textPrimary, fontSize: 15, lineHeight: 23 },
   typingBubble: { alignItems: "center", flexDirection: "row", gap: 9 },
   typingText: { color: colors.textSecondary, fontSize: 12 },
-  error: { color: colors.danger, fontSize: 12, lineHeight: 18, textAlign: "center" },
+  errorCard: { alignItems: "center", alignSelf: "center", backgroundColor: "rgba(255,199,51,0.10)", borderColor: "rgba(255,199,51,0.26)", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 9, marginTop: 4, maxWidth: "94%", padding: 12 },
+  errorText: { color: colors.textSecondary, flex: 1, fontSize: 12, lineHeight: 17 },
+  retryButton: { backgroundColor: "rgba(255,199,51,0.16)", borderColor: "rgba(255,199,51,0.40)", borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
+  retryText: { color: colors.gold, fontSize: 11, fontWeight: "900" },
   emptyState: { alignItems: "center", gap: 9, justifyContent: "center", paddingHorizontal: 28, paddingVertical: 40 },
   emptyTitle: { color: colors.textPrimary, fontSize: 19, fontWeight: "800", textAlign: "center" },
   emptyCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
-  suggestionScroller: { flexGrow: 0, maxHeight: 44 },
+  suggestionScroller: { flexGrow: 0, maxHeight: 44, zIndex: 4 },
   suggestions: { alignItems: "center", gap: 8, paddingRight: 8 },
-  composer: { alignItems: "flex-end", backgroundColor: "#151C29", borderColor: "rgba(255,255,255,0.10)", borderRadius: 25, borderWidth: 1, flexDirection: "row", gap: 6, padding: 5 },
+  composer: { alignItems: "flex-end", backgroundColor: "#151C29", borderColor: "rgba(255,255,255,0.10)", borderRadius: 25, borderWidth: 1, flexDirection: "row", gap: 6, padding: 5, zIndex: 5 },
   composerMark: { alignItems: "center", height: 38, justifyContent: "center", width: 36 },
   input: { color: colors.textPrimary, flex: 1, fontSize: 15, maxHeight: 110, minHeight: 44, paddingHorizontal: 4, paddingVertical: 11 },
   sendButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 23, height: 46, justifyContent: "center", width: 46 },

@@ -88,7 +88,7 @@ export default function PaywallScreen() {
         <Text style={styles.title}>Choose Your Plan</Text>
         <Text style={styles.subtitle}>
           {subscriptionPlatform === "web"
-            ? "iPhone web testing redirects to the placeholder billing portal."
+            ? "Web checkout redirects to the secure Stripe payment gateway."
             : "Android native testing uses the RevenueCat SDK checkout."}
         </Text>
       </View>
@@ -134,7 +134,7 @@ export default function PaywallScreen() {
         {isLoading ? <ActivityIndicator color={tier === "elite" ? colors.black : colors.textPrimary} /> : (
           <>
             <Ionicons name="sparkles" size={17} color={tier === "elite" ? colors.black : colors.textPrimary} />
-            <Text style={[styles.primaryText, tier === "elite" && styles.eliteButtonText]}>Start Your Free Month</Text>
+            <Text style={[styles.primaryText, tier === "elite" && styles.eliteButtonText]}>Proceed to Payment</Text>
           </>
         )}
       </TouchableOpacity>

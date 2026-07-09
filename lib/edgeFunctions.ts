@@ -3,6 +3,39 @@ import { fetch as expoFetch } from "expo/fetch";
 
 export const FITNEO_EDGE_FUNCTION = "fitneo-ai-coach";
 const REQUEST_TIMEOUT_MS = 30_000;
+const RETRYABLE_ERROR_PATTERN = /high demand|overload|rate limit|resource exhausted|timeout|temporarily unavailable|503|429/i;
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function isRetryableAiError(error: string | null | undefined) {
+  return Boolean(error && RETRYABLE_ERROR_PATTERN.test(error));
+}
+
+function friendlyAiError(error: string | null | undefined) {
+  if (isRetryableAiError(error)) {
+    return "FITNEO AI is seeing high demand right now. Your message is safe — wait a moment and try again.";
+  }
+  return error ?? "FITNEO AI could not respond.";
+}
+
+function normalizeBase64Image(imageUri: string) {
+  const trimmed = imageUri.trim();
+  const match = trimmed.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/s);
+  const mimeType = match?.[1]?.replace("image/jpg", "image/jpeg") ?? "image/jpeg";
+  const rawBase64 = (match?.[2] ?? trimmed).replace(/\s/g, "");
+
+  if (!rawBase64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(rawBase64)) {
+    throw new Error("The camera image could not be encoded for AI analysis. Please retake the photo.");
+  }
+
+  return {
+    dataUri: `data:${mimeType};base64,${rawBase64}`,
+    imageData: rawBase64,
+    mimeType
+  };
+}
 
 async function withTimeout<T>(promise: Promise<T>, milliseconds = REQUEST_TIMEOUT_MS): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -106,13 +139,14 @@ export async function streamFitneoCoach(
     try {
       return await withTimeout(askFitneoCoach(prompt, options));
     } catch (error) {
-      return { data: null, error: error instanceof Error ? error.message : "FITNEO AI timed out." };
+      return { data: null, error: friendlyAiError(error instanceof Error ? error.message : "FITNEO AI timed out.") };
     }
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
     const response = await expoFetch(`${supabaseUrl}/functions/v1/${FITNEO_EDGE_FUNCTION}`, {
       method: "POST",
       headers: {
@@ -132,12 +166,18 @@ export async function streamFitneoCoach(
 
     if (!response.ok) {
       const detail = await response.text();
+      let errorMessage = detail || `FITNEO AI returned HTTP ${response.status}.`;
       try {
         const parsed = JSON.parse(detail) as { error?: string; message?: string };
-        return { data: null, error: parsed.error ?? parsed.message ?? detail };
+        errorMessage = parsed.error ?? parsed.message ?? errorMessage;
       } catch {
-        return { data: null, error: detail || `FITNEO AI returned HTTP ${response.status}.` };
+        // Keep the text response.
       }
+      if (attempt === 0 && isRetryableAiError(errorMessage)) {
+        await delay(900);
+        continue;
+      }
+      return { data: null, error: friendlyAiError(errorMessage) };
     }
 
     if (!response.body) {
@@ -187,15 +227,62 @@ export async function streamFitneoCoach(
       ? { data: { message: completeText }, error: null }
       : { data: null, error: "FITNEO AI finished without returning content." };
     return result;
-  } catch {
-    try {
-      return await withTimeout(askFitneoCoach(prompt, options), 20_000);
     } catch (error) {
-      return { data: null, error: error instanceof Error ? error.message : "FITNEO AI timed out." };
+      const errorMessage = error instanceof Error ? error.message : "FITNEO AI timed out.";
+      if (attempt === 0 && isRetryableAiError(errorMessage)) {
+        await delay(900);
+        continue;
+      }
+      try {
+        return await withTimeout(askFitneoCoach(prompt, options), 20_000);
+      } catch (fallbackError) {
+        return {
+          data: null,
+          error: friendlyAiError(fallbackError instanceof Error ? fallbackError.message : errorMessage)
+        };
+      }
+    } finally {
+      clearTimeout(timeout);
     }
-  } finally {
-    clearTimeout(timeout);
   }
+
+  try {
+    return await withTimeout(askFitneoCoach(prompt, options), 20_000);
+  } catch (error) {
+    return { data: null, error: friendlyAiError(error instanceof Error ? error.message : "FITNEO AI timed out.") };
+  }
+}
+
+export async function askFitneoCoachWithRetry(
+  prompt: string,
+  options: {
+    sessionId?: string;
+    history?: Array<{ role: "user" | "assistant"; content: string }>;
+    onChunk: (completeText: string) => void;
+  },
+  attempts = 2
+) {
+  let lastError: string | null = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await streamFitneoCoach(prompt, options);
+      if (!response.error && response.data?.message) {
+        return response;
+      }
+      lastError = response.error;
+      if (!isRetryableAiError(lastError) || attempt === attempts - 1) {
+        return { data: null, error: friendlyAiError(lastError) };
+      }
+      await delay(1000 * (attempt + 1));
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : "FITNEO AI could not respond.";
+      if (!isRetryableAiError(lastError) || attempt === attempts - 1) {
+        return { data: null, error: friendlyAiError(lastError) };
+      }
+      await delay(1000 * (attempt + 1));
+    }
+  }
+  return { data: null, error: friendlyAiError(lastError) };
 }
 
 export type FoodScanResult = {
@@ -209,15 +296,27 @@ export type FoodScanResult = {
 };
 
 export async function analyzeFoodPhoto(imageUri: string) {
+  let normalizedImage;
+  try {
+    normalizedImage = normalizeBase64Image(imageUri);
+  } catch (error) {
+    return {
+      data: null,
+      error: error instanceof Error ? error.message : "The camera image could not be encoded."
+    };
+  }
+
   const response = await callEdgeFunction<
-    { task: "food-scan"; prompt: string; imageUri: string },
+    { task: "food-scan"; prompt: string; imageUri: string; image_data: string; mimeType: string },
     FoodScanResult
   >(
     FITNEO_EDGE_FUNCTION,
     {
       task: "food-scan",
       prompt: "Identify this meal and estimate nutrition for the visible serving.",
-      imageUri
+      imageUri: normalizedImage.dataUri,
+      image_data: normalizedImage.imageData,
+      mimeType: normalizedImage.mimeType
     }
   );
   const result = response.data;

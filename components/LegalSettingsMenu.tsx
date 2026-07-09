@@ -1,15 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
-import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { GlassCard } from "@/components/ScreenKit";
-import i18n, {
-  changeAppLanguage,
-  getCurrentLanguage,
-  SupportedLanguage,
-  supportedLanguages
-} from "@/lib/i18n";
+import { useLanguage } from "@/context/LanguageContext";
 import { colors, radii } from "@/lib/theme";
 
 const legalLinks = [
@@ -21,19 +15,7 @@ const legalLinks = [
 
 export function LegalSettingsMenu() {
   const { t } = useTranslation();
-  const [language, setLanguage] = useState<SupportedLanguage>(getCurrentLanguage());
-
-  useEffect(() => {
-    const syncLanguage = (nextLanguage: string) => {
-      if (supportedLanguages.some((item) => item.code === nextLanguage)) {
-        setLanguage(nextLanguage as SupportedLanguage);
-      }
-    };
-    i18n.on("languageChanged", syncLanguage);
-    return () => {
-      i18n.off("languageChanged", syncLanguage);
-    };
-  }, []);
+  const { language, languages, setLanguage } = useLanguage();
 
   return (
     <GlassCard radius={radii.xl} style={styles.card}>
@@ -46,13 +28,13 @@ export function LegalSettingsMenu() {
       </View>
 
       <View style={styles.languageRow}>
-        {supportedLanguages.map((item) => {
+        {languages.map((item) => {
           const active = language === item.code;
           return (
             <TouchableOpacity
               key={item.code}
               activeOpacity={0.78}
-              onPress={() => void changeAppLanguage(item.code)}
+              onPress={() => void setLanguage(item.code)}
               style={[styles.languageChip, active && styles.languageChipActive]}
             >
               <Text style={[styles.languageText, active && styles.languageTextActive]}>

@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { colors } from "@/lib/theme";
 import { AppOpenAdGate } from "@/components/AppOpenAdGate";
@@ -16,30 +17,37 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <WebViewportGuard />
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }
 
 function RootNavigator() {
   const segments = useSegments();
-  const { isLoading, needsLegalAcceptance, session } = useAuth();
+  const { isLoading, needsLegalAcceptance, needsOnboarding, session } = useAuth();
 
   useEffect(() => {
     if (isLoading) return;
     const firstSegment = segments[0];
     const inAuth = firstSegment === "auth";
     const inLegalConsent = firstSegment === "legal-consent";
+    const inOnboarding = firstSegment === "onboarding";
     if (!session && !inAuth) {
       router.replace("/auth/sign-in");
       return;
     }
     if (session && needsLegalAcceptance && !inLegalConsent) {
       router.replace("/legal-consent");
+      return;
     }
-  }, [isLoading, needsLegalAcceptance, segments, session]);
+    if (session && needsOnboarding && !inOnboarding && !inLegalConsent) {
+      router.replace("/onboarding");
+    }
+  }, [isLoading, needsLegalAcceptance, needsOnboarding, segments, session]);
 
   useEffect(() => {
     return subscribeToNotificationNavigation((route) => {

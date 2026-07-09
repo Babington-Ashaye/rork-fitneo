@@ -127,6 +127,15 @@ export function findExercise(id: string) {
   return exerciseCatalog.find((exercise) => exercise.id === id);
 }
 
+export function getCategorizedExerciseLibrary(minimumCount = 30) {
+  const library = exerciseCatalog.slice(0, Math.max(minimumCount, 30));
+  return library.reduce<Record<string, Exercise[]>>((groups, exercise) => {
+    const key = exercise.muscleGroup || "Full Body";
+    groups[key] = [...(groups[key] ?? []), exercise];
+    return groups;
+  }, {});
+}
+
 type RemoteExerciseRow = {
   id?: string;
   name?: string;

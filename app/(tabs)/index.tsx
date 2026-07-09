@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { loadWaterIntake, saveWaterIntake } from "@/lib/water";
 
 export default function DashboardScreen() {
-  const { user } = useAuth();
+  const { needsOnboarding, user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,12 +76,27 @@ export default function DashboardScreen() {
 
   const xpInto = data.xp % data.xpSpan;
 
+  if (needsOnboarding) {
+    return (
+      <AppLayout scroll>
+        <TouchableCard radius={radii.xxl} style={styles.onboardingGate} onPress={() => router.replace("/onboarding")}>
+          <IconBubble icon="person-circle" size={52} />
+          <View style={styles.flex}>
+            <Text style={styles.gateTitle}>Complete your profile to see your plan</Text>
+            <Text style={styles.gateCopy}>FITNEO needs your goals, fitness level, and baseline metrics before generating your My Plan dashboard.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+        </TouchableCard>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout scroll>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerCopy}>
           <Text style={styles.greeting}>Good morning</Text>
-          <Text style={styles.name}>{data.displayName}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={styles.name}>{data.displayName}</Text>
         </View>
         <TouchableCard radius={radii.lg} style={styles.streakPill} onPress={() => Alert.alert("Streak", `${data.streak} day streak`)}>
           <Ionicons name="flame" size={28} color={colors.coral} />
@@ -223,7 +238,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: 12,
     paddingTop: 8
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0
   },
   greeting: {
     color: colors.textSecondary,
@@ -233,14 +253,16 @@ const styles = StyleSheet.create({
   name: {
     color: colors.textPrimary,
     fontSize: 26,
-    fontWeight: "700"
+    fontWeight: "700",
+    minWidth: 0
   },
   streakPill: {
     alignItems: "center",
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 10
+    paddingVertical: 10,
+    flexShrink: 0
   },
   streakText: {
     color: colors.textPrimary,
@@ -408,6 +430,23 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1
+  },
+  onboardingGate: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 14,
+    padding: 18
+  },
+  gateTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "900"
+  },
+  gateCopy: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4
   },
   insightTitle: {
     color: colors.textPrimary,

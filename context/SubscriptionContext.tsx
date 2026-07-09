@@ -9,8 +9,8 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 const REVENUECAT_API_KEY = "test_ZzlVNfzMbUjBXRMknqDjIEOaWQe";
 const WEB_CHECKOUT_URLS = {
-  pro: "https://fitneo.app/checkout/pro",
-  elite: "https://fitneo.app/checkout/elite"
+  pro: process.env.EXPO_PUBLIC_STRIPE_PRO_CHECKOUT_URL ?? "https://fitneo.app/checkout/pro",
+  elite: process.env.EXPO_PUBLIC_STRIPE_ELITE_CHECKOUT_URL ?? "https://fitneo.app/checkout/elite"
 } as const;
 
 let isRevenueCatConfigured = false;
@@ -240,7 +240,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
         checkoutUrl,
         activeTier: getLocalActiveTier(profile),
         activeEntitlements: {},
-        message: `Redirecting to the ${requestedTier.toUpperCase()} web checkout placeholder.`
+        message: `Redirecting to secure ${requestedTier.toUpperCase()} payment checkout.`
       };
     }
 

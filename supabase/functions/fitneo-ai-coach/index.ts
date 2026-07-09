@@ -8,6 +8,9 @@ type CoachRequest = {
   prompt?: string;
   message?: string;
   imageUri?: string;
+  image_data?: string;
+  imageData?: string;
+  mimeType?: string;
   sessionId?: string;
   messages?: Array<{
     role?: ChatRole;
@@ -146,9 +149,9 @@ Deno.serve(async (request) => {
 });
 
 async function analyzeFood(payload: CoachRequest, apiKey: string) {
-  const match = payload.imageUri?.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/s);
-  if (!match) {
-    return json({ error: "A JPEG, PNG, or WebP data image is required." }, 400);
+  const normalized = normalizeFoodImage(payload);
+  if (!normalized) {
+    return json({ error: "A JPEG, PNG, or WebP base64 image is required." }, 400);
   }
 
   const model = Deno.env.get("GEMINI_VISION_MODEL") ?? Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
@@ -171,8 +174,8 @@ async function analyzeFood(payload: CoachRequest, apiKey: string) {
             },
             {
               inlineData: {
-                mimeType: match[1],
-                data: match[2]
+                mimeType: normalized.mimeType,
+                data: normalized.data
               }
             }
           ]
@@ -220,6 +223,26 @@ async function analyzeFood(payload: CoachRequest, apiKey: string) {
       error: error instanceof Error ? `Food analysis failed: ${error.message}` : "Food analysis failed."
     }, 502);
   }
+}
+
+function normalizeFoodImage(payload: CoachRequest): { mimeType: string; data: string } | null {
+  const dataUri = payload.imageUri?.trim() ?? "";
+  const match = dataUri.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/s);
+  const mimeType = (payload.mimeType ?? match?.[1] ?? "image/jpeg").replace("image/jpg", "image/jpeg");
+  const base64 = (payload.image_data ?? payload.imageData ?? match?.[2] ?? "").replace(/\s/g, "");
+
+  if (!/^image\/(?:jpeg|png|webp)$/.test(mimeType)) {
+    return null;
+  }
+  if (!base64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) {
+    return null;
+  }
+  try {
+    atob(base64);
+  } catch {
+    return null;
+  }
+  return { mimeType, data: base64 };
 }
 
 function json(body: Record<string, unknown>, status = 200) {
