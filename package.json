@@ -7,7 +7,7 @@
     "start": "expo start",
     "android": "expo run:android",
     "web": "expo start --web",
-    "build": "expo export -p web",
+    "build": "npx expo export -p web",
     "build:web": "npx expo export -p web",
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit"
