@@ -2,15 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { AdaptiveBanner } from "@/components/AdaptiveBanner";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, IconBubble, MetaItem, PillButton, SectionHeader, SkeletonBlock, StatCard, TouchableCard, XPBar, withAlpha } from "@/components/ScreenKit";
-import { useSubscription } from "@/context/SubscriptionContext";
 import { DashboardData, fetchActiveWorkoutPlan, fetchDashboardData, WorkoutProgram } from "@/lib/api";
 import { colors, radii } from "@/lib/theme";
+import { useAuth } from "@/context/AuthContext";
+import { loadWaterIntake, saveWaterIntake } from "@/lib/water";
 
 export default function DashboardScreen() {
-  const { isFreeExpired } = useSubscription();
+  const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +25,8 @@ export default function DashboardScreen() {
         fetchDashboardData(),
         fetchActiveWorkoutPlan()
       ]);
-      setData(dashboard);
+      const waterCurrent = await loadWaterIntake(user?.id ?? null, dashboard.waterGoal);
+      setData({ ...dashboard, waterCurrent });
       setPlan(activePlan);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard.");
@@ -38,9 +39,20 @@ export default function DashboardScreen() {
     void loadDashboard();
   }, []);
 
+  async function updateWaterIntake(amount: number) {
+    if (!data) return;
+    const previous = data.waterCurrent;
+    setData({ ...data, waterCurrent: amount });
+    try {
+      await saveWaterIntake(user?.id ?? null, amount, data.waterGoal);
+    } catch {
+      setData((current) => current ? { ...current, waterCurrent: previous } : current);
+    }
+  }
+
   if (isLoading) {
     return (
-      <AppLayout scroll adSlot={<AdaptiveBanner enabled={isFreeExpired} />}>
+      <AppLayout scroll>
         <View style={styles.skeletonStack}>
           <SkeletonBlock height={68} />
           <SkeletonBlock height={76} />
@@ -56,7 +68,7 @@ export default function DashboardScreen() {
 
   if (error || !data) {
     return (
-      <AppLayout scroll adSlot={<AdaptiveBanner enabled={isFreeExpired} />}>
+      <AppLayout scroll>
         <ErrorState message={error ?? "Dashboard data is unavailable."} onRetry={loadDashboard} />
       </AppLayout>
     );
@@ -65,7 +77,7 @@ export default function DashboardScreen() {
   const xpInto = data.xp % data.xpSpan;
 
   return (
-    <AppLayout scroll adSlot={<AdaptiveBanner enabled={isFreeExpired} />}>
+    <AppLayout scroll>
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Good morning</Text>
@@ -146,7 +158,7 @@ export default function DashboardScreen() {
         <GoalRow title="Calories eaten" value={data.caloriesEaten} target={data.calorieEatGoal} tint={colors.gold} />
       </TouchableCard>
 
-      <TouchableCard radius={radii.xxl} style={styles.cardStack} onPress={loadDashboard}>
+      <TouchableCard radius={radii.xxl} style={styles.cardStack}>
         <View style={styles.rowBetween}>
           <View style={styles.inline}>
             <Ionicons name="water" size={16} color={colors.textPrimary} />
@@ -156,9 +168,18 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.waterRow}>
           {Array.from({ length: data.waterGoal }).map((_, index) => (
-            <Ionicons key={index} name={index < data.waterCurrent ? "water" : "water-outline"} size={20} color={index < data.waterCurrent ? colors.accent : colors.textTertiary} />
+            <TouchableOpacity
+              accessibilityLabel={`Set water intake to ${((index + 1) * 0.25).toFixed(2)} liters`}
+              accessibilityRole="button"
+              key={index}
+              onPress={() => void updateWaterIntake(index + 1)}
+              style={[styles.waterDrop, index < data.waterCurrent && styles.waterDropActive]}
+            >
+              <Ionicons name="water" size={18} color={index < data.waterCurrent ? colors.textPrimary : colors.textTertiary} />
+            </TouchableOpacity>
           ))}
         </View>
+        <Text style={styles.waterLiters}>{(data.waterCurrent * 0.25).toFixed(2)} L logged today</Text>
       </TouchableCard>
 
       <TouchableCard radius={radii.xxl} style={styles.insightCard} onPress={() => router.push("/(tabs)/coach")}>
@@ -376,6 +397,9 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingTop: 4
   },
+  waterDrop: { alignItems: "center", borderColor: "rgba(255,255,255,0.12)", borderRadius: 18, borderWidth: 1, height: 36, justifyContent: "center", width: 36 },
+  waterDropActive: { backgroundColor: colors.accent, borderColor: "rgba(255,255,255,0.72)" },
+  waterLiters: { color: colors.textSecondary, fontSize: 11, fontWeight: "700" },
   insightCard: {
     alignItems: "center",
     flexDirection: "row",

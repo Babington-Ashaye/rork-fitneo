@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Redirect, router } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -18,27 +18,30 @@ const dietOptions = ["Standard", "High Protein", "Vegetarian", "Vegan", "Mediter
 const coachOptions = ["Supportive", "Motivational", "Data-driven", "Push me hard", "Mix of everything"];
 
 export default function OnboardingScreen() {
-  const { markLocalOnboardingComplete, refreshProfile, session } = useAuth();
+  const { profile, markLocalOnboardingComplete, refreshProfile, session } = useAuth();
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const isEditing = params.mode === "edit";
+  const savedAnswers = profile?.onboarding_answers ?? {};
   const [step, setStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [age, setAge] = useState("25");
-  const [gender, setGender] = useState("male");
-  const [weight, setWeight] = useState("70");
+  const [name, setName] = useState(profile?.display_name ?? "");
+  const [age, setAge] = useState(String(profile?.age ?? 25));
+  const [gender, setGender] = useState(profile?.gender ?? "male");
+  const [weight, setWeight] = useState(String(profile?.weight_kg ?? 70));
   const [weightUnit, setWeightUnit] = useState("kg");
-  const [height, setHeight] = useState("175");
-  const [goal, setGoal] = useState("Build Muscle");
-  const [level, setLevel] = useState("Beginner");
-  const [equipment, setEquipment] = useState<string[]>(["Dumbbells"]);
-  const [days, setDays] = useState(3);
-  const [duration, setDuration] = useState("30-45 min");
-  const [selectedStyles, setSelectedStyles] = useState<string[]>(["Strength Training"]);
-  const [activity, setActivity] = useState("Moderately active");
-  const [recovery, setRecovery] = useState("Average sleep and recovery");
-  const [selectedInjuries, setSelectedInjuries] = useState<string[]>(["No injuries or limitations"]);
-  const [diet, setDiet] = useState("Standard");
-  const [coach, setCoach] = useState("Motivational");
+  const [height, setHeight] = useState(String(profile?.height_cm ?? 175));
+  const [goal, setGoal] = useState(profile?.primary_goal ?? "Build Muscle");
+  const [level, setLevel] = useState(profile?.fitness_level ?? "Beginner");
+  const [equipment, setEquipment] = useState<string[]>(Array.isArray(savedAnswers.equipment) ? savedAnswers.equipment as string[] : ["Dumbbells"]);
+  const [days, setDays] = useState(Number(savedAnswers.days ?? 3));
+  const [duration, setDuration] = useState(String(savedAnswers.duration ?? "30-45 min"));
+  const [selectedStyles, setSelectedStyles] = useState<string[]>(Array.isArray(savedAnswers.trainingStyles) ? savedAnswers.trainingStyles as string[] : ["Strength Training"]);
+  const [activity, setActivity] = useState(profile?.activity_level ?? "Moderately active");
+  const [recovery, setRecovery] = useState(String(savedAnswers.recovery ?? "Average sleep and recovery"));
+  const [selectedInjuries, setSelectedInjuries] = useState<string[]>(Array.isArray(savedAnswers.injuries) ? savedAnswers.injuries as string[] : ["No injuries or limitations"]);
+  const [diet, setDiet] = useState(profile?.dietary_preference ?? "Standard");
+  const [coach, setCoach] = useState(String(savedAnswers.coach ?? "Motivational"));
 
   const totalSteps = 8;
   const progress = (step + 1) / totalSteps;
@@ -135,17 +138,17 @@ export default function OnboardingScreen() {
       </View>
 
       {step === 0 ? (
-        <StepShell kicker="ABOUT YOU" title="Tell us about yourself">
-          <TextInput placeholder="Your name" placeholderTextColor={colors.textTertiary} style={styles.input} value={name} onChangeText={setName} />
+        <StepShell kicker={isEditing ? "EDIT PROFILE" : "ABOUT YOU"} title="Tell us about yourself">
+          <TextInput placeholder="Your name" placeholderTextColor={colors.textTertiary} style={styles.input} value={name} onChangeText={setName} underlineColorAndroid="transparent" />
           <View style={styles.inputGrid}>
-            <TextInput keyboardType="number-pad" placeholder="Age" placeholderTextColor={colors.textTertiary} style={styles.gridInput} value={age} onChangeText={setAge} />
+            <TextInput keyboardType="number-pad" placeholder="Age" placeholderTextColor={colors.textTertiary} style={styles.gridInput} value={age} onChangeText={setAge} underlineColorAndroid="transparent" />
             <UnitToggle value={gender} values={["male", "female"]} onChange={setGender} />
           </View>
           <View style={styles.inputGrid}>
-            <TextInput keyboardType="decimal-pad" placeholder="Weight" placeholderTextColor={colors.textTertiary} style={styles.gridInput} value={weight} onChangeText={setWeight} />
+            <TextInput keyboardType="decimal-pad" placeholder="Weight" placeholderTextColor={colors.textTertiary} style={styles.gridInput} value={weight} onChangeText={setWeight} underlineColorAndroid="transparent" />
             <UnitToggle value={weightUnit} values={["kg", "lbs"]} onChange={setWeightUnit} />
           </View>
-          <TextInput keyboardType="decimal-pad" placeholder="Height in cm" placeholderTextColor={colors.textTertiary} style={styles.input} value={height} onChangeText={setHeight} />
+          <TextInput keyboardType="decimal-pad" placeholder="Height in cm" placeholderTextColor={colors.textTertiary} style={styles.input} value={height} onChangeText={setHeight} underlineColorAndroid="transparent" />
         </StepShell>
       ) : null}
 

@@ -1,4 +1,5 @@
 import "react-native-gesture-handler";
+import "@/lib/i18n";
 import { router, Stack, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
@@ -7,6 +8,8 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { colors } from "@/lib/theme";
 import { AppOpenAdGate } from "@/components/AppOpenAdGate";
+import { useSubscription } from "@/context/SubscriptionContext";
+import { subscribeToNotificationNavigation } from "@/lib/notifications";
 
 export default function RootLayout() {
   return (
@@ -36,10 +39,16 @@ function RootNavigator() {
     }
   }, [isLoading, needsLegalAcceptance, segments, session]);
 
+  useEffect(() => {
+    return subscribeToNotificationNavigation((route) => {
+      if (session) router.push(route as never);
+    });
+  }, [session]);
+
   return (
     <SubscriptionProvider>
       <StatusBar style="light" />
-      <AppOpenAdGate />
+      <TierAwareAppOpenAd />
       <Stack
         screenOptions={{
           contentStyle: { backgroundColor: colors.background },
@@ -51,6 +60,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
         <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/callback" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="legal-consent" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
@@ -61,7 +71,19 @@ function RootNavigator() {
         <Stack.Screen name="sports-mode" options={{ title: "Sports Mode" }} />
         <Stack.Screen name="badges" options={{ title: "Badges" }} />
         <Stack.Screen name="chat-history" options={{ title: "Chat History" }} />
+        <Stack.Screen name="subscription-test" options={{ title: "Subscription Testing" }} />
+        <Stack.Screen name="legal/privacy" options={{ title: "Privacy Policy" }} />
+        <Stack.Screen name="legal/terms" options={{ title: "Terms of Service" }} />
+        <Stack.Screen name="legal/refund" options={{ title: "Refund Policy" }} />
+        <Stack.Screen name="legal/imprint" options={{ title: "Imprint" }} />
+        <Stack.Screen name="legal/support" options={{ title: "Support" }} />
       </Stack>
     </SubscriptionProvider>
   );
+}
+
+function TierAwareAppOpenAd() {
+  const { isLoading, isPremium } = useSubscription();
+  if (isLoading || isPremium) return null;
+  return <AppOpenAdGate />;
 }

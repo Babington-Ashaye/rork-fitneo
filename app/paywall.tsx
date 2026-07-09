@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Linking from "expo-linking";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { GlassCard } from "@/components/ScreenKit";
-import { BillingPlan, restoreBillingPurchases, startBillingCheckout } from "@/lib/billing";
+import { useSubscription } from "@/context/SubscriptionContext";
+import { restoreBillingPurchases } from "@/lib/billing";
 import { colors, radii } from "@/lib/theme";
 
 type Tier = "pro" | "elite";
@@ -16,10 +16,10 @@ const planDetails = {
     monthly: 4.99,
     yearly: 39.99,
     features: [
-      "Unlimited FITNEO AI conversations",
-      "AI-generated workout plans",
-      "Complete nutrition and progress tracking",
-      "Leaderboard, badges, and weekly reports"
+      "Zero ads across FITNEO",
+      "Complete local and GitHub exercise library",
+      "Advanced AI tracking metrics",
+      "Full workout, nutrition, and chat history"
     ]
   },
   elite: {
@@ -30,8 +30,8 @@ const planDetails = {
     features: [
       "Everything in Pro",
       "Sport-specific athletic programming",
-      "Elite Physique and conditioning systems",
-      "Priority AI and nutrition scanner"
+      "Premier Elite Physique conditioning systems",
+      "Priority AI coaching and nutrition scanner"
     ]
   }
 };
@@ -41,6 +41,7 @@ export default function PaywallScreen() {
   const [yearly, setYearly] = useState(true);
   const [status, setStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { startSubscriptionCheckout, subscriptionPlatform } = useSubscription();
   const selected = planDetails[tier];
 
   const price = useMemo(() => {
@@ -58,17 +59,12 @@ export default function PaywallScreen() {
     setIsLoading(true);
     setStatus(null);
     try {
-      const plan = `${tier}_${yearly ? "yearly" : "monthly"}` as BillingPlan;
-      const response = await startBillingCheckout(plan);
-      if (response.error) {
-        throw new Error(response.error);
-      }
-      if (response.data?.checkoutUrl) {
-        await Linking.openURL(response.data.checkoutUrl);
-        setStatus("Checkout opened securely.");
-      } else {
-        setStatus("Checkout is ready, but the billing function did not return a URL.");
-      }
+      const response = await startSubscriptionCheckout(tier, yearly ? "yearly" : "monthly");
+      setStatus(
+        response.platform === "web"
+          ? `Redirecting to secure ${tier.toUpperCase()} web checkout.`
+          : `Native checkout completed. Active tier: ${response.activeTier}.`
+      );
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Checkout could not start.");
     } finally {
@@ -90,7 +86,11 @@ export default function PaywallScreen() {
           <Ionicons name="diamond" size={34} color={colors.accent} />
         </View>
         <Text style={styles.title}>Choose Your Plan</Text>
-        <Text style={styles.subtitle}>One free month. Train without limits.</Text>
+        <Text style={styles.subtitle}>
+          {subscriptionPlatform === "web"
+            ? "iPhone web testing redirects to the placeholder billing portal."
+            : "Android native testing uses the RevenueCat SDK checkout."}
+        </Text>
       </View>
 
       <View style={styles.tabs}>
@@ -143,6 +143,10 @@ export default function PaywallScreen() {
       <TouchableOpacity onPress={restore} disabled={isLoading}>
         <Text style={styles.restore}>Restore Purchases</Text>
       </TouchableOpacity>
+      <View style={styles.freePlan}>
+        <Text style={styles.freeTitle}>FREE PLAN</Text>
+        <Text style={styles.freeCopy}>Core metrics · 31 foundational exercises · standard tracking · inline ads</Text>
+      </View>
     </AppLayout>
   );
 }
@@ -187,4 +191,8 @@ const styles = StyleSheet.create({
   status: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, textAlign: "center" },
   disclaimer: { color: colors.textTertiary, fontSize: 11, textAlign: "center" },
   restore: { color: colors.accent, fontSize: 13, fontWeight: "800", textAlign: "center" }
+  ,
+  freePlan: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.025)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, gap: 5, padding: 13 },
+  freeTitle: { color: colors.textTertiary, fontSize: 9, fontWeight: "900", letterSpacing: 1.3 },
+  freeCopy: { color: colors.textSecondary, fontSize: 11, lineHeight: 16, textAlign: "center" }
 });

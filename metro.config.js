@@ -1,6 +1,19 @@
+const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
+const projectRoot = __dirname;
+
+config.resolver = {
+  ...config.resolver,
+  extraNodeModules: {
+    ...(config.resolver?.extraNodeModules ?? {}),
+    react: path.resolve(projectRoot, "node_modules/react"),
+    "react-dom": path.resolve(projectRoot, "node_modules/react-dom"),
+    "react-native": path.resolve(projectRoot, "node_modules/react-native"),
+    "react-native-web": path.resolve(projectRoot, "node_modules/react-native-web")
+  }
+};
 
 // Production exports and EAS builds enable this minifier. Development remains readable.
 config.transformer.minifierPath = require.resolve("metro-minify-terser");
@@ -13,7 +26,7 @@ config.transformer.minifierConfig = {
     pure_getters: true,
     unused: true
   },
-  format: {
+  output: {
     comments: false
   },
   keep_classnames: false,

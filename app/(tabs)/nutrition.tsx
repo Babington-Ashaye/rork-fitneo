@@ -1,12 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
+import { AdaptiveBanner } from "@/components/AdaptiveBanner";
 import { EmptySpacer, ErrorState, IconBubble, LoadingState, ScreenTitle, TouchableCard } from "@/components/ScreenKit";
 import { fetchNutritionData, NutritionData, saveNutritionLog } from "@/lib/api";
 import { FoodItem, searchFoods } from "@/lib/foods";
 import { colors, radii } from "@/lib/theme";
+import { useSubscription } from "@/context/SubscriptionContext";
 
 const mealIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   Breakfast: "sunny",
@@ -17,6 +19,7 @@ const mealIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
 const PAGE_SIZE = 12;
 
 export default function NutritionScreen() {
+  const { isLoading: isSubscriptionLoading, isPremium } = useSubscription();
   const [data, setData] = useState<NutritionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -139,7 +142,8 @@ export default function NutritionScreen() {
       </TouchableCard>
 
       {data.meals.map((meal) => (
-        <TouchableCard key={meal.title} radius={radii.xl} style={styles.mealCard} onPress={() => openScanPicker(meal.title)}>
+        <Fragment key={meal.title}>
+        <TouchableCard radius={radii.xl} style={styles.mealCard} onPress={() => openScanPicker(meal.title)}>
           <View style={styles.mealHeader}>
             <View style={styles.mealTitleWrap}>
               <Ionicons name={mealIcons[meal.title] ?? "restaurant"} size={17} color={colors.textPrimary} />
@@ -158,6 +162,13 @@ export default function NutritionScreen() {
             </TouchableOpacity>
           </View>
         </TouchableCard>
+        {!isSubscriptionLoading && !isPremium && (meal.title === "Breakfast" || meal.title === "Lunch") ? (
+          <View style={styles.inlineAd}>
+            <Text style={styles.adLabel}>SPONSORED</Text>
+            <AdaptiveBanner enabled />
+          </View>
+        ) : null}
+        </Fragment>
       ))}
 
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -210,6 +221,7 @@ export default function NutritionScreen() {
                 style={styles.foodSearchInput}
                 value={foodQuery}
                 onChangeText={(value) => { setFoodQuery(value); setFoodPage(1); }}
+                underlineColorAndroid="transparent"
               />
             </View>
             <FlatList
@@ -416,4 +428,7 @@ const styles = StyleSheet.create({
   emptyFood: { color: colors.textTertiary, paddingVertical: 40, textAlign: "center" },
   loadMore: { alignItems: "center", borderColor: colors.cardStroke, borderRadius: 12, borderWidth: 1, marginTop: 12, padding: 13 },
   loadMoreText: { color: colors.accent, fontSize: 13, fontWeight: "800" }
+  ,
+  inlineAd: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.025)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, minHeight: 62, overflow: "hidden", paddingTop: 3 },
+  adLabel: { color: colors.textTertiary, fontSize: 8, fontWeight: "800", letterSpacing: 1.2 }
 });

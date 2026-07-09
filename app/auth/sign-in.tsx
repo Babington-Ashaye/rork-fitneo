@@ -71,6 +71,7 @@ export default function SignInScreen() {
                 textContentType="password"
                 value={password}
                 onChangeText={setPassword}
+                underlineColorAndroid="transparent"
               />
               <TouchableOpacity activeOpacity={0.72} onPress={() => setShowPassword((current) => !current)} style={styles.eyeButton}>
                 <Ionicons name={showPassword ? "eye" : "eye-off"} size={18} color={colors.textTertiary} />
@@ -140,6 +141,7 @@ function Field({
         textContentType="emailAddress"
         value={value}
         onChangeText={onChangeText}
+        underlineColorAndroid="transparent"
       />
     </View>
   );

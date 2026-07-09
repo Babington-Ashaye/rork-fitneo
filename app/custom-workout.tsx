@@ -1,30 +1,54 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, GlassCard, ScreenTitle } from "@/components/ScreenKit";
 import { saveCustomWorkout } from "@/lib/api";
-import { Exercise, exerciseCatalog } from "@/lib/exercises";
+import { Exercise, exerciseCatalog, fetchRemoteExerciseCatalog } from "@/lib/exercises";
 import { colors, radii } from "@/lib/theme";
+import { useSubscription } from "@/context/SubscriptionContext";
 
 export default function CustomWorkoutScreen() {
+  const { isPremium } = useSubscription();
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Exercise[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [catalog, setCatalog] = useState<Exercise[]>(() => isPremium ? exerciseCatalog : exerciseCatalog.slice(0, 31));
+
+  useEffect(() => {
+    if (!isPremium) {
+      setCatalog(exerciseCatalog.slice(0, 31));
+      return;
+    }
+    let mounted = true;
+    void fetchRemoteExerciseCatalog()
+      .then((remoteExercises) => {
+        if (!mounted) return;
+        const existingNames = new Set(exerciseCatalog.map((item) => item.name.toLowerCase()));
+        const additions = remoteExercises.filter((item) => !existingNames.has(item.name.toLowerCase()));
+        setCatalog([...exerciseCatalog, ...additions]);
+      })
+      .catch(() => {
+        if (mounted) setCatalog(exerciseCatalog);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [isPremium]);
 
   const suggestions = useMemo(() => {
     const clean = query.trim().toLowerCase();
     if (!clean) return [];
-    return exerciseCatalog
+    return catalog
       .filter((item) =>
         !selected.some((selectedItem) => selectedItem.id === item.id) &&
         (item.name.toLowerCase().includes(clean) || item.muscleGroup.toLowerCase().includes(clean))
       )
       .slice(0, 8);
-  }, [query, selected]);
+  }, [catalog, query, selected]);
 
   function addExercise(exercise: Exercise) {
     setSelected((current) => [...current, exercise]);
@@ -52,6 +76,12 @@ export default function CustomWorkoutScreen() {
   return (
     <AppLayout scroll>
       <ScreenTitle title="Custom Workout" subtitle="Build a reusable routine from the complete FITNEO exercise library." />
+      {!isPremium ? (
+        <TouchableOpacity style={styles.libraryGate} onPress={() => router.push("/paywall")}>
+          <Ionicons name="lock-closed" size={16} color={colors.gold} />
+          <Text style={styles.libraryGateText}>Free includes 31 foundational exercises. Upgrade to Pro for the complete library.</Text>
+        </TouchableOpacity>
+      ) : null}
       <GlassCard radius={radii.xxl} style={styles.card}>
         <Text style={styles.title}>Program details</Text>
         <TextInput
@@ -60,6 +90,7 @@ export default function CustomWorkoutScreen() {
           style={styles.input}
           value={name}
           onChangeText={setName}
+          underlineColorAndroid="transparent"
         />
         <View style={styles.searchWrap}>
           <Ionicons name="search" size={18} color={colors.textTertiary} />
@@ -69,6 +100,7 @@ export default function CustomWorkoutScreen() {
             style={styles.searchInput}
             value={query}
             onChangeText={setQuery}
+            underlineColorAndroid="transparent"
           />
         </View>
         {suggestions.length > 0 ? (
@@ -140,4 +172,7 @@ const styles = StyleSheet.create({
   saveButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 14, flexDirection: "row", gap: 8, justifyContent: "center", minHeight: 54 },
   saveText: { color: colors.textPrimary, fontSize: 15, fontWeight: "900" },
   disabled: { opacity: 0.6 }
+  ,
+  libraryGate: { alignItems: "center", backgroundColor: "rgba(255,199,51,0.08)", borderColor: "rgba(255,199,51,0.28)", borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 9, padding: 13 },
+  libraryGateText: { color: colors.textSecondary, flex: 1, fontSize: 12, lineHeight: 17 }
 });

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
@@ -13,10 +14,12 @@ import {
 } from "@/lib/api";
 import { streamFitneoCoach } from "@/lib/edgeFunctions";
 import { colors, radii } from "@/lib/theme";
+import { useSubscription } from "@/context/SubscriptionContext";
 
 const suggestions = ["Build my weekly plan", "Generate a HIIT workout", "Review my recovery", "Tune my calories"];
 
 export default function CoachScreen() {
+  const { isPremium } = useSubscription();
   const [prompt, setPrompt] = useState("");
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSession, setActiveSession] = useState<ChatSessionSummary | null>(null);
@@ -152,8 +155,8 @@ export default function CoachScreen() {
   return (
     <AppLayout contentContainerStyle={styles.screen}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setHistoryOpen((current) => !current)} style={styles.iconButton}>
-          <Ionicons name="albums-outline" size={19} color={colors.textPrimary} />
+        <TouchableOpacity onPress={() => isPremium ? setHistoryOpen((current) => !current) : router.push("/paywall")} style={styles.iconButton}>
+          <Ionicons name={isPremium ? "albums-outline" : "lock-closed-outline"} size={19} color={isPremium ? colors.textPrimary : colors.gold} />
         </TouchableOpacity>
         <View style={styles.aiIdentity}>
           <View style={styles.onlineDot} />
@@ -238,6 +241,7 @@ export default function CoachScreen() {
           style={styles.input}
           value={prompt}
           onChangeText={setPrompt}
+          underlineColorAndroid="transparent"
         />
         <TouchableOpacity
           activeOpacity={0.8}

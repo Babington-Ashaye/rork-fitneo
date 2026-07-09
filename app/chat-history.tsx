@@ -1,23 +1,42 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, ScreenTitle, SkeletonBlock, TouchableCard } from "@/components/ScreenKit";
 import { ChatSessionSummary, fetchChatSessions } from "@/lib/api";
 import { colors } from "@/lib/theme";
+import { useSubscription } from "@/context/SubscriptionContext";
 
 export default function ChatHistoryScreen() {
+  const { isPremium } = useSubscription();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isPremium) {
+      setLoading(false);
+      return;
+    }
     fetchChatSessions()
       .then(setSessions)
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load chat history."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isPremium]);
+
+  if (!isPremium) {
+    return (
+      <AppLayout contentContainerStyle={styles.locked}>
+        <Ionicons name="lock-closed" size={34} color={colors.gold} />
+        <Text style={styles.lockedTitle}>Full history is a Pro feature</Text>
+        <Text style={styles.lockedCopy}>Upgrade to keep and revisit your complete FITNEO AI coaching history.</Text>
+        <TouchableOpacity style={styles.upgrade} onPress={() => router.push("/paywall")}>
+          <Text style={styles.upgradeText}>Explore Pro</Text>
+        </TouchableOpacity>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout scroll>
@@ -47,4 +66,10 @@ const styles = StyleSheet.create({
   title: { color: colors.textPrimary, fontSize: 14, fontWeight: "800" },
   copy: { color: colors.textTertiary, fontSize: 11, marginTop: 3 },
   empty: { color: colors.textTertiary, fontSize: 13, paddingVertical: 30, textAlign: "center" }
+  ,
+  locked: { alignItems: "center", justifyContent: "center", paddingHorizontal: 28 },
+  lockedTitle: { color: colors.textPrimary, fontSize: 23, fontWeight: "900", textAlign: "center" },
+  lockedCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
+  upgrade: { backgroundColor: colors.accent, borderRadius: 14, paddingHorizontal: 22, paddingVertical: 13 },
+  upgradeText: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" }
 });

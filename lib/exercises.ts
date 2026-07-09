@@ -12,6 +12,8 @@ export type Exercise = {
 };
 
 const videoBase = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos";
+const repositoryBase = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main";
+const remoteDatasetUrl = `${repositoryBase}/data/exercises.json`;
 
 const exerciseRows: Array<[
   string,
@@ -123,4 +125,45 @@ export const starterExercises = starterIds
 
 export function findExercise(id: string) {
   return exerciseCatalog.find((exercise) => exercise.id === id);
+}
+
+type RemoteExerciseRow = {
+  id?: string;
+  name?: string;
+  category?: string;
+  muscle_group?: string;
+  target?: string;
+  instructions?: { en?: string } | string;
+  gif_url?: string;
+};
+
+let remoteExerciseCache: Exercise[] | null = null;
+
+export async function fetchRemoteExerciseCatalog(): Promise<Exercise[]> {
+  if (remoteExerciseCache) return remoteExerciseCache;
+  const response = await fetch(remoteDatasetUrl, {
+    headers: { Accept: "application/json" }
+  });
+  if (!response.ok) {
+    throw new Error(`Exercise repository returned HTTP ${response.status}.`);
+  }
+  const rows = await response.json() as RemoteExerciseRow[];
+  remoteExerciseCache = rows
+    .filter((row) => row.id && row.name && row.gif_url)
+    .map((row) => ({
+      id: `github_${row.id}`,
+      name: row.name!,
+      muscleGroup: row.muscle_group ?? row.target ?? row.category ?? "Full Body",
+      difficulty: "Intermediate" as const,
+      sets: 3,
+      reps: "10-12",
+      restSeconds: 60,
+      instructions:
+        typeof row.instructions === "string"
+          ? row.instructions
+          : row.instructions?.en ?? `Perform ${row.name} with controlled form.`,
+      tip: "Use a controlled range of motion and stop if form breaks down.",
+      animationUrl: `${repositoryBase}/${row.gif_url!.replace(/^\/+/, "")}`
+    }));
+  return remoteExerciseCache;
 }

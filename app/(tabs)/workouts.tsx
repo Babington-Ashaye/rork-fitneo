@@ -6,10 +6,12 @@ import { AppLayout } from "@/components/AppLayout";
 import { Chip, EmptySpacer, ErrorState, IconBubble, MetaItem, ScreenTitle, SkeletonBlock, TouchableCard } from "@/components/ScreenKit";
 import { fetchWorkoutPrograms, WorkoutProgram } from "@/lib/api";
 import { colors, radii } from "@/lib/theme";
+import { useSubscription } from "@/context/SubscriptionContext";
 
 const filters = ["All", "Strength", "Conditioning", "Mobility", "Core"];
 
 export default function WorkoutsScreen() {
+  const { isPremium } = useSubscription();
   const [programs, setPrograms] = useState<WorkoutProgram[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
@@ -64,7 +66,7 @@ export default function WorkoutsScreen() {
 
       <View style={styles.search}>
         <Ionicons name="search" size={18} color={colors.textTertiary} />
-        <TextInput placeholder="Search workouts" placeholderTextColor={colors.textTertiary} style={styles.searchInput} value={query} onChangeText={setQuery} />
+        <TextInput placeholder="Search workouts" placeholderTextColor={colors.textTertiary} style={styles.searchInput} value={query} onChangeText={setQuery} underlineColorAndroid="transparent" />
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -87,7 +89,7 @@ export default function WorkoutsScreen() {
       {!isLoading && !error ? (
         <View style={styles.list}>
           {visiblePrograms.map((program) => (
-            <WorkoutCard key={program.id} program={program} />
+            <WorkoutCard key={program.id} program={program} canAccess={isPremium || !program.isPremium} />
           ))}
           {visiblePrograms.length === 0 ? <Text style={styles.emptyText}>No programs match that filter.</Text> : null}
         </View>
@@ -98,19 +100,19 @@ export default function WorkoutsScreen() {
   );
 }
 
-function WorkoutCard({ program }: { program: WorkoutProgram }) {
+function WorkoutCard({ canAccess, program }: { canAccess: boolean; program: WorkoutProgram }) {
   const tint = program.category.toLowerCase().includes("conditioning") ? colors.coral : program.category.toLowerCase().includes("mobility") ? colors.teal : colors.accent;
   const icon: keyof typeof Ionicons.glyphMap = program.category.toLowerCase().includes("mobility") ? "body" : program.category.toLowerCase().includes("conditioning") ? "flash" : "barbell";
 
   return (
-    <TouchableCard radius={radii.xl} style={styles.workoutCard} onPress={() => router.push("/active-workout")}>
+    <TouchableCard radius={radii.xl} style={styles.workoutCard} onPress={() => router.push(canAccess ? "/active-workout" : "/paywall")}>
       <View style={styles.row}>
         <IconBubble icon={icon} tint={tint} shape="rounded" size={48} />
         <View style={styles.workoutTitleBlock}>
           <Text style={styles.workoutName}>{program.name}</Text>
           <Text style={[styles.category, { color: tint }]}>{program.category}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        <Ionicons name={canAccess ? "chevron-forward" : "lock-closed"} size={16} color={canAccess ? colors.textTertiary : colors.gold} />
       </View>
       <Text style={styles.description} numberOfLines={2}>Balanced programming with progressions, rest timing, and FITNEO XP rewards.</Text>
       <View style={styles.metaFooter}>

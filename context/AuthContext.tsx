@@ -26,6 +26,8 @@ export type AuthProfile = {
   daily_protein_target?: number | null;
   daily_carbs_target?: number | null;
   daily_fat_target?: number | null;
+  dietary_preference?: string | null;
+  onboarding_answers?: Record<string, unknown> | null;
 };
 
 type AuthContextValue = {
@@ -264,6 +266,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       const callbackUrl = new URL(result.url);
       const hashParams = new URLSearchParams(callbackUrl.hash.replace(/^#/, ""));
+      const authorizationCode = callbackUrl.searchParams.get("code");
       const accessToken = callbackUrl.searchParams.get("access_token") ?? hashParams.get("access_token");
       const refreshToken = callbackUrl.searchParams.get("refresh_token") ?? hashParams.get("refresh_token");
       const oauthDescription =
@@ -273,21 +276,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (oauthDescription) {
         throw new Error(decodeURIComponent(oauthDescription.replace(/\+/g, " ")));
       }
-      if (!accessToken || !refreshToken) {
-        throw new Error(
-          `Google sign-in returned without a session. Add ${redirectTo} to the Supabase OAuth redirect allow list.`
-        );
+      let oauthSession: Session | null = null;
+      if (authorizationCode) {
+        const { data: exchanged, error: exchangeError } =
+          await supabase.auth.exchangeCodeForSession(authorizationCode);
+        if (exchangeError) throw exchangeError;
+        oauthSession = exchanged.session;
+      } else if (accessToken && refreshToken) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        if (sessionError) throw sessionError;
+        oauthSession = sessionData.session;
+      } else {
+        oauthSession = (await supabase.auth.getSession()).data.session;
       }
-
-      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      });
-      if (sessionError) {
-        throw sessionError;
+      if (!oauthSession) {
+        throw new Error(`Google sign-in returned without a session. Allow ${redirectTo} in Supabase Auth redirect URLs.`);
       }
-      setSession(sessionData.session);
-      await ensureProfile(sessionData.session);
+      setSession(oauthSession);
+      await ensureProfile(oauthSession);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign-in failed.");

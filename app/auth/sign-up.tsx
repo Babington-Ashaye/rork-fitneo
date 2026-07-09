@@ -51,6 +51,7 @@ export default function SignUpScreen() {
           textContentType="emailAddress"
           value={email}
           onChangeText={setEmail}
+          underlineColorAndroid="transparent"
         />
         <TextInput
           placeholder="Password"
@@ -60,6 +61,7 @@ export default function SignUpScreen() {
           textContentType="newPassword"
           value={password}
           onChangeText={setPassword}
+          underlineColorAndroid="transparent"
         />
         {localError || error ? <Text style={styles.error}>{localError ?? error}</Text> : null}
         <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={submit} style={[styles.primaryButton, isLoading && styles.disabled]}>
