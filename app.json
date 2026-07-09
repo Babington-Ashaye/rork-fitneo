@@ -5,6 +5,11 @@
     "scheme": "fitneo",
     "version": "1.0.0",
     "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "userInterfaceStyle": "dark",
     "jsEngine": "hermes",
     "icon": "./assets/icon.png",
@@ -40,12 +45,16 @@
         "CAMERA"
       ]
     },
-    "web": {
-      "bundler": "metro",
-      "output": "static"
-    },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0A84FF",
+          "defaultChannel": "fitneo-reminders"
+        }
+      ],
       [
         "expo-secure-store",
         {
