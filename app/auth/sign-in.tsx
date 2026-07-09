@@ -11,14 +11,17 @@ import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
 import { colors, radii } from "@/lib/theme";
 
 export default function SignInScreen() {
-  const { error, isLoading, signIn, signInWithGoogle } = useAuth();
+  const { error, isLoading, resetPassword, signIn, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   async function submit() {
     setLocalError(null);
+    setStatusMessage(null);
     const cleanEmail = email.trim();
     if (!cleanEmail) {
       setLocalError("Please enter your email.");
@@ -37,14 +40,30 @@ export default function SignInScreen() {
 
   async function continueWithGoogle() {
     setLocalError(null);
+    setStatusMessage(null);
     const ok = await signInWithGoogle();
     if (ok) {
       router.replace("/");
     }
   }
 
+  async function requestPasswordReset() {
+    setLocalError(null);
+    setStatusMessage(null);
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setLocalError("Enter your email first, then tap Forgot Password.");
+      return;
+    }
+
+    const ok = await resetPassword(cleanEmail);
+    if (ok) {
+      setStatusMessage("Password reset link sent. Check your inbox to continue securely.");
+    }
+  }
+
   return (
-    <AppLayout scroll contentContainerStyle={styles.screen}>
+    <AppLayout style={styles.authViewport} contentContainerStyle={styles.screen}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
         <View style={styles.logoBlock}>
           <View style={styles.logoGlow}>
@@ -62,10 +81,12 @@ export default function SignInScreen() {
           <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" />
           <View style={styles.fieldWrap}>
             <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordRow}>
+            <View style={[styles.passwordRow, passwordFocused && styles.inputFocused]}>
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
+                onBlur={() => setPasswordFocused(false)}
+                onFocus={() => setPasswordFocused(true)}
                 placeholder="Enter password"
                 placeholderTextColor={colors.textTertiary}
                 secureTextEntry={!showPassword}
@@ -81,7 +102,7 @@ export default function SignInScreen() {
             </View>
           </View>
 
-          <TouchableOpacity activeOpacity={0.72} onPress={() => setLocalError("Password reset will use Supabase email recovery once redirect URLs are configured.")}>
+          <TouchableOpacity activeOpacity={0.72} onPress={requestPasswordReset}>
             <Text style={styles.forgot}>Forgot Password?</Text>
           </TouchableOpacity>
 
@@ -95,6 +116,8 @@ export default function SignInScreen() {
               ].filter(Boolean).join(" and ")}. Add it in Vercel Environment Variables, then redeploy with a clean build cache.`}
             />
           ) : null}
+
+          {statusMessage ? <AuthNotice icon="mail" title="Reset email sent" message={statusMessage} /> : null}
 
           {localError || error ? <AuthNotice icon="alert-circle" title="Sign-in needs attention" message={localError ?? error ?? ""} danger /> : null}
 
@@ -141,6 +164,8 @@ function Field({
   placeholder: string;
   keyboardType?: "default" | "email-address";
 }) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <View style={styles.fieldWrap}>
       <Text style={styles.label}>{label}</Text>
@@ -148,9 +173,11 @@ function Field({
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType={keyboardType}
+        onBlur={() => setFocused(false)}
+        onFocus={() => setFocused(true)}
         placeholder={placeholder}
         placeholderTextColor={colors.textTertiary}
-        style={styles.input}
+        style={[styles.input, focused && styles.inputFocused]}
         textContentType="emailAddress"
         value={value}
         onChangeText={onChangeText}
@@ -161,18 +188,31 @@ function Field({
 }
 
 const styles = StyleSheet.create({
+  authViewport: {
+    ...(Platform.OS === "web"
+      ? {
+          height: "100dvh" as never,
+          maxHeight: "100dvh" as never,
+          overflow: "hidden" as const,
+          width: "100%"
+        }
+      : {})
+  },
   screen: {
     alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     paddingHorizontal: 24
   },
   keyboard: {
     alignItems: "center",
+    justifyContent: "center",
     width: "100%"
   },
   logoBlock: {
     alignItems: "center",
     gap: 12,
-    paddingTop: 48
+    paddingTop: 0
   },
   logoGlow: {
     alignItems: "center",
@@ -190,6 +230,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: "900",
     letterSpacing: 4,
+    fontFamily: Platform.select({ web: "Inter, Avenir Next, Montserrat, system-ui, sans-serif", default: undefined }),
     textShadowColor: "rgba(10,132,255,0.7)",
     textShadowOffset: { width: 0, height: 4 },
     textShadowRadius: 14
@@ -237,6 +278,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minHeight: 52,
     paddingHorizontal: 16
+  },
+  inputFocused: {
+    borderColor: "rgba(0,242,160,0.62)",
+    shadowColor: colors.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12
   },
   passwordRow: {
     alignItems: "center",

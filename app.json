@@ -45,6 +45,11 @@
         "CAMERA"
       ]
     },
+    "web": {
+      "favicon": "./assets/icon.png",
+      "themeColor": "#060914",
+      "backgroundColor": "#060914"
+    },
     "plugins": [
       "expo-router",
       [

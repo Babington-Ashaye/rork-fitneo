@@ -27,6 +27,14 @@ export function WebViewportGuard() {
         position: relative;
       }
 
+      input,
+      textarea,
+      select,
+      button {
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
       *,
       *::before,
       *::after {

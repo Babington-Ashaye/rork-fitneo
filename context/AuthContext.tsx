@@ -51,6 +51,7 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<boolean>;
   signInWithGoogle: () => Promise<boolean>;
   signUp: (email: string, password: string) => Promise<boolean>;
+  resetPassword: (email: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   markLocalOnboardingComplete: () => Promise<void>;
@@ -315,6 +316,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }
 
+  async function resetPassword(email: string) {
+    setError(null);
+    try {
+      if (!isSupabaseConfigured) {
+        setError(missingSupabaseConfigMessage);
+        return false;
+      }
+
+      const redirectTo = getOAuthRedirectUrl();
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo
+      });
+      if (resetError) {
+        throw resetError;
+      }
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Password reset email could not be sent.");
+      return false;
+    }
+  }
+
   async function signOut() {
     setError(null);
     if (isSupabaseConfigured) {
@@ -365,6 +388,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       signIn,
       signInWithGoogle,
       signUp,
+      resetPassword,
       signOut,
       refreshProfile,
       markLocalOnboardingComplete,

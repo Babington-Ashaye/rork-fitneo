@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthNotice } from "@/components/AuthNotice";
 import { useAuth } from "@/context/AuthContext";
@@ -9,9 +9,11 @@ import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
 import { colors, radii } from "@/lib/theme";
 
 export default function SignUpScreen() {
-  const { error, isLoading, signUp } = useAuth();
+  const { error, isLoading, signInWithGoogle, signUp } = useAuth();
   const [email, setEmail] = useState("");
+  const [emailFocused, setEmailFocused] = useState(false);
   const [password, setPassword] = useState("");
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   async function submit() {
@@ -31,8 +33,16 @@ export default function SignUpScreen() {
     }
   }
 
+  async function continueWithGoogle() {
+    setLocalError(null);
+    const ok = await signInWithGoogle();
+    if (ok) {
+      router.replace("/");
+    }
+  }
+
   return (
-    <AppLayout scroll contentContainerStyle={styles.screen}>
+    <AppLayout style={styles.authViewport} contentContainerStyle={styles.screen}>
       <View style={styles.logoBlock}>
         <View style={styles.logoGlow}>
           <Ionicons name="fitness" size={42} color={colors.accent} />
@@ -47,9 +57,11 @@ export default function SignUpScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
+          onBlur={() => setEmailFocused(false)}
+          onFocus={() => setEmailFocused(true)}
           placeholder="Email Address"
           placeholderTextColor={colors.textTertiary}
-          style={styles.input}
+          style={[styles.input, emailFocused && styles.inputFocused]}
           textContentType="emailAddress"
           value={email}
           onChangeText={setEmail}
@@ -58,8 +70,10 @@ export default function SignUpScreen() {
         <TextInput
           placeholder="Password"
           placeholderTextColor={colors.textTertiary}
+          onBlur={() => setPasswordFocused(false)}
+          onFocus={() => setPasswordFocused(true)}
           secureTextEntry
-          style={styles.input}
+          style={[styles.input, passwordFocused && styles.inputFocused]}
           textContentType="newPassword"
           value={password}
           onChangeText={setPassword}
@@ -79,6 +93,15 @@ export default function SignUpScreen() {
         <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={submit} style={[styles.primaryButton, isLoading && styles.disabled]}>
           {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.primaryText}>Create Account</Text>}
         </TouchableOpacity>
+        <View style={styles.dividerRow}>
+          <View style={styles.divider} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.divider} />
+        </View>
+        <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={continueWithGoogle} style={styles.googleButton}>
+          <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
+          <Text style={styles.googleText}>Continue with Google</Text>
+        </TouchableOpacity>
         <Text style={styles.legal}>
           By continuing, you agree to FITNEO's Consumer Terms & Usage Policy and acknowledge our Privacy Policy.
         </Text>
@@ -93,14 +116,26 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
+  authViewport: {
+    ...(Platform.OS === "web"
+      ? {
+          height: "100dvh" as never,
+          maxHeight: "100dvh" as never,
+          overflow: "hidden" as const,
+          width: "100%"
+        }
+      : {})
+  },
   screen: {
     alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     paddingHorizontal: 24
   },
   logoBlock: {
     alignItems: "center",
     gap: 12,
-    paddingTop: 48
+    paddingTop: 0
   },
   logoGlow: {
     alignItems: "center",
@@ -117,7 +152,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 36,
     fontWeight: "900",
-    letterSpacing: 6
+    letterSpacing: 6,
+    fontFamily: Platform.select({ web: "Inter, Avenir Next, Montserrat, system-ui, sans-serif", default: undefined }),
+    textShadowColor: "rgba(10,132,255,0.62)",
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 14
   },
   tagline: {
     color: colors.textSecondary,
@@ -145,6 +184,13 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: 16
   },
+  inputFocused: {
+    borderColor: "rgba(0,242,160,0.62)",
+    shadowColor: colors.teal,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12
+  },
   primaryButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
@@ -157,6 +203,41 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "700"
+  },
+  dividerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12
+  },
+  divider: {
+    backgroundColor: "rgba(255,255,255,0.10)",
+    flex: 1,
+    height: 1
+  },
+  dividerText: {
+    color: colors.textTertiary,
+    fontSize: 11,
+    fontWeight: "700"
+  },
+  googleButton: {
+    alignItems: "center",
+    backgroundColor: colors.textPrimary,
+    borderRadius: radii.md,
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "center",
+    minHeight: 52,
+    padding: 14
+  },
+  googleLogo: {
+    height: 20,
+    resizeMode: "contain",
+    width: 20
+  },
+  googleText: {
+    color: "#333333",
     fontSize: 16,
     fontWeight: "700"
   },

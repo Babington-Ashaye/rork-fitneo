@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { secureStorage } from "@/lib/secureStorage";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+const supabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? "").trim();
 const supabaseAnonKey =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
-  process.env.EXPO_PUBLIC_SUPABASE_KEY ??
-  "";
+  (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.EXPO_PUBLIC_SUPABASE_KEY ??
+    "").trim();
 
 function isValidHttpUrl(value: string): boolean {
   try {
