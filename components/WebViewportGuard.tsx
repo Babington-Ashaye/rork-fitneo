@@ -7,6 +7,16 @@ export function WebViewportGuard() {
       return;
     }
 
+    const viewport = document.querySelector<HTMLMetaElement>("meta[name='viewport']");
+    const previousViewportContent = viewport?.getAttribute("content") ?? null;
+    const viewportContent =
+      previousViewportContent && previousViewportContent.length > 0
+        ? previousViewportContent
+        : "width=device-width, initial-scale=1, maximum-scale=1";
+    if (viewport && !viewportContent.includes("interactive-widget")) {
+      viewport.setAttribute("content", `${viewportContent}, interactive-widget=resizes-content`);
+    }
+
     const style = document.createElement("style");
     style.setAttribute("data-fitneo-viewport-guard", "true");
     style.textContent = `
@@ -50,6 +60,13 @@ export function WebViewportGuard() {
 
     document.head.appendChild(style);
     return () => {
+      if (viewport) {
+        if (previousViewportContent) {
+          viewport.setAttribute("content", previousViewportContent);
+        } else {
+          viewport.removeAttribute("content");
+        }
+      }
       style.remove();
     };
   }, []);

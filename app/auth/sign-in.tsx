@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, router } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { RefObject, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthNotice } from "@/components/AuthNotice";
+import { AuthSkeleton } from "@/components/AuthSkeleton";
 import { TouchableCard } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
@@ -12,16 +13,25 @@ import { colors, radii } from "@/lib/theme";
 
 export default function SignInScreen() {
   const { error, isLoading, resetPassword, signIn, signInWithGoogle } = useAuth();
+  const emailInputRef = useRef<TextInput>(null);
+  const [isScreenReady, setIsScreenReady] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [hintMessage, setHintMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsScreenReady(true), 180);
+    return () => clearTimeout(timer);
+  }, []);
 
   async function submit() {
     setLocalError(null);
     setStatusMessage(null);
+    setHintMessage(null);
     const cleanEmail = email.trim();
     if (!cleanEmail) {
       setLocalError("Please enter your email.");
@@ -41,6 +51,7 @@ export default function SignInScreen() {
   async function continueWithGoogle() {
     setLocalError(null);
     setStatusMessage(null);
+    setHintMessage(null);
     const ok = await signInWithGoogle();
     if (ok) {
       router.replace("/");
@@ -50,9 +61,11 @@ export default function SignInScreen() {
   async function requestPasswordReset() {
     setLocalError(null);
     setStatusMessage(null);
+    setHintMessage(null);
     const cleanEmail = email.trim();
     if (!cleanEmail) {
-      setLocalError("Enter your email first, then tap Forgot Password.");
+      emailInputRef.current?.focus();
+      setHintMessage("Enter your email first and we'll send a secure reset link.");
       return;
     }
 
@@ -64,7 +77,17 @@ export default function SignInScreen() {
 
   return (
     <AppLayout style={styles.authViewport} contentContainerStyle={styles.screen}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboard}>
+        {!isScreenReady ? (
+          <AuthSkeleton />
+        ) : (
+          <ScrollView
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+          >
         <View style={styles.logoBlock}>
           <View style={styles.logoGlow}>
             <Ionicons name="fitness" size={42} color={colors.accent} />
@@ -78,7 +101,17 @@ export default function SignInScreen() {
 
         <View style={styles.formShell}>
           <Text style={styles.title}>Welcome Back</Text>
-          <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" />
+          <Field
+            inputRef={emailInputRef}
+            label="Email"
+            value={email}
+            onChangeText={(value) => {
+              setEmail(value);
+              if (hintMessage) setHintMessage(null);
+            }}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+          />
           <View style={styles.fieldWrap}>
             <Text style={styles.label}>Password</Text>
             <View style={[styles.passwordRow, passwordFocused && styles.inputFocused]}>
@@ -105,6 +138,10 @@ export default function SignInScreen() {
           <TouchableOpacity activeOpacity={0.72} onPress={requestPasswordReset}>
             <Text style={styles.forgot}>Forgot Password?</Text>
           </TouchableOpacity>
+
+          <View style={styles.noticeSlot}>
+            {hintMessage ? <Text style={styles.hintText}>{hintMessage}</Text> : null}
+          </View>
 
           {!isSupabaseConfigured ? (
             <AuthNotice
@@ -136,16 +173,20 @@ export default function SignInScreen() {
             <Text style={styles.googleText}>Continue with Google</Text>
           </TouchableCard>
 
+          <Link href="/signup" asChild>
+            <TouchableOpacity activeOpacity={0.76} style={styles.signupRow}>
+              <Text style={styles.signupMuted}>Don't have an account?</Text>
+              <Text style={styles.signupAction}>Sign up</Text>
+            </TouchableOpacity>
+          </Link>
+
           <Text style={styles.legal}>
             By continuing, you agree to FITNEO's Consumer Terms & Usage Policy and acknowledge our Privacy Policy.
           </Text>
 
-          <Link href="/auth/sign-up" asChild>
-            <TouchableOpacity activeOpacity={0.72}>
-              <Text style={styles.link}>Don't have an account? Sign Up</Text>
-            </TouchableOpacity>
-          </Link>
         </View>
+          </ScrollView>
+        )}
       </KeyboardAvoidingView>
     </AppLayout>
   );
@@ -156,13 +197,15 @@ function Field({
   value,
   onChangeText,
   placeholder,
-  keyboardType
+  keyboardType,
+  inputRef
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
   keyboardType?: "default" | "email-address";
+  inputRef?: RefObject<TextInput | null>;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -170,6 +213,7 @@ function Field({
     <View style={styles.fieldWrap}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        ref={inputRef}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType={keyboardType}
@@ -202,12 +246,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    paddingHorizontal: 24
+    paddingHorizontal: 0
   },
   keyboard: {
     alignItems: "center",
+    flex: 1,
     justifyContent: "center",
     width: "100%"
+  },
+  scroll: {
+    flex: 1,
+    width: "100%"
+  },
+  scrollContent: {
+    alignItems: "center",
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 18
   },
   logoBlock: {
     alignItems: "center",
@@ -313,6 +369,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700"
   },
+  noticeSlot: {
+    justifyContent: "center",
+    minHeight: 22
+  },
+  hintText: {
+    color: colors.teal,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "right"
+  },
   primaryButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
@@ -361,6 +427,23 @@ const styles = StyleSheet.create({
     color: "#333333",
     fontSize: 16,
     fontWeight: "700"
+  },
+  signupRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    minHeight: 36
+  },
+  signupMuted: {
+    color: colors.textTertiary,
+    fontSize: 13,
+    fontWeight: "600"
+  },
+  signupAction: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "900"
   },
   legal: {
     color: colors.textTertiary,

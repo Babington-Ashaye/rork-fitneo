@@ -33,7 +33,7 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoading) return;
     const firstSegment = segments[0];
-    const inAuth = firstSegment === "auth";
+    const inAuth = firstSegment === "auth" || firstSegment === "login" || firstSegment === "signup";
     const inLegalConsent = firstSegment === "legal-consent";
     const inOnboarding = firstSegment === "onboarding";
     if (!session && !inAuth) {
@@ -70,6 +70,8 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
         <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
         <Stack.Screen name="auth/callback" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="legal-consent" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
