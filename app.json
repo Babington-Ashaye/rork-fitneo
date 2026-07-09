@@ -46,7 +46,6 @@
       ]
     },
     "plugins": [
-      "expo-router",
       [
         "expo-notifications",
         {
@@ -66,9 +65,6 @@
       "eas": {
         "projectId": "464c67b0-0391-4d68-9b02-c5594394224b"
       }
-    },
-    "experiments": {
-      "typedRoutes": true
     }
   }
 }
