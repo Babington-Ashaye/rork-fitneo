@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "FITNEO",
+    "slug": "fitneo",
+    "scheme": "fitneo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "jsEngine": "hermes",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#060914"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "icon": "./assets/icon.png",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.adejare.fitneo",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSUserTrackingUsageDescription": "This identifier will be used to show you personalized fitness content and ads relevant to your goals",
+        "NSCameraUsageDescription": "FITNEO needs camera access to scan food barcodes and identify meals from photos.",
+        "NSPhotoLibraryUsageDescription": "FITNEO needs photo access when you choose meal images for nutrition analysis."
+      }
+    },
+    "android": {
+      "icon": "./assets/icon.png",
+      "package": "com.adejare.fitneo",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#080A0F"
+      },
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "464c67b0-0391-4d68-9b02-c5594394224b"
+      }
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

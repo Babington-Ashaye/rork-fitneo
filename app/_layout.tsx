@@ -1,0 +1,67 @@
+import "react-native-gesture-handler";
+import { router, Stack, useSegments } from "expo-router";
+import { useEffect } from "react";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { SubscriptionProvider } from "@/context/SubscriptionContext";
+import { colors } from "@/lib/theme";
+import { AppOpenAdGate } from "@/components/AppOpenAdGate";
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </SafeAreaProvider>
+  );
+}
+
+function RootNavigator() {
+  const segments = useSegments();
+  const { isLoading, needsLegalAcceptance, session } = useAuth();
+
+  useEffect(() => {
+    if (isLoading) return;
+    const firstSegment = segments[0];
+    const inAuth = firstSegment === "auth";
+    const inLegalConsent = firstSegment === "legal-consent";
+    if (!session && !inAuth) {
+      router.replace("/auth/sign-in");
+      return;
+    }
+    if (session && needsLegalAcceptance && !inLegalConsent) {
+      router.replace("/legal-consent");
+    }
+  }, [isLoading, needsLegalAcceptance, segments, session]);
+
+  return (
+    <SubscriptionProvider>
+      <StatusBar style="light" />
+      <AppOpenAdGate />
+      <Stack
+        screenOptions={{
+          contentStyle: { backgroundColor: colors.background },
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.textPrimary
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
+        <Stack.Screen name="legal-consent" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
+        <Stack.Screen name="scanner" options={{ title: "AI Plate Scanner" }} />
+        <Stack.Screen name="barcode-scanner" options={{ title: "Barcode Scanner" }} />
+        <Stack.Screen name="custom-workout" options={{ title: "Custom Workout" }} />
+        <Stack.Screen name="active-workout" options={{ title: "Workout Session" }} />
+        <Stack.Screen name="sports-mode" options={{ title: "Sports Mode" }} />
+        <Stack.Screen name="badges" options={{ title: "Badges" }} />
+        <Stack.Screen name="chat-history" options={{ title: "Chat History" }} />
+      </Stack>
+    </SubscriptionProvider>
+  );
+}

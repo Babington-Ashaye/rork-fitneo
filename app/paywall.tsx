@@ -1,0 +1,190 @@
+import { Ionicons } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { AppLayout } from "@/components/AppLayout";
+import { GlassCard } from "@/components/ScreenKit";
+import { BillingPlan, restoreBillingPurchases, startBillingCheckout } from "@/lib/billing";
+import { colors, radii } from "@/lib/theme";
+
+type Tier = "pro" | "elite";
+
+const planDetails = {
+  pro: {
+    name: "FITNEO Pro",
+    icon: "sparkles" as const,
+    monthly: 4.99,
+    yearly: 39.99,
+    features: [
+      "Unlimited FITNEO AI conversations",
+      "AI-generated workout plans",
+      "Complete nutrition and progress tracking",
+      "Leaderboard, badges, and weekly reports"
+    ]
+  },
+  elite: {
+    name: "FITNEO Elite",
+    icon: "trophy" as const,
+    monthly: 9.99,
+    yearly: 79.99,
+    features: [
+      "Everything in Pro",
+      "Sport-specific athletic programming",
+      "Elite Physique and conditioning systems",
+      "Priority AI and nutrition scanner"
+    ]
+  }
+};
+
+export default function PaywallScreen() {
+  const [tier, setTier] = useState<Tier>("elite");
+  const [yearly, setYearly] = useState(true);
+  const [status, setStatus] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const selected = planDetails[tier];
+
+  const price = useMemo(() => {
+    if (!yearly) {
+      return { main: `$${selected.monthly.toFixed(2)}`, period: "/month", detail: null };
+    }
+    return {
+      main: `$${selected.yearly.toFixed(2)}`,
+      period: "/year",
+      detail: `$${(selected.yearly / 12).toFixed(2)} per month, billed annually`
+    };
+  }, [selected, yearly]);
+
+  async function checkout() {
+    setIsLoading(true);
+    setStatus(null);
+    try {
+      const plan = `${tier}_${yearly ? "yearly" : "monthly"}` as BillingPlan;
+      const response = await startBillingCheckout(plan);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      if (response.data?.checkoutUrl) {
+        await Linking.openURL(response.data.checkoutUrl);
+        setStatus("Checkout opened securely.");
+      } else {
+        setStatus("Checkout is ready, but the billing function did not return a URL.");
+      }
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Checkout could not start.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function restore() {
+    setIsLoading(true);
+    const response = await restoreBillingPurchases();
+    setStatus(response.error ?? "Purchases restored.");
+    setIsLoading(false);
+  }
+
+  return (
+    <AppLayout scroll>
+      <View style={styles.logoWrap}>
+        <View style={styles.logoGlow}>
+          <Ionicons name="diamond" size={34} color={colors.accent} />
+        </View>
+        <Text style={styles.title}>Choose Your Plan</Text>
+        <Text style={styles.subtitle}>One free month. Train without limits.</Text>
+      </View>
+
+      <View style={styles.tabs}>
+        {(["pro", "elite"] as Tier[]).map((item) => (
+          <TouchableOpacity key={item} onPress={() => setTier(item)} style={[styles.tab, tier === item && (item === "elite" ? styles.tabEliteActive : styles.tabProActive)]}>
+            <Text style={[styles.tabTitle, tier === item && styles.tabTitleActive]}>{item === "pro" ? "Pro" : "Elite"}</Text>
+            <Text style={[styles.tabPrice, item === "elite" && styles.elitePrice]}>${(yearly ? planDetails[item].yearly / 12 : planDetails[item].monthly).toFixed(2)}/mo</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.billingRow}>
+        <Text style={!yearly ? styles.billingActive : styles.billingMuted}>Monthly</Text>
+        <TouchableOpacity accessibilityRole="switch" accessibilityState={{ checked: yearly }} onPress={() => setYearly((current) => !current)} style={[styles.toggle, yearly && styles.toggleActive]}>
+          <View style={[styles.knob, yearly && styles.knobActive]} />
+        </TouchableOpacity>
+        <Text style={yearly ? styles.billingActive : styles.billingMuted}>Yearly</Text>
+        {yearly ? <Text style={styles.save}>SAVE 33%</Text> : null}
+      </View>
+
+      <GlassCard radius={radii.xxl} style={[styles.planCard, tier === "elite" ? styles.eliteCard : styles.proCard]}>
+        <View style={styles.planHeader}>
+          <Ionicons name={selected.icon} size={19} color={tier === "elite" ? colors.gold : colors.accent} />
+          <Text style={styles.planName}>{selected.name}</Text>
+          {tier === "elite" ? <Text style={styles.best}>BEST VALUE</Text> : null}
+        </View>
+        <View style={styles.priceRow}>
+          <Text style={styles.price}>{price.main}</Text>
+          <Text style={styles.period}>{price.period}</Text>
+        </View>
+        {price.detail ? <Text style={styles.breakdown}>{price.detail}</Text> : null}
+        {selected.features.map((feature) => (
+          <View key={feature} style={styles.featureRow}>
+            <Ionicons name="checkmark-circle" size={17} color={tier === "elite" ? colors.gold : colors.accent} />
+            <Text style={styles.feature}>{feature}</Text>
+          </View>
+        ))}
+      </GlassCard>
+
+      <TouchableOpacity style={[styles.primaryButton, tier === "elite" && styles.eliteButton]} onPress={checkout} disabled={isLoading}>
+        {isLoading ? <ActivityIndicator color={tier === "elite" ? colors.black : colors.textPrimary} /> : (
+          <>
+            <Ionicons name="sparkles" size={17} color={tier === "elite" ? colors.black : colors.textPrimary} />
+            <Text style={[styles.primaryText, tier === "elite" && styles.eliteButtonText]}>Start Your Free Month</Text>
+          </>
+        )}
+      </TouchableOpacity>
+      {status ? <Text style={styles.status}>{status}</Text> : null}
+      <Text style={styles.disclaimer}>No charge today. Cancel anytime before renewal.</Text>
+      <TouchableOpacity onPress={restore} disabled={isLoading}>
+        <Text style={styles.restore}>Restore Purchases</Text>
+      </TouchableOpacity>
+    </AppLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  logoWrap: { alignItems: "center", gap: 9 },
+  logoGlow: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.14)", borderRadius: 38, height: 76, justifyContent: "center", width: 76 },
+  title: { color: colors.textPrimary, fontSize: 27, fontWeight: "900" },
+  subtitle: { color: colors.textSecondary, fontSize: 14 },
+  tabs: { flexDirection: "row", gap: 10 },
+  tab: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.035)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, flex: 1, gap: 3, paddingVertical: 12 },
+  tabProActive: { backgroundColor: "rgba(10,132,255,0.16)", borderColor: "rgba(10,132,255,0.75)" },
+  tabEliteActive: { backgroundColor: "rgba(255,215,0,0.14)", borderColor: "rgba(255,215,0,0.80)" },
+  tabTitle: { color: colors.textSecondary, fontSize: 15, fontWeight: "800" },
+  tabTitleActive: { color: colors.textPrimary },
+  tabPrice: { color: colors.accent, fontSize: 11, fontWeight: "700" },
+  elitePrice: { color: colors.gold },
+  billingRow: { alignItems: "center", flexDirection: "row", gap: 10, justifyContent: "center" },
+  billingMuted: { color: colors.textTertiary, fontSize: 13 },
+  billingActive: { color: colors.textPrimary, fontSize: 13, fontWeight: "800" },
+  toggle: { backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 15, height: 30, justifyContent: "center", paddingHorizontal: 3, width: 52 },
+  toggleActive: { backgroundColor: colors.accent },
+  knob: { backgroundColor: colors.textPrimary, borderRadius: 12, height: 24, width: 24 },
+  knobActive: { alignSelf: "flex-end" },
+  save: { backgroundColor: "rgba(50,215,77,0.14)", borderRadius: 8, color: colors.success, fontSize: 9, fontWeight: "900", overflow: "hidden", paddingHorizontal: 7, paddingVertical: 4 },
+  planCard: { gap: 13, padding: 20 },
+  proCard: { backgroundColor: "rgba(10,132,255,0.12)", borderColor: "rgba(10,132,255,0.60)" },
+  eliteCard: { backgroundColor: "rgba(255,199,51,0.10)", borderColor: "rgba(255,215,0,0.72)", shadowColor: colors.gold, shadowOpacity: 0.28, shadowRadius: 18 },
+  planHeader: { alignItems: "center", flexDirection: "row", gap: 9 },
+  planName: { color: colors.textPrimary, flex: 1, fontSize: 20, fontWeight: "900" },
+  best: { backgroundColor: colors.gold, borderRadius: 8, color: colors.black, fontSize: 8, fontWeight: "900", overflow: "hidden", paddingHorizontal: 7, paddingVertical: 4 },
+  priceRow: { alignItems: "baseline", flexDirection: "row", gap: 4 },
+  price: { color: colors.textPrimary, fontSize: 30, fontWeight: "900" },
+  period: { color: colors.textSecondary, fontSize: 13 },
+  breakdown: { color: colors.teal, fontSize: 12, fontWeight: "700" },
+  featureRow: { alignItems: "flex-start", flexDirection: "row", gap: 9 },
+  feature: { color: colors.textSecondary, flex: 1, fontSize: 13, lineHeight: 19 },
+  primaryButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 14, flexDirection: "row", gap: 8, justifyContent: "center", minHeight: 54 },
+  eliteButton: { backgroundColor: colors.gold },
+  primaryText: { color: colors.textPrimary, fontSize: 15, fontWeight: "900" },
+  eliteButtonText: { color: colors.black },
+  status: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, textAlign: "center" },
+  disclaimer: { color: colors.textTertiary, fontSize: 11, textAlign: "center" },
+  restore: { color: colors.accent, fontSize: 13, fontWeight: "800", textAlign: "center" }
+});
