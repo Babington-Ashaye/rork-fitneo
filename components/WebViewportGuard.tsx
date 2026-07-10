@@ -23,26 +23,47 @@ export function WebViewportGuard() {
       html,
       body,
       #root {
+        background: #000000;
+        height: 100%;
         margin: 0;
         max-width: 100%;
-        min-height: 100%;
-        overflow-x: hidden;
+        min-height: 100dvh;
+        overflow: hidden;
         padding: 0;
+        touch-action: manipulation;
         width: 100%;
       }
 
       body {
-        background: #05070D;
-        overscroll-behavior-x: none;
+        background: #000000;
+        overscroll-behavior: none;
         position: relative;
+      }
+
+      :root {
+        --fitneo-safe-top: max(16px, env(safe-area-inset-top));
+        --fitneo-safe-bottom: max(16px, env(safe-area-inset-bottom));
       }
 
       input,
       textarea,
       select,
       button {
+        background-color: #121214;
+        color: #ffffff;
         outline: none;
         -webkit-tap-highlight-color: transparent;
+      }
+
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus,
+      textarea:-webkit-autofill,
+      select:-webkit-autofill {
+        -webkit-box-shadow: 0 0 0 1000px #121214 inset !important;
+        -webkit-text-fill-color: #ffffff !important;
+        caret-color: #ffffff;
+        transition: background-color 9999s ease-in-out 0s;
       }
 
       *,
@@ -54,7 +75,8 @@ export function WebViewportGuard() {
       [data-expo-root],
       #root > div {
         max-width: 100dvw;
-        overflow-x: hidden;
+        min-height: 100dvh;
+        overflow: hidden;
       }
     `;
 

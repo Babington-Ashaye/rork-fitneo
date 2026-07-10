@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radii } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
@@ -15,16 +16,20 @@ const navIcons: Record<string, IconName> = {
   profile: "person"
 };
 
-const navLabels: Record<string, string> = {
-  index: "Home",
-  workouts: "Workouts",
-  nutrition: "Nutrition",
-  progress: "Progress",
-  profile: "Profile"
+const navLabelKeys: Record<string, string> = {
+  index: "nav.home",
+  workouts: "nav.workouts",
+  nutrition: "nav.nutrition",
+  progress: "nav.progress",
+  profile: "nav.profile"
 };
 
 function FloatingTabBar({ state, navigation }: any) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const activeRoute = state.routes[state.index];
+  if (activeRoute?.name === "coach") return null;
+
   const visibleRoutes = state.routes.filter((route: any) => navIcons[route.name]);
 
   return (
@@ -42,7 +47,7 @@ function FloatingTabBar({ state, navigation }: any) {
               style={[styles.navItem, isActive ? styles.navItemActive : styles.navItemInactive]}
             >
               <Ionicons name={navIcons[route.name]} size={21} color={color} style={isActive ? styles.activeIcon : undefined} />
-              {isActive ? <Text style={styles.navLabel}>{navLabels[route.name]}</Text> : null}
+              {isActive ? <Text style={styles.navLabel}>{t(navLabelKeys[route.name])}</Text> : null}
             </Pressable>
           );
         })}
@@ -80,37 +85,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
     left: 0,
     position: "absolute",
-    right: 0
+    right: 0,
+    zIndex: 999,
+    elevation: 24
   },
   floatingNav: {
     alignItems: "center",
-    backgroundColor: "rgba(18,24,40,0.92)",
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: radii.round,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    borderColor: "rgba(0,163,255,0.20)",
+    borderRadius: 24,
     borderWidth: 1,
     flexDirection: "row",
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.52,
+    shadowRadius: 22,
+    ...(Platform.OS === "web"
+      ? ({
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)"
+        } as never)
+      : {})
   },
   navItem: {
     alignItems: "center",
     borderRadius: radii.round,
     flexDirection: "row",
     gap: 6,
-    minHeight: 48,
+    minHeight: 52,
     paddingVertical: 12
   },
   navItemActive: {
     backgroundColor: "rgba(10,132,255,0.15)",
-    paddingHorizontal: 14
+    paddingHorizontal: 16
   },
   navItemInactive: {
-    paddingHorizontal: 10
+    paddingHorizontal: 12
   },
   activeIcon: {
     transform: [{ scale: 1.18 }]

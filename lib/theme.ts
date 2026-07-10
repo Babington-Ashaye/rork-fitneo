@@ -1,16 +1,16 @@
 export const colors = {
-  background: "#0A0E1A",
-  backgroundTop: "#060914",
-  backgroundBottom: "#0F162E",
-  backgroundElevated: "#121828",
-  cardFill: "rgba(255,255,255,0.04)",
-  cardFillSelected: "rgba(10,132,255,0.18)",
-  cardStroke: "rgba(255,255,255,0.08)",
-  cardStrokeSelected: "#0A84FF",
+  background: "#000000",
+  backgroundTop: "#000000",
+  backgroundBottom: "#030305",
+  backgroundElevated: "#121214",
+  cardFill: "rgba(18,18,20,0.80)",
+  cardFillSelected: "rgba(0,163,255,0.18)",
+  cardStroke: "rgba(255,255,255,0.10)",
+  cardStrokeSelected: "#00A3FF",
   textPrimary: "#FFFFFF",
   textSecondary: "rgba(255,255,255,0.65)",
   textTertiary: "rgba(255,255,255,0.40)",
-  accent: "#0A84FF",
+  accent: "#00A3FF",
   coral: "#FF6B35",
   success: "#32D74D",
   danger: "#FF453A",
@@ -28,7 +28,7 @@ export const spacing = {
   xl: 18,
   screen: 20,
   xxl: 24,
-  bottomClearance: 90
+  bottomClearance: 128
 };
 
 export const radii = {

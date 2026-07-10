@@ -18,22 +18,35 @@ import { useSubscription } from "@/context/SubscriptionContext";
 
 const suggestions = ["Build my weekly plan", "Generate a HIIT workout", "Review my recovery", "Tune my calories"];
 
+const coachMemory: {
+  activeSession: ChatSessionSummary | null;
+  messages: ChatMessageRecord[];
+  sessions: ChatSessionSummary[];
+} = {
+  activeSession: null,
+  messages: [],
+  sessions: []
+};
+
 export default function CoachScreen() {
   const { isPremium } = useSubscription();
   const [prompt, setPrompt] = useState("");
-  const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
-  const [activeSession, setActiveSession] = useState<ChatSessionSummary | null>(null);
-  const [messages, setMessages] = useState<ChatMessageRecord[]>([]);
+  const [sessions, setSessions] = useState<ChatSessionSummary[]>(coachMemory.sessions);
+  const [activeSession, setActiveSession] = useState<ChatSessionSummary | null>(coachMemory.activeSession);
+  const [messages, setMessages] = useState<ChatMessageRecord[]>(coachMemory.messages);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!coachMemory.activeSession);
   const [isSending, setIsSending] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
+  const [composerFocused, setComposerFocused] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   async function newChat() {
     setError(null);
+    setSaveStatus(null);
     let session: ChatSessionSummary;
     try {
       session = await createChatSession("New Chat");
@@ -49,6 +62,7 @@ export default function CoachScreen() {
   async function openSession(session: ChatSessionSummary) {
     setActiveSession(session);
     setHistoryOpen(false);
+    setSaveStatus(null);
     setIsLoading(true);
     try {
       setMessages(await fetchChatMessages(session.id));
@@ -59,6 +73,11 @@ export default function CoachScreen() {
 
   useEffect(() => {
     async function boot() {
+      if (coachMemory.activeSession) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const existing = await fetchChatSessions();
         setSessions(existing);
@@ -81,6 +100,12 @@ export default function CoachScreen() {
   }, []);
 
   useEffect(() => {
+    coachMemory.activeSession = activeSession;
+    coachMemory.messages = messages;
+    coachMemory.sessions = sessions;
+  }, [activeSession, messages, sessions]);
+
+  useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
   }, [isSending, messages]);
 
@@ -97,6 +122,7 @@ export default function CoachScreen() {
 
     setPrompt("");
     setError(null);
+    setSaveStatus(null);
     setLastFailedPrompt(null);
     setIsSending(true);
     setStreamingText("");
@@ -155,6 +181,21 @@ export default function CoachScreen() {
     }
   }
 
+  function clearHistory() {
+    setMessages([]);
+    setStreamingText("");
+    setError(null);
+    setLastFailedPrompt(null);
+    setSaveStatus("Conversation history cleared for this session.");
+  }
+
+  function saveConversation() {
+    coachMemory.activeSession = activeSession;
+    coachMemory.messages = messages;
+    coachMemory.sessions = sessions;
+    setSaveStatus(messages.length > 0 ? "Conversation saved locally for this app session." : "Nothing to save yet.");
+  }
+
   return (
     <AppLayout contentContainerStyle={styles.screen}>
       <View style={styles.header}>
@@ -170,6 +211,17 @@ export default function CoachScreen() {
         </View>
         <TouchableOpacity onPress={() => void newChat()} style={styles.iconButton}>
           <Ionicons name="create-outline" size={19} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.conversationActions}>
+        <TouchableOpacity activeOpacity={0.78} style={styles.actionButton} onPress={clearHistory}>
+          <Ionicons name="trash-outline" size={14} color={colors.textSecondary} />
+          <Text style={styles.actionText}>Clear History</Text>
+        </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.78} style={[styles.actionButton, styles.saveActionButton]} onPress={saveConversation}>
+          <Ionicons name="bookmark-outline" size={14} color={colors.accent} />
+          <Text style={[styles.actionText, styles.saveActionText]}>Save Conversation</Text>
         </TouchableOpacity>
       </View>
 
@@ -233,6 +285,7 @@ export default function CoachScreen() {
             ) : null}
           </View>
         ) : null}
+        {saveStatus ? <Text style={styles.saveStatus}>{saveStatus}</Text> : null}
       </ScrollView>
 
       <ScrollView horizontal style={styles.suggestionScroller} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestions}>
@@ -243,7 +296,7 @@ export default function CoachScreen() {
         ))}
       </ScrollView>
 
-      <View style={styles.composer}>
+      <View style={[styles.composer, composerFocused && styles.composerFocused]}>
         <View style={styles.composerMark}>
           <Ionicons name="sparkles" size={16} color={colors.accent} />
         </View>
@@ -254,6 +307,8 @@ export default function CoachScreen() {
           style={styles.input}
           value={prompt}
           onChangeText={setPrompt}
+          onBlur={() => setComposerFocused(false)}
+          onFocus={() => setComposerFocused(true)}
           underlineColorAndroid="transparent"
         />
         <TouchableOpacity
@@ -270,8 +325,13 @@ export default function CoachScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: "#070B14", gap: 10, paddingBottom: 110 },
+  screen: { backgroundColor: colors.background, gap: 10, paddingBottom: 24 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  conversationActions: { flexDirection: "row", gap: 8 },
+  actionButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, flex: 1, flexDirection: "row", gap: 7, justifyContent: "center", minHeight: 40 },
+  actionText: { color: colors.textSecondary, fontSize: 12, fontWeight: "800" },
+  saveActionButton: { backgroundColor: "rgba(0,163,255,0.08)", borderColor: "rgba(0,163,255,0.24)" },
+  saveActionText: { color: colors.accent },
   iconButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", width: 38 },
   aiIdentity: { alignItems: "center", flexDirection: "row", gap: 10 },
   onlineDot: { backgroundColor: colors.teal, borderRadius: 6, height: 12, shadowColor: colors.teal, shadowOpacity: 0.8, shadowRadius: 8, width: 12 },
@@ -294,15 +354,17 @@ const styles = StyleSheet.create({
   errorText: { color: colors.textSecondary, flex: 1, fontSize: 12, lineHeight: 17 },
   retryButton: { backgroundColor: "rgba(255,199,51,0.16)", borderColor: "rgba(255,199,51,0.40)", borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
   retryText: { color: colors.gold, fontSize: 11, fontWeight: "900" },
+  saveStatus: { color: colors.teal, fontSize: 12, lineHeight: 18, textAlign: "center" },
   emptyState: { alignItems: "center", gap: 9, justifyContent: "center", paddingHorizontal: 28, paddingVertical: 40 },
   emptyTitle: { color: colors.textPrimary, fontSize: 19, fontWeight: "800", textAlign: "center" },
   emptyCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
   suggestionScroller: { flexGrow: 0, maxHeight: 44, zIndex: 4 },
   suggestions: { alignItems: "center", gap: 8, paddingRight: 8 },
-  composer: { alignItems: "flex-end", backgroundColor: "#151C29", borderColor: "rgba(255,255,255,0.10)", borderRadius: 25, borderWidth: 1, flexDirection: "row", gap: 6, padding: 5, zIndex: 5 },
+  composer: { alignItems: "flex-end", backgroundColor: colors.backgroundElevated, borderColor: "rgba(0,163,255,0.22)", borderRadius: 24, borderWidth: 1, flexDirection: "row", gap: 6, padding: 5, shadowColor: colors.accent, shadowOpacity: 0.12, shadowRadius: 14, zIndex: 5 },
+  composerFocused: { borderColor: "rgba(0,163,255,0.72)", marginHorizontal: -10, shadowOpacity: 0.32 },
   composerMark: { alignItems: "center", height: 38, justifyContent: "center", width: 36 },
-  input: { color: colors.textPrimary, flex: 1, fontSize: 15, maxHeight: 110, minHeight: 44, paddingHorizontal: 4, paddingVertical: 11 },
-  sendButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 23, height: 46, justifyContent: "center", width: 46 },
+  input: { color: colors.textPrimary, flex: 1, fontSize: 15, maxHeight: 76, minHeight: 42, paddingHorizontal: 4, paddingVertical: 10 },
+  sendButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 21, height: 42, justifyContent: "center", width: 42 },
   sendDisabled: { opacity: 0.4 },
   assistantSkeleton: { alignSelf: "flex-start", width: "82%" },
   userSkeleton: { alignSelf: "flex-end", width: "64%" }

@@ -4,12 +4,14 @@ import {
   ScrollViewProps,
   StyleProp,
   StyleSheet,
+  Text,
   View,
   ViewStyle
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PageGradient } from "@/components/ScreenKit";
-import { spacing } from "@/lib/theme";
+import { useSubscription } from "@/context/SubscriptionContext";
+import { colors, radii, spacing } from "@/lib/theme";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -29,6 +31,9 @@ export function AppLayout({
   refreshControl
 }: AppLayoutProps) {
   const insets = useSafeAreaInsets();
+  const { isTrial, trialDaysRemaining } = useSubscription();
+  const trialBanner = isTrial ? <TrialBanner daysRemaining={trialDaysRemaining} /> : null;
+
   return (
     <PageGradient style={[styles.root, style]}>
       <View style={styles.contentRegion}>
@@ -43,19 +48,43 @@ export function AppLayout({
             contentContainerStyle={[
               styles.scrollContent,
               {
-                paddingBottom: spacing.bottomClearance,
+                paddingBottom: Math.max(spacing.bottomClearance, insets.bottom + 112),
                 paddingTop: Math.max(12, insets.top + 8)
               },
               contentContainerStyle
             ]}
           >
+            {trialBanner}
             {children}
           </ScrollView>
         ) : (
-          <View style={[styles.staticContent, { paddingTop: Math.max(12, insets.top + 8) }, contentContainerStyle]}>{children}</View>
+          <View
+            style={[
+              styles.staticContent,
+              {
+                paddingBottom: Math.max(16, insets.bottom + 12),
+                paddingTop: Math.max(12, insets.top + 8)
+              },
+              contentContainerStyle
+            ]}
+          >
+            {trialBanner}
+            {children}
+          </View>
         )}
       </View>
     </PageGradient>
+  );
+}
+
+function TrialBanner({ daysRemaining }: { daysRemaining: number }) {
+  return (
+    <View style={styles.trialBanner}>
+      <Text style={styles.trialEyebrow}>FREE TRIAL</Text>
+      <Text style={styles.trialText}>
+        {daysRemaining} {daysRemaining === 1 ? "day" : "days"} left in your free trial
+      </Text>
+    </View>
   );
 }
 
@@ -91,5 +120,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingTop: 8,
     width: "100%"
+  },
+  trialBanner: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    backgroundColor: "rgba(0,163,255,0.10)",
+    borderColor: "rgba(0,163,255,0.24)",
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 38,
+    paddingHorizontal: 14
+  },
+  trialEyebrow: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.3
+  },
+  trialText: {
+    color: colors.textSecondary,
+    flexShrink: 1,
+    fontSize: 12,
+    fontWeight: "700"
   }
 });

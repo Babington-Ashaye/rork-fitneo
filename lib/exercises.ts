@@ -3,6 +3,7 @@ export type Exercise = {
   name: string;
   muscleGroup: string;
   difficulty: "Beginner" | "Intermediate" | "Advanced";
+  equipmentTier: ExerciseEquipmentTier;
   sets: number;
   reps: string;
   restSeconds: number;
@@ -12,6 +13,7 @@ export type Exercise = {
 };
 
 export type ExerciseAccessPlan = "free" | "premium";
+export type ExerciseEquipmentTier = "none" | "few" | "full";
 
 export const EXERCISE_CATALOG_BASELINE_COUNT = 76;
 export const FREE_EXERCISE_LIMIT = 31;
@@ -108,12 +110,46 @@ const exerciseRows: Array<[
   ["cable_fly", "Cable Fly", "Chest", "Intermediate", 3, "12", 60, "0308-yz9nUhF.gif"]
 ];
 
+const fullEquipmentKeywords = [
+  "barbell",
+  "bench",
+  "cable",
+  "cycling",
+  "dumbbell",
+  "hack",
+  "lat_",
+  "leg_curl",
+  "leg_extension",
+  "leg_press",
+  "pulldown",
+  "seated_cable",
+  "stair",
+  "weighted"
+];
+
+const fewEquipmentKeywords = [
+  "ab_wheel",
+  "battle_ropes",
+  "box_jumps",
+  "calf_raises",
+  "jump_rope",
+  "skull_crushers",
+  "overhead_tricep_ext"
+];
+
+function inferEquipmentTier(id: string): ExerciseEquipmentTier {
+  if (fullEquipmentKeywords.some((keyword) => id.includes(keyword))) return "full";
+  if (fewEquipmentKeywords.some((keyword) => id.includes(keyword))) return "few";
+  return "none";
+}
+
 export const exerciseCatalog: Exercise[] = exerciseRows.map(
   ([id, name, muscleGroup, difficulty, sets, reps, restSeconds, gif]) => ({
     id,
     name,
     muscleGroup,
     difficulty,
+    equipmentTier: inferEquipmentTier(id),
     sets,
     reps,
     restSeconds,
@@ -164,6 +200,16 @@ export function getCategorizedExerciseLibrary(minimumCount = 30) {
   }, {});
 }
 
+export function getExercisesByEquipmentTier(exercises: Exercise[] = exerciseCatalog) {
+  return exercises.reduce<Record<ExerciseEquipmentTier, Exercise[]>>(
+    (groups, exercise) => {
+      groups[exercise.equipmentTier] = [...groups[exercise.equipmentTier], exercise];
+      return groups;
+    },
+    { none: [], few: [], full: [] }
+  );
+}
+
 type RemoteExerciseRow = {
   id?: string;
   name?: string;
@@ -192,6 +238,7 @@ export async function fetchRemoteExerciseCatalog(): Promise<Exercise[]> {
       name: row.name!,
       muscleGroup: row.muscle_group ?? row.target ?? row.category ?? "Full Body",
       difficulty: "Intermediate" as const,
+      equipmentTier: inferEquipmentTier(row.id!),
       sets: 3,
       reps: "10-12",
       restSeconds: 60,

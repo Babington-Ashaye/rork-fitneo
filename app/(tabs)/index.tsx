@@ -243,6 +243,7 @@ const styles = StyleSheet.create({
   },
   headerCopy: {
     flex: 1,
+    maxWidth: "64%",
     minWidth: 0
   },
   greeting: {
@@ -254,7 +255,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 26,
     fontWeight: "700",
-    minWidth: 0
+    minWidth: 0,
+    overflow: "hidden"
   },
   streakPill: {
     alignItems: "center",
@@ -279,6 +281,7 @@ const styles = StyleSheet.create({
   inline: {
     alignItems: "center",
     flexDirection: "row",
+    flexShrink: 1,
     gap: 7
   },
   planName: {
@@ -351,7 +354,8 @@ const styles = StyleSheet.create({
   },
   statRow: {
     flexDirection: "row",
-    gap: 12
+    gap: 12,
+    width: "100%"
   },
   statCell: {
     flex: 1

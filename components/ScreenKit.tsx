@@ -337,26 +337,31 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5
   },
   statCard: {
-    alignItems: "flex-start",
+    alignItems: "center",
     flex: 1,
-    gap: 10,
-    minHeight: 124,
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 118,
     padding: 16,
     width: "100%"
   },
   statTouchable: {
+    flexBasis: 0,
     flex: 1,
-    minWidth: 0
+    minWidth: 0,
+    width: "100%"
   },
   statValue: {
     color: colors.textPrimary,
-    fontSize: 22,
-    fontWeight: "700"
+    fontSize: 24,
+    fontWeight: "800",
+    textAlign: "center"
   },
   statLabel: {
     color: colors.textTertiary,
     fontSize: 11,
-    fontWeight: "500"
+    fontWeight: "600",
+    textAlign: "center"
   },
   xpCard: {
     gap: 10,

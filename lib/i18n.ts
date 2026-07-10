@@ -19,6 +19,13 @@ function isSupportedLanguage(value: string | null): value is SupportedLanguage {
 export const resources = {
   en: {
     translation: {
+      nav: {
+        home: "Home",
+        workouts: "Workouts",
+        nutrition: "Nutrition",
+        progress: "Progress",
+        profile: "Profile"
+      },
       profile: {
         language: "Language",
         legal: "Legal",
@@ -49,6 +56,13 @@ export const resources = {
   },
   es: {
     translation: {
+      nav: {
+        home: "Inicio",
+        workouts: "Entrenos",
+        nutrition: "Nutrición",
+        progress: "Progreso",
+        profile: "Perfil"
+      },
       profile: {
         language: "Idioma",
         legal: "Legal",
@@ -79,6 +93,13 @@ export const resources = {
   },
   fr: {
     translation: {
+      nav: {
+        home: "Accueil",
+        workouts: "Séances",
+        nutrition: "Nutrition",
+        progress: "Progrès",
+        profile: "Profil"
+      },
       profile: {
         language: "Langue",
         legal: "Juridique",

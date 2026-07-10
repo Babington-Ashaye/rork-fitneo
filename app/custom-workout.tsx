@@ -5,14 +5,21 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOp
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, GlassCard, ScreenTitle } from "@/components/ScreenKit";
 import { saveCustomWorkout } from "@/lib/api";
-import { Exercise, getAccessibleExercises } from "@/lib/exercises";
+import { Exercise, ExerciseEquipmentTier, getAccessibleExercises, getExercisesByEquipmentTier } from "@/lib/exercises";
 import { colors, radii } from "@/lib/theme";
 import { useSubscription } from "@/context/SubscriptionContext";
+
+const equipmentFilters: Array<{ key: ExerciseEquipmentTier; label: string }> = [
+  { key: "none", label: "None" },
+  { key: "few", label: "Few" },
+  { key: "full", label: "Full" }
+];
 
 export default function CustomWorkoutScreen() {
   const { isPremium, userPlan } = useSubscription();
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
+  const [equipmentFilter, setEquipmentFilter] = useState<ExerciseEquipmentTier>("none");
   const [selected, setSelected] = useState<Exercise[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -22,16 +29,23 @@ export default function CustomWorkoutScreen() {
     setCatalog(getAccessibleExercises(userPlan));
   }, [userPlan]);
 
+  const groupedCatalog = useMemo(() => getExercisesByEquipmentTier(catalog), [catalog]);
+  const filteredCatalog = groupedCatalog[equipmentFilter];
+
   const suggestions = useMemo(() => {
     const clean = query.trim().toLowerCase();
-    if (!clean) return [];
-    return catalog
+    const baseList = clean
+      ? filteredCatalog.filter((item) =>
+          item.name.toLowerCase().includes(clean) || item.muscleGroup.toLowerCase().includes(clean)
+        )
+      : filteredCatalog;
+
+    return baseList
       .filter((item) =>
-        !selected.some((selectedItem) => selectedItem.id === item.id) &&
-        (item.name.toLowerCase().includes(clean) || item.muscleGroup.toLowerCase().includes(clean))
+        !selected.some((selectedItem) => selectedItem.id === item.id)
       )
       .slice(0, 8);
-  }, [catalog, query, selected]);
+  }, [filteredCatalog, query, selected]);
 
   function addExercise(exercise: Exercise) {
     setSelected((current) => [...current, exercise]);
@@ -86,6 +100,24 @@ export default function CustomWorkoutScreen() {
             underlineColorAndroid="transparent"
           />
         </View>
+
+        <View style={styles.filterBar}>
+          {equipmentFilters.map((filter) => {
+            const active = equipmentFilter === filter.key;
+            return (
+              <TouchableOpacity
+                key={filter.key}
+                activeOpacity={0.78}
+                onPress={() => setEquipmentFilter(filter.key)}
+                style={[styles.filterTab, active && styles.filterTabActive]}
+              >
+                <Text style={[styles.filterText, active && styles.filterTextActive]}>{filter.label}</Text>
+                <Text style={[styles.filterCount, active && styles.filterTextActive]}>{groupedCatalog[filter.key].length}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {suggestions.length > 0 ? (
           <View style={styles.suggestions}>
             {suggestions.map((item) => (
@@ -93,13 +125,17 @@ export default function CustomWorkoutScreen() {
                 <View style={styles.exerciseIcon}><Ionicons name="barbell" size={16} color={colors.accent} /></View>
                 <View style={styles.flex}>
                   <Text style={styles.exerciseName}>{item.name}</Text>
-                  <Text style={styles.exerciseMeta}>{item.muscleGroup} · {item.difficulty}</Text>
+                  <Text style={styles.exerciseMeta}>{item.muscleGroup} · {item.difficulty} · {item.equipmentTier}</Text>
                 </View>
                 <Ionicons name="add-circle" size={22} color={colors.accent} />
               </TouchableOpacity>
             ))}
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.suggestionsEmpty}>
+            <Text style={styles.empty}>No {equipmentFilter} equipment exercises match this search.</Text>
+          </View>
+        )}
 
         {selected.length > 0 ? (
           <ScrollView style={styles.selectedList} nestedScrollEnabled>
@@ -141,7 +177,14 @@ const styles = StyleSheet.create({
   input: { backgroundColor: "rgba(255,255,255,0.04)", borderColor: colors.cardStroke, borderRadius: radii.md, borderWidth: 1, color: colors.textPrimary, minHeight: 52, paddingHorizontal: 14 },
   searchWrap: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.04)", borderColor: colors.cardStroke, borderRadius: radii.md, borderWidth: 1, flexDirection: "row", gap: 9, paddingHorizontal: 14 },
   searchInput: { color: colors.textPrimary, flex: 1, minHeight: 52 },
-  suggestions: { backgroundColor: "#111827", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  filterBar: { backgroundColor: "rgba(255,255,255,0.035)", borderColor: colors.cardStroke, borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 6, padding: 5 },
+  filterTab: { alignItems: "center", borderColor: "transparent", borderRadius: 12, borderWidth: 1, flex: 1, justifyContent: "center", minHeight: 44 },
+  filterTabActive: { backgroundColor: "rgba(0,163,255,0.16)", borderColor: "rgba(0,163,255,0.68)", shadowColor: colors.accent, shadowOpacity: 0.35, shadowRadius: 12 },
+  filterText: { color: colors.textSecondary, fontSize: 12, fontWeight: "900" },
+  filterTextActive: { color: colors.textPrimary },
+  filterCount: { color: colors.textTertiary, fontSize: 10, fontWeight: "800", marginTop: 2 },
+  suggestions: { backgroundColor: "#111827", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, minHeight: 60, overflow: "hidden" },
+  suggestionsEmpty: { backgroundColor: "#111827", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, justifyContent: "center", minHeight: 60 },
   suggestion: { alignItems: "center", borderBottomColor: "rgba(255,255,255,0.06)", borderBottomWidth: 1, flexDirection: "row", gap: 10, minHeight: 60, padding: 10 },
   exerciseIcon: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.12)", borderRadius: 10, height: 36, justifyContent: "center", width: 36 },
   flex: { flex: 1 },

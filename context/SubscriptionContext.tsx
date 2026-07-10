@@ -233,8 +233,11 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
     if (Platform.OS === "web") {
       const checkoutUrl = getWebCheckoutUrl(requestedTier, cadence);
 
-      if (typeof window !== "undefined" && window.location) {
-        window.location.href = checkoutUrl;
+      if (typeof window !== "undefined") {
+        const checkoutWindow = window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+        if (!checkoutWindow && window.location) {
+          window.location.assign(checkoutUrl);
+        }
       }
 
       return {

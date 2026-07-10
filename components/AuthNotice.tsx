@@ -13,6 +13,9 @@ export function AuthNotice({
   message: string;
   title: string;
 }) {
+  const cleanMessage = typeof message === "string" ? message.trim() : "";
+  const shouldShowMessage = cleanMessage.length > 0 && cleanMessage !== "{}";
+
   return (
     <View style={[styles.notice, danger && styles.noticeDanger]}>
       <View style={[styles.noticeIcon, danger && styles.noticeIconDanger]}>
@@ -20,7 +23,7 @@ export function AuthNotice({
       </View>
       <View style={styles.noticeCopy}>
         <Text style={styles.noticeTitle}>{title}</Text>
-        <Text style={styles.noticeText}>{message}</Text>
+        {shouldShowMessage ? <Text style={styles.noticeText}>{cleanMessage}</Text> : null}
       </View>
     </View>
   );
