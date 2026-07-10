@@ -9,7 +9,10 @@ import { Exercise, ExerciseEquipmentTier, getAccessibleExercises, getExercisesBy
 import { colors, radii } from "@/lib/theme";
 import { useSubscription } from "@/context/SubscriptionContext";
 
-const equipmentFilters: Array<{ key: ExerciseEquipmentTier; label: string }> = [
+type EquipmentFilter = "all" | ExerciseEquipmentTier;
+
+const equipmentFilters: Array<{ key: EquipmentFilter; label: string }> = [
+  { key: "all", label: "All" },
   { key: "none", label: "None" },
   { key: "few", label: "Few" },
   { key: "full", label: "Full" }
@@ -19,7 +22,7 @@ export default function CustomWorkoutScreen() {
   const { isPremium, userPlan } = useSubscription();
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
-  const [equipmentFilter, setEquipmentFilter] = useState<ExerciseEquipmentTier>("none");
+  const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilter>("all");
   const [selected, setSelected] = useState<Exercise[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -30,9 +33,9 @@ export default function CustomWorkoutScreen() {
   }, [userPlan]);
 
   const groupedCatalog = useMemo(() => getExercisesByEquipmentTier(catalog), [catalog]);
-  const filteredCatalog = groupedCatalog[equipmentFilter];
+  const filteredCatalog = equipmentFilter === "all" ? catalog : groupedCatalog[equipmentFilter];
 
-  const suggestions = useMemo(() => {
+  const visibleExercises = useMemo(() => {
     const clean = query.trim().toLowerCase();
     const baseList = clean
       ? filteredCatalog.filter((item) =>
@@ -43,8 +46,7 @@ export default function CustomWorkoutScreen() {
     return baseList
       .filter((item) =>
         !selected.some((selectedItem) => selectedItem.id === item.id)
-      )
-      .slice(0, 8);
+      );
   }, [filteredCatalog, query, selected]);
 
   function addExercise(exercise: Exercise) {
@@ -104,6 +106,7 @@ export default function CustomWorkoutScreen() {
         <View style={styles.filterBar}>
           {equipmentFilters.map((filter) => {
             const active = equipmentFilter === filter.key;
+            const count = filter.key === "all" ? catalog.length : groupedCatalog[filter.key].length;
             return (
               <TouchableOpacity
                 key={filter.key}
@@ -112,15 +115,15 @@ export default function CustomWorkoutScreen() {
                 style={[styles.filterTab, active && styles.filterTabActive]}
               >
                 <Text style={[styles.filterText, active && styles.filterTextActive]}>{filter.label}</Text>
-                <Text style={[styles.filterCount, active && styles.filterTextActive]}>{groupedCatalog[filter.key].length}</Text>
+                <Text style={[styles.filterCount, active && styles.filterTextActive]}>{count}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {suggestions.length > 0 ? (
+        {visibleExercises.length > 0 ? (
           <View style={styles.suggestions}>
-            {suggestions.map((item) => (
+            {visibleExercises.map((item) => (
               <TouchableOpacity key={item.id} style={styles.suggestion} onPress={() => addExercise(item)}>
                 <View style={styles.exerciseIcon}><Ionicons name="barbell" size={16} color={colors.accent} /></View>
                 <View style={styles.flex}>
@@ -133,7 +136,7 @@ export default function CustomWorkoutScreen() {
           </View>
         ) : (
           <View style={styles.suggestionsEmpty}>
-            <Text style={styles.empty}>No {equipmentFilter} equipment exercises match this search.</Text>
+            <Text style={styles.empty}>No exercises match this search.</Text>
           </View>
         )}
 
