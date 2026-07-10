@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   progressTrack: { backgroundColor: "rgba(255,255,255,0.09)", borderRadius: 4, height: 6, overflow: "hidden" },
   progressFill: { backgroundColor: colors.accent, borderRadius: 4, height: 6 },
   mediaCard: { backgroundColor: "#FFFFFF", borderRadius: 18, flexShrink: 1, overflow: "hidden", position: "relative" },
-  animation: { height: "100%", width: "100%" },
+  animation: { height: "100%", resizeMode: "contain", width: "100%" },
   mediaFallback: { alignItems: "center", flex: 1, gap: 8, justifyContent: "center", paddingHorizontal: 24 },
   mediaFallbackText: { color: "#334155", fontSize: 12, lineHeight: 17, textAlign: "center" },
   mediaBadge: { alignItems: "center", backgroundColor: "rgba(6,9,20,0.88)", borderRadius: 9, bottom: 8, flexDirection: "row", gap: 5, paddingHorizontal: 8, paddingVertical: 5, position: "absolute", right: 8 },
