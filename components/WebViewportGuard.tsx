@@ -14,7 +14,7 @@ export function WebViewportGuard() {
         ? previousViewportContent
         : "width=device-width, initial-scale=1, maximum-scale=1";
     if (viewport && !viewportContent.includes("interactive-widget")) {
-      viewport.setAttribute("content", `${viewportContent}, interactive-widget=resizes-content`);
+      viewport.setAttribute("content", `${viewportContent}, viewport-fit=cover, interactive-widget=overlays-content`);
     }
 
     const style = document.createElement("style");
@@ -28,7 +28,7 @@ export function WebViewportGuard() {
         margin: 0;
         max-width: 100%;
         min-height: 100dvh;
-        overflow: hidden;
+        overflow: hidden !important;
         padding: 0;
         touch-action: manipulation;
         width: 100%;
@@ -37,7 +37,8 @@ export function WebViewportGuard() {
       body {
         background: #000000;
         overscroll-behavior: none;
-        position: relative;
+        position: fixed;
+        inset: 0;
       }
 
       :root {
@@ -76,7 +77,7 @@ export function WebViewportGuard() {
       #root > div {
         max-width: 100dvw;
         min-height: 100dvh;
-        overflow: hidden;
+        overflow: hidden !important;
       }
     `;
 
@@ -95,3 +96,6 @@ export function WebViewportGuard() {
 
   return null;
 }
+
+
+

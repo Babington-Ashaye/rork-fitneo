@@ -26,10 +26,10 @@ export default function ScannerScreen() {
     try {
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.55,
+        quality: 0.35,
         skipProcessing: false
       });
-      if (!photo?.base64) throw new Error("The camera did not return an image.");
+      if (!photo?.base64) throw new Error("The camera did not return an image. Please retake the photo.");
       const response = await analyzeFoodPhoto(`data:image/jpeg;base64,${photo.base64}`);
       if (response.error) throw new Error(response.error);
       if (!response.data) throw new Error("The scanner returned no nutrition estimate.");
@@ -114,3 +114,4 @@ const styles = StyleSheet.create({
   saveButton: { backgroundColor: colors.teal },
   buttonText: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" }
 });
+

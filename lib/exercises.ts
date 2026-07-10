@@ -15,7 +15,7 @@ export type Exercise = {
 export type ExerciseAccessPlan = "free" | "premium";
 export type ExerciseEquipmentTier = "none" | "few" | "full";
 
-export const EXERCISE_CATALOG_BASELINE_COUNT = 76;
+export const EXERCISE_CATALOG_BASELINE_COUNT = 108;
 export const FREE_EXERCISE_LIMIT = 31;
 
 const videoBase = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos";
@@ -107,7 +107,39 @@ const exerciseRows: Array<[
   ["barbell_row", "Barbell Row", "Back", "Intermediate", 4, "8", 90, "0574-X3cqyXz.gif"],
   ["leg_curl", "Leg Curl", "Legs", "Beginner", 3, "12", 60, "0689-Hgs6Nl1.gif"],
   ["leg_extension", "Leg Extension", "Legs", "Beginner", 3, "12", 60, "0689-Hgs6Nl1.gif"],
-  ["cable_fly", "Cable Fly", "Chest", "Intermediate", 3, "12", 60, "0308-yz9nUhF.gif"]
+  ["cable_fly", "Cable Fly", "Chest", "Intermediate", 3, "12", 60, "0308-yz9nUhF.gif"],
+  ["diamond_push_ups", "Diamond Push-ups", "Arms", "Intermediate", 3, "12", 60, "0662-I4hDWkc.gif"],
+  ["wide_push_ups", "Wide Push-ups", "Chest", "Beginner", 3, "14", 45, "0662-I4hDWkc.gif"],
+  ["decline_push_ups", "Decline Push-ups", "Chest", "Intermediate", 3, "12", 60, "0493-B1EVP9F.gif"],
+  ["pike_push_ups", "Pike Push-ups", "Shoulders", "Intermediate", 3, "10", 60, "0662-I4hDWkc.gif"],
+  ["wall_sit", "Wall Sit", "Legs", "Beginner", 3, "45 sec", 45, "1490-6HmFgmx.gif"],
+  ["single_leg_glute_bridge", "Single-leg Glute Bridge", "Legs", "Intermediate", 3, "12 each", 45, "3561-GibBPPg.gif"],
+  ["side_plank", "Side Plank", "Core", "Beginner", 3, "30 sec each", 30, "2135-VBAWRPG.gif"],
+  ["bicycle_crunches", "Bicycle Crunches", "Core", "Beginner", 3, "24", 30, "0262-t6Q9YGn.gif"],
+  ["reverse_crunches", "Reverse Crunches", "Core", "Beginner", 3, "15", 30, "0689-Hgs6Nl1.gif"],
+  ["supermans", "Supermans", "Back", "Beginner", 3, "15", 30, "1363-JbC2iaV.gif"],
+  ["bird_dogs", "Bird Dogs", "Core", "Beginner", 3, "12 each", 30, "3304-MSfvriJ.gif"],
+  ["step_ups", "Step-ups", "Legs", "Beginner", 3, "12 each", 45, "1374-iPm26QU.gif"],
+  ["goblet_squat", "Goblet Squat", "Legs", "Beginner", 4, "12", 75, "0043-qXTaZnJ.gif"],
+  ["dumbbell_goblet_lunge", "Dumbbell Goblet Lunge", "Legs", "Intermediate", 3, "10 each", 75, "0054-t8iSghb.gif"],
+  ["dumbbell_row", "One-arm Dumbbell Row", "Back", "Beginner", 3, "12 each", 60, "0574-X3cqyXz.gif"],
+  ["dumbbell_shoulder_press", "Dumbbell Shoulder Press", "Shoulders", "Beginner", 4, "10", 75, "0337-L2V5Nan.gif"],
+  ["dumbbell_thrusters", "Dumbbell Thrusters", "Full Body", "Intermediate", 4, "10", 75, "0025-EIeI8Vf.gif"],
+  ["kettlebell_swings", "Kettlebell Swings", "Full Body", "Intermediate", 4, "15", 60, "1160-dK9394r.gif"],
+  ["farmer_carries", "Farmer Carries", "Full Body", "Beginner", 4, "40 sec", 45, "0858-Qoujh3Q.gif"],
+  ["medicine_ball_slams", "Medicine Ball Slams", "Full Body", "Intermediate", 4, "12", 45, "1160-dK9394r.gif"],
+  ["resistance_band_row", "Resistance Band Row", "Back", "Beginner", 3, "15", 45, "0861-fUBheHs.gif"],
+  ["band_pull_aparts", "Band Pull-aparts", "Shoulders", "Beginner", 3, "20", 30, "0762-nFUwqG6.gif"],
+  ["banded_squats", "Banded Squats", "Legs", "Beginner", 3, "15", 45, "0043-qXTaZnJ.gif"],
+  ["trx_rows", "TRX Rows", "Back", "Beginner", 3, "12", 60, "0861-fUBheHs.gif"],
+  ["sled_push", "Sled Push", "Full Body", "Advanced", 6, "20 m", 90, "0858-Qoujh3Q.gif"],
+  ["assault_bike", "Assault Bike Intervals", "Cardio", "Advanced", 8, "20 sec", 40, "0003-1ZFqTDN.gif"],
+  ["rowing_machine", "Rowing Machine", "Cardio", "Beginner", 4, "2 min", 60, "0861-fUBheHs.gif"],
+  ["elliptical_intervals", "Elliptical Intervals", "Cardio", "Beginner", 5, "1 min", 45, "0003-1ZFqTDN.gif"],
+  ["cable_tricep_pushdown", "Cable Tricep Pushdown", "Arms", "Beginner", 3, "12", 45, "0060-h8LFzo9.gif"],
+  ["preacher_curl", "Preacher Curl", "Arms", "Intermediate", 3, "10", 60, "0575-q6y3OhV.gif"],
+  ["hip_thrust", "Hip Thrust", "Legs", "Intermediate", 4, "10", 90, "3561-GibBPPg.gif"],
+  ["smith_machine_squat", "Smith Machine Squat", "Legs", "Beginner", 4, "10", 90, "0043-qXTaZnJ.gif"]
 ];
 
 const fullEquipmentKeywords = [
@@ -251,3 +283,4 @@ export async function fetchRemoteExerciseCatalog(): Promise<Exercise[]> {
     }));
   return remoteExerciseCache;
 }
+

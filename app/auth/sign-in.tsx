@@ -78,20 +78,21 @@ export default function SignInScreen() {
 
   return (
     <AppLayout style={styles.authViewport} contentContainerStyle={styles.screen}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboard}>
+      <KeyboardAvoidingView behavior={Platform.OS === "web" ? undefined : Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboard}>
         {!isScreenReady ? (
           <AuthSkeleton />
         ) : (
           <ScrollView
             bounces={false}
             keyboardShouldPersistTaps="handled"
+            scrollEnabled={false}
             showsVerticalScrollIndicator={false}
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
           >
         <View style={styles.logoBlock}>
           <View style={styles.logoGlow}>
-            <Ionicons name="fitness" size={42} color={colors.accent} />
+            <Ionicons name="fitness" size={30} color={colors.accent} />
           </View>
           <View style={styles.wordmarkWrap}>
             <Text style={styles.logo}>FITNEO</Text>
@@ -278,7 +279,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingVertical: 18
+    paddingVertical: 8
   },
   logoBlock: {
     alignItems: "center",
@@ -289,16 +290,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(10,132,255,0.18)",
     borderRadius: 50,
-    height: 100,
+    height: 66,
     justifyContent: "center",
     shadowColor: colors.accent,
     shadowOpacity: 0.55,
     shadowRadius: 18,
-    width: 100
+    width: 66
   },
   logo: {
     color: colors.textPrimary,
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: "900",
     letterSpacing: 4,
     fontFamily: Platform.select({ web: "Inter, Avenir Next, Montserrat, system-ui, sans-serif", default: undefined }),
@@ -318,17 +319,17 @@ const styles = StyleSheet.create({
   },
   tagline: {
     color: colors.textSecondary,
-    fontSize: 15
+    fontSize: 14
   },
   formShell: {
-    gap: 16,
-    marginTop: 30,
+    gap: 11,
+    marginTop: 18,
     maxWidth: 400,
     width: "100%"
   },
   title: {
     color: colors.textPrimary,
-    fontSize: 28,
+    fontSize: 25,
     fontWeight: "700",
     marginBottom: 2
   },
@@ -346,8 +347,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     color: colors.textPrimary,
-    fontSize: 15,
-    minHeight: 52,
+    fontSize: 14,
+    minHeight: 46,
     paddingHorizontal: 16
   },
   inputFocused: {
@@ -364,19 +365,19 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: "row",
-    minHeight: 52
+    minHeight: 46
   },
   passwordInput: {
     color: colors.textPrimary,
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     paddingHorizontal: 16
   },
   eyeButton: {
     alignItems: "center",
-    height: 48,
+    height: 44,
     justifyContent: "center",
-    width: 48
+    width: 44
   },
   forgot: {
     alignSelf: "flex-end",
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     borderRadius: radii.md,
     justifyContent: "center",
-    minHeight: 52
+    minHeight: 46
   },
   disabled: {
     opacity: 0.65
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     justifyContent: "center",
-    minHeight: 52,
+    minHeight: 46,
     padding: 14
   },
   googleLogo: {
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
     justifyContent: "center",
-    minHeight: 36
+    minHeight: 28
   },
   signupMuted: {
     color: colors.textTertiary,
@@ -477,3 +478,5 @@ const styles = StyleSheet.create({
     textAlign: "center"
   }
 });
+
+

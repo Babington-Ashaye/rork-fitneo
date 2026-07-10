@@ -46,7 +46,7 @@ function FloatingTabBar({ state, navigation }: any) {
               onPress={() => navigation.navigate(route.name)}
               style={[styles.navItem, isActive ? styles.navItemActive : styles.navItemInactive]}
             >
-              <Ionicons name={navIcons[route.name]} size={21} color={color} style={isActive ? styles.activeIcon : undefined} />
+              <Ionicons name={navIcons[route.name]} size={18} color={color} style={isActive ? styles.activeIcon : undefined} />
               {isActive ? <Text style={styles.navLabel}>{t(navLabelKeys[route.name])}</Text> : null}
             </Pressable>
           );
@@ -94,10 +94,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.75)",
     borderColor: "rgba(0,163,255,0.20)",
     borderRadius: 24,
+    maxWidth: 420,
+    width: "88%",
     borderWidth: 1,
     flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 12,
+    gap: 2,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 12 },
@@ -115,22 +117,24 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     flexDirection: "row",
     gap: 6,
-    minHeight: 52,
-    paddingVertical: 12
+    minHeight: 42,
+    paddingVertical: 9
   },
   navItemActive: {
     backgroundColor: "rgba(10,132,255,0.15)",
-    paddingHorizontal: 16
+    paddingHorizontal: 13
   },
   navItemInactive: {
-    paddingHorizontal: 12
+    paddingHorizontal: 10
   },
   activeIcon: {
-    transform: [{ scale: 1.18 }]
+    transform: [{ scale: 1.06 }]
   },
   navLabel: {
     color: colors.accent,
-    fontSize: 13,
-    fontWeight: "700"
+    fontSize: 11,
+    fontWeight: "800"
   }
 });
+
+

@@ -165,9 +165,18 @@ const fallbackDashboard: DashboardData = {
 };
 
 const fallbackPrograms: WorkoutProgram[] = [
-  { id: "full-body-strength", name: "Full Body Strength", category: "Strength", durationMinutes: 45, calories: 420, exercises: 8, difficulty: 2 },
+  { id: "full-body-beginner", name: "Full Body Beginner", category: "Strength", durationMinutes: 30, calories: 255, exercises: 5, difficulty: 1 },
+  { id: "upper-lower-split", name: "Upper / Lower Split", category: "Strength", durationMinutes: 45, calories: 382, exercises: 5, difficulty: 2 },
+  { id: "push-pull-legs", name: "Push Pull Legs", category: "Strength", durationMinutes: 50, calories: 425, exercises: 6, difficulty: 2 },
+  { id: "home-no-equipment", name: "Home No-Equipment", category: "Strength", durationMinutes: 30, calories: 255, exercises: 6, difficulty: 1 },
   { id: "hiit-burn", name: "HIIT Burn", category: "Conditioning", durationMinutes: 24, calories: 280, exercises: 6, difficulty: 2 },
-  { id: "mobility-reset", name: "Mobility Reset", category: "Mobility", durationMinutes: 18, calories: 120, exercises: 7, difficulty: 1 }
+  { id: "core-control", name: "Core Control", category: "Core", durationMinutes: 20, calories: 160, exercises: 7, difficulty: 1 },
+  { id: "mobility-reset", name: "Mobility Reset", category: "Mobility", durationMinutes: 18, calories: 120, exercises: 7, difficulty: 1 },
+  { id: "athletic-conditioning", name: "Athletic Conditioning", category: "Conditioning", durationMinutes: 36, calories: 360, exercises: 8, difficulty: 3 },
+  { id: "leg-power", name: "Leg Power", category: "Strength", durationMinutes: 42, calories: 390, exercises: 7, difficulty: 2 },
+  { id: "upper-body-pump", name: "Upper Body Pump", category: "Strength", durationMinutes: 38, calories: 330, exercises: 7, difficulty: 2 },
+  { id: "fat-loss-circuit", name: "Fat Loss Circuit", category: "Conditioning", durationMinutes: 28, calories: 315, exercises: 8, difficulty: 2 },
+  { id: "recovery-flow", name: "Recovery Flow", category: "Mobility", durationMinutes: 22, calories: 110, exercises: 8, difficulty: 1 }
 ];
 
 const fallbackMeals = ["Breakfast", "Lunch", "Dinner", "Snacks"];
@@ -267,7 +276,8 @@ export async function fetchWorkoutPrograms(): Promise<WorkoutProgram[]> {
     difficulty: Number(row.difficulty ?? 2),
     isPremium: Boolean(row.is_premium)
   }));
-  return [...localPrograms, ...remotePrograms];
+  const fallbackFill = remotePrograms.length < 8 ? fallbackPrograms.filter((program) => !remotePrograms.some((remote) => remote.id === program.id)) : [];
+  return [...localPrograms, ...remotePrograms, ...fallbackFill];
 }
 
 export async function saveCustomWorkout(input: CustomWorkoutInput): Promise<WorkoutProgram> {
@@ -749,3 +759,5 @@ export async function completeWorkoutSession(input: {
     reason: `Completed ${input.name}`
   });
 }
+
+

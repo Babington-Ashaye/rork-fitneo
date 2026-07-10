@@ -28,7 +28,7 @@ export default function BarcodeScannerScreen() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleBarcode(result: BarcodeScanningResult) {
-    if (isLookingUp || product) {
+    if (isLookingUp || product || !result.data) {
       return;
     }
     setIsLookingUp(true);
@@ -122,7 +122,7 @@ export default function BarcodeScannerScreen() {
       <ScreenTitle title="Barcode Scanner" subtitle={`Point the frame at a packaged food barcode for ${mealType}.`} />
       <View style={styles.cameraShell}>
         <CameraView
-          barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128"] }}
+          barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "code93", "itf14", "qr"] }}
           facing="back"
           onBarcodeScanned={product || isLookingUp ? undefined : handleBarcode}
           style={StyleSheet.absoluteFill}
@@ -203,3 +203,4 @@ const styles = StyleSheet.create({
   status: { color: colors.danger, fontSize: 12, lineHeight: 17, textAlign: "center" },
   success: { color: colors.teal }
 });
+

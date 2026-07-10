@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { Chip, GlassCard, SkeletonBlock } from "@/components/ScreenKit";
 import {
@@ -163,7 +163,7 @@ export default function CoachScreen() {
       const assistantMessage: ChatMessageRecord = {
         id: `local-assistant-${Date.now()}`,
         role: "assistant",
-        content: response.data.message,
+        content: formatCoachMessage(response.data.message),
         createdAt: new Date().toISOString()
       };
       setMessages((current) => [...current, assistantMessage]);
@@ -199,19 +199,24 @@ export default function CoachScreen() {
   return (
     <AppLayout contentContainerStyle={styles.screen}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => isPremium ? setHistoryOpen((current) => !current) : router.push("/paywall")} style={styles.iconButton}>
-          <Ionicons name={isPremium ? "albums-outline" : "lock-closed-outline"} size={19} color={isPremium ? colors.textPrimary : colors.gold} />
+        <TouchableOpacity onPress={() => router.replace("/(tabs)")} style={styles.iconButton}>
+          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.aiIdentity}>
-          <View style={styles.onlineDot} />
+          <View style={styles.aiOrb}><Ionicons name="hardware-chip" size={18} color={colors.accent} /></View>
           <View>
             <Text style={styles.title}>FITNEO AI</Text>
             <Text style={styles.online}>COACH ONLINE</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={() => void newChat()} style={styles.iconButton}>
-          <Ionicons name="create-outline" size={19} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setHistoryOpen((current) => !current)} style={styles.iconButton}>
+            <Ionicons name="albums-outline" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void newChat()} style={styles.iconButton}>
+            <Ionicons name="create-outline" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.conversationActions}>
@@ -258,19 +263,20 @@ export default function CoachScreen() {
         ) : (
           messages.map((message) => (
             <View key={message.id} style={[styles.bubble, message.role === "user" ? styles.userBubble : styles.assistantBubble]}>
-              <Text style={styles.messageText}>{message.content}</Text>
+              <Text style={styles.messageText}>{formatCoachMessage(message.content)}</Text>
             </View>
           ))
         )}
         {isSending ? (
           <View style={[styles.bubble, styles.assistantBubble, styles.typingBubble]}>
             {streamingText ? (
-              <Text style={styles.messageText}>{streamingText}</Text>
+              <Text style={styles.messageText}>{formatCoachMessage(streamingText)}</Text>
             ) : (
-              <>
-                <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={styles.typingText}>Building your response...</Text>
-              </>
+              <View style={styles.typingDots}>
+                <View style={styles.typingDot} />
+                <View style={[styles.typingDot, styles.typingDotDim]} />
+                <View style={[styles.typingDot, styles.typingDotFaint]} />
+              </View>
             )}
           </View>
         ) : null}
@@ -324,9 +330,20 @@ export default function CoachScreen() {
   );
 }
 
+function formatCoachMessage(value: string) {
+  return value
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background, gap: 10, paddingBottom: 24 },
-  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", gap: 10 },
+  headerActions: { alignItems: "center", flexDirection: "row", gap: 8 },
   conversationActions: { flexDirection: "row", gap: 8 },
   actionButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, flex: 1, flexDirection: "row", gap: 7, justifyContent: "center", minHeight: 40 },
   actionText: { color: colors.textSecondary, fontSize: 12, fontWeight: "800" },
@@ -334,7 +351,7 @@ const styles = StyleSheet.create({
   saveActionText: { color: colors.accent },
   iconButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", width: 38 },
   aiIdentity: { alignItems: "center", flexDirection: "row", gap: 10 },
-  onlineDot: { backgroundColor: colors.teal, borderRadius: 6, height: 12, shadowColor: colors.teal, shadowOpacity: 0.8, shadowRadius: 8, width: 12 },
+  aiOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.14)", borderColor: "rgba(0,163,255,0.45)", borderRadius: 18, borderWidth: 1, height: 36, justifyContent: "center", shadowColor: colors.accent, shadowOpacity: 0.55, shadowRadius: 12, width: 36 },
   title: { color: colors.textPrimary, fontSize: 18, fontWeight: "900", letterSpacing: 2 },
   online: { color: colors.teal, fontSize: 9, fontWeight: "800", letterSpacing: 1.2 },
   historyPanel: { gap: 12, padding: 14 },
@@ -346,10 +363,13 @@ const styles = StyleSheet.create({
   messageContent: { flexGrow: 1, gap: 12, justifyContent: "flex-end", paddingBottom: 18, paddingTop: 18 },
   bubble: { borderRadius: 20, maxWidth: "90%", paddingHorizontal: 16, paddingVertical: 13 },
   userBubble: { alignSelf: "flex-end", backgroundColor: "#253044", borderBottomRightRadius: 6 },
-  assistantBubble: { alignSelf: "flex-start", backgroundColor: "transparent", borderBottomLeftRadius: 5, paddingLeft: 4 },
+  assistantBubble: { alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.055)", borderColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderBottomLeftRadius: 5 },
   messageText: { color: colors.textPrimary, fontSize: 15, lineHeight: 23 },
   typingBubble: { alignItems: "center", flexDirection: "row", gap: 9 },
-  typingText: { color: colors.textSecondary, fontSize: 12 },
+  typingDots: { alignItems: "center", flexDirection: "row", gap: 5, paddingHorizontal: 4, paddingVertical: 5 },
+  typingDot: { backgroundColor: colors.accent, borderRadius: 4, height: 8, width: 8 },
+  typingDotDim: { opacity: 0.58 },
+  typingDotFaint: { opacity: 0.28 },
   errorCard: { alignItems: "center", alignSelf: "center", backgroundColor: "rgba(255,199,51,0.10)", borderColor: "rgba(255,199,51,0.26)", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 9, marginTop: 4, maxWidth: "94%", padding: 12 },
   errorText: { color: colors.textSecondary, flex: 1, fontSize: 12, lineHeight: 17 },
   retryButton: { backgroundColor: "rgba(255,199,51,0.16)", borderColor: "rgba(255,199,51,0.40)", borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
@@ -360,12 +380,15 @@ const styles = StyleSheet.create({
   emptyCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
   suggestionScroller: { flexGrow: 0, maxHeight: 44, zIndex: 4 },
   suggestions: { alignItems: "center", gap: 8, paddingRight: 8 },
-  composer: { alignItems: "flex-end", backgroundColor: colors.backgroundElevated, borderColor: "rgba(0,163,255,0.22)", borderRadius: 24, borderWidth: 1, flexDirection: "row", gap: 6, padding: 5, shadowColor: colors.accent, shadowOpacity: 0.12, shadowRadius: 14, zIndex: 5 },
+  composer: { alignItems: "center", backgroundColor: "#101015", borderColor: "rgba(0,163,255,0.34)", borderRadius: 22, borderWidth: 1, flexDirection: "row", gap: 5, padding: 5, shadowColor: colors.accent, shadowOpacity: 0.18, shadowRadius: 16, zIndex: 5 },
   composerFocused: { borderColor: "rgba(0,163,255,0.72)", marginHorizontal: -10, shadowOpacity: 0.32 },
   composerMark: { alignItems: "center", height: 38, justifyContent: "center", width: 36 },
-  input: { color: colors.textPrimary, flex: 1, fontSize: 15, maxHeight: 76, minHeight: 42, paddingHorizontal: 4, paddingVertical: 10 },
-  sendButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 21, height: 42, justifyContent: "center", width: 42 },
+  input: { color: colors.textPrimary, flex: 1, fontSize: 14, maxHeight: 56, minHeight: 38, paddingHorizontal: 4, paddingVertical: 8 },
+  sendButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 19, height: 38, justifyContent: "center", width: 38 },
   sendDisabled: { opacity: 0.4 },
   assistantSkeleton: { alignSelf: "flex-start", width: "82%" },
   userSkeleton: { alignSelf: "flex-end", width: "64%" }
 });
+
+
+

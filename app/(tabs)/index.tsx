@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, IconBubble, MetaItem, PillButton, SectionHeader, SkeletonBlock, StatCard, TouchableCard, XPBar, withAlpha } from "@/components/ScreenKit";
 import { DashboardData, fetchActiveWorkoutPlan, fetchDashboardData, WorkoutProgram } from "@/lib/api";
@@ -41,15 +41,15 @@ export default function DashboardScreen() {
 
   async function updateWaterIntake(amount: number) {
     if (!data) return;
+    const normalized = Math.max(0, Math.min(data.waterGoal, Math.round(amount)));
     const previous = data.waterCurrent;
-    setData({ ...data, waterCurrent: amount });
+    setData({ ...data, waterCurrent: normalized });
     try {
-      await saveWaterIntake(user?.id ?? null, amount, data.waterGoal);
+      await saveWaterIntake(user?.id ?? null, normalized, data.waterGoal);
     } catch {
       setData((current) => current ? { ...current, waterCurrent: previous } : current);
     }
   }
-
   if (isLoading) {
     return (
       <AppLayout scroll>
@@ -180,6 +180,24 @@ export default function DashboardScreen() {
             <Text style={styles.cardTitle}>Water intake</Text>
           </View>
           <Text style={styles.accentMeta}>{data.waterCurrent} / {data.waterGoal}</Text>
+        </View>
+        <View style={styles.waterControls}>
+          <TouchableOpacity accessibilityLabel="Decrease water intake" style={styles.waterAdjust} onPress={() => void updateWaterIntake(data.waterCurrent - 1)}>
+            <Ionicons name="remove" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.waterInputWrap}>
+            <TextInput
+              keyboardType="number-pad"
+              value={String(data.waterCurrent)}
+              onChangeText={(value) => void updateWaterIntake(Number(value.replace(/[^0-9]/g, "") || 0))}
+              style={styles.waterInput}
+              underlineColorAndroid="transparent"
+            />
+            <Text style={styles.waterInputLabel}>cups</Text>
+          </View>
+          <TouchableOpacity accessibilityLabel="Increase water intake" style={[styles.waterAdjust, styles.waterAdjustActive]} onPress={() => void updateWaterIntake(data.waterCurrent + 1)}>
+            <Ionicons name="add" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
         </View>
         <View style={styles.waterRow}>
           {Array.from({ length: data.waterGoal }).map((_, index) => (
@@ -417,6 +435,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700"
   },
+  waterControls: { alignItems: "center", flexDirection: "row", gap: 10 },
+  waterAdjust: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.07)", borderColor: colors.cardStroke, borderRadius: 16, borderWidth: 1, height: 42, justifyContent: "center", width: 42 },
+  waterAdjustActive: { backgroundColor: colors.accent, borderColor: "rgba(255,255,255,0.36)" },
+  waterInputWrap: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderColor: colors.cardStroke, borderRadius: 16, borderWidth: 1, flex: 1, flexDirection: "row", justifyContent: "center", minHeight: 42, paddingHorizontal: 12 },
+  waterInput: { color: colors.textPrimary, fontSize: 18, fontWeight: "900", minWidth: 34, padding: 0, textAlign: "center" },
+  waterInputLabel: { color: colors.textTertiary, fontSize: 11, fontWeight: "800", marginLeft: 5 },
   waterRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -499,3 +523,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4
   }
 });
+
+
+

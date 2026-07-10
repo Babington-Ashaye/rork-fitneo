@@ -24,15 +24,19 @@ function normalizeBase64Image(imageUri: string) {
   const trimmed = imageUri.trim();
   const match = trimmed.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/s);
   const mimeType = match?.[1]?.replace("image/jpg", "image/jpeg") ?? "image/jpeg";
-  const rawBase64 = (match?.[2] ?? trimmed).replace(/\s/g, "");
+  const rawBase64 = (match?.[2] ?? trimmed)
+    .replace(/\s/g, "")
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+  const paddedBase64 = rawBase64.padEnd(rawBase64.length + ((4 - (rawBase64.length % 4)) % 4), "=");
 
-  if (!rawBase64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(rawBase64)) {
+  if (!paddedBase64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(paddedBase64)) {
     throw new Error("The camera image could not be encoded for AI analysis. Please retake the photo.");
   }
 
   return {
-    dataUri: `data:${mimeType};base64,${rawBase64}`,
-    imageData: rawBase64,
+    dataUri: `data:${mimeType};base64,${paddedBase64}`,
+    imageData: paddedBase64,
     mimeType
   };
 }
@@ -337,3 +341,5 @@ export async function analyzeFoodPhoto(imageUri: string) {
   }
   return response;
 }
+
+
