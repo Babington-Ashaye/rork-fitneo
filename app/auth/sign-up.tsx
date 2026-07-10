@@ -14,11 +14,14 @@ export default function SignUpScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const authErrorMessage = getAuthErrorMessage(localError ?? error);
 
   async function submit() {
     setLocalError(null);
+    setStatusMessage(null);
     const cleanEmail = email.trim();
     if (!cleanEmail) {
       setLocalError("Please enter your email.");
@@ -28,14 +31,24 @@ export default function SignUpScreen() {
       setLocalError("Password must be at least 6 characters.");
       return;
     }
-    const ok = await signUp(cleanEmail, password);
-    if (ok) {
+    const result = await signUp(cleanEmail, password);
+    if (result.needsEmailConfirmation) {
+      setPassword("");
+      setStatusMessage(result.message ?? "Account created. Check your email to confirm your account.");
+      return;
+    }
+    if (result.ok) {
       router.replace("/");
+      return;
+    }
+    if (result.message) {
+      setLocalError(result.message);
     }
   }
 
   async function continueWithGoogle() {
     setLocalError(null);
+    setStatusMessage(null);
     const ok = await signInWithGoogle();
     if (ok) {
       router.replace("/");
@@ -76,18 +89,23 @@ export default function SignUpScreen() {
           onChangeText={setEmail}
           underlineColorAndroid="transparent"
         />
-        <TextInput
-          placeholder="Password"
-          placeholderTextColor={colors.textTertiary}
-          onBlur={() => setPasswordFocused(false)}
-          onFocus={() => setPasswordFocused(true)}
-          secureTextEntry
-          style={[styles.input, passwordFocused && styles.inputFocused]}
-          textContentType="newPassword"
-          value={password}
-          onChangeText={setPassword}
-          underlineColorAndroid="transparent"
-        />
+        <View style={[styles.passwordRow, passwordFocused && styles.inputFocused]}>
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor={colors.textTertiary}
+            onBlur={() => setPasswordFocused(false)}
+            onFocus={() => setPasswordFocused(true)}
+            secureTextEntry={!showPassword}
+            style={styles.passwordInput}
+            textContentType="newPassword"
+            value={password}
+            onChangeText={setPassword}
+            underlineColorAndroid="transparent"
+          />
+          <TouchableOpacity activeOpacity={0.72} onPress={() => setShowPassword((current) => !current)} style={styles.eyeButton}>
+            <Ionicons name={showPassword ? "eye" : "eye-off"} size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
         {!isSupabaseConfigured ? (
           <AuthNotice
             icon="cloud-offline"
@@ -98,6 +116,7 @@ export default function SignUpScreen() {
             ].filter(Boolean).join(" and ")}. Add it in Vercel Environment Variables, then redeploy with a clean build cache.`}
           />
         ) : null}
+        {statusMessage ? <AuthNotice icon="mail" title="Check your email" message={statusMessage} /> : null}
         {authErrorMessage ? <AuthNotice icon="alert-circle" title="Sign-up needs attention" message={authErrorMessage} danger /> : null}
         <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={submit} style={[styles.primaryButton, isLoading && styles.disabled]}>
           {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.primaryText}>Create Account</Text>}
@@ -233,6 +252,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.28,
     shadowRadius: 12
+  },
+  passwordRow: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    minHeight: 52
+  },
+  passwordInput: {
+    color: colors.textPrimary,
+    flex: 1,
+    fontSize: 15,
+    minHeight: 52,
+    paddingHorizontal: 16
+  },
+  eyeButton: {
+    alignItems: "center",
+    height: 48,
+    justifyContent: "center",
+    width: 48
   },
   primaryButton: {
     alignItems: "center",

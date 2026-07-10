@@ -18,6 +18,29 @@ function getOAuthRedirectUrl() {
   return Linking.createURL("auth/callback");
 }
 
+function getFriendlyAuthError(error: unknown, fallback: string): string {
+  const rawMessage = error instanceof Error ? error.message : "";
+  const message = rawMessage.toLowerCase();
+
+  if (message.includes("already registered") || message.includes("already exists")) {
+    return "An account already exists for this email. Please sign in instead.";
+  }
+  if (message.includes("invalid email")) {
+    return "Please enter a valid email address.";
+  }
+  if (message.includes("password")) {
+    return rawMessage || "Please choose a stronger password.";
+  }
+  if (message.includes("rate limit") || message.includes("too many")) {
+    return "Too many attempts. Please wait a moment and try again.";
+  }
+  if (message.includes("network") || message.includes("fetch")) {
+    return "Network issue while creating your account. Check your connection and try again.";
+  }
+
+  return rawMessage || fallback;
+}
+
 export type AuthProfile = {
   id: string;
   email: string | null;
@@ -50,12 +73,18 @@ type AuthContextValue = {
   error: string | null;
   signIn: (email: string, password: string) => Promise<boolean>;
   signInWithGoogle: () => Promise<boolean>;
-  signUp: (email: string, password: string) => Promise<boolean>;
+  signUp: (email: string, password: string) => Promise<SignUpResult>;
   resetPassword: (email: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   markLocalOnboardingComplete: () => Promise<void>;
   acceptLegalTerms: () => Promise<void>;
+};
+
+type SignUpResult = {
+  ok: boolean;
+  needsEmailConfirmation?: boolean;
+  message?: string;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -222,22 +251,57 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setError(null);
     setIsLoading(true);
     try {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail) {
+        throw new Error("Please enter your email address.");
+      }
+      if (password.length < 6) {
+        throw new Error("Password must be at least 6 characters.");
+      }
       if (!isSupabaseConfigured) {
         setError(missingSupabaseConfigMessage);
-        return false;
+        return { ok: false, message: missingSupabaseConfigMessage };
       }
-      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          emailRedirectTo: getOAuthRedirectUrl(),
+          data: {
+            display_name: cleanEmail.split("@")[0]
+          }
+        }
+      });
       if (signUpError) {
         throw signUpError;
       }
-      setSession(data.session);
-      if (data.session) {
-        await ensureProfile(data.session);
+
+      if (!data.user) {
+        throw new Error("Sign-up did not return a user. Please try again.");
       }
-      return true;
+
+      if (!data.session) {
+        return {
+          ok: true,
+          needsEmailConfirmation: true,
+          message: "Account created. Check your email to confirm your FITNEO account, then sign in."
+        };
+      }
+
+      setSession(data.session);
+      try {
+        await ensureProfile(data.session);
+      } catch (profileErr) {
+        if (__DEV__) {
+          console.warn("FITNEO profile sync after sign-up failed:", profileErr);
+        }
+      }
+
+      return { ok: true, message: "Account created. Welcome to FITNEO." };
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create account.");
-      return false;
+      const message = getFriendlyAuthError(err, "Failed to create account.");
+      setError(message);
+      return { ok: false, message };
     } finally {
       setIsLoading(false);
     }
