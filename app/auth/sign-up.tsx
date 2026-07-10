@@ -150,12 +150,24 @@ export default function SignUpScreen() {
 
 function getAuthErrorMessage(error: unknown): string | null {
   if (!error) return null;
-  if (typeof error === "string") return error.trim() || null;
+  if (typeof error === "string") {
+    const clean = error.trim();
+    if (!clean || clean === "{}") {
+      return "We could not complete sign-up. This email may already be registered, or the auth service returned no details.";
+    }
+    return clean;
+  }
   if (typeof error === "object") {
-    const record = error as { message?: unknown; code?: unknown };
+    const record = error as { message?: unknown; code?: unknown; error_description?: unknown; details?: unknown };
     const message = typeof record.message === "string" ? record.message.trim() : "";
+    const description = typeof record.error_description === "string" ? record.error_description.trim() : "";
+    const details = typeof record.details === "string" ? record.details.trim() : "";
     const code = typeof record.code === "string" ? record.code.trim() : "";
-    return message || code || null;
+    const visible = message || description || details || code;
+    if (!visible || visible === "{}") {
+      return "We could not complete sign-up. This email may already be registered, or the auth service returned no details.";
+    }
+    return visible;
   }
   return "Please check your details and try again.";
 }

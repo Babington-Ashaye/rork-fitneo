@@ -19,11 +19,20 @@ function getOAuthRedirectUrl() {
 }
 
 function getFriendlyAuthError(error: unknown, fallback: string): string {
-  const rawMessage = error instanceof Error ? error.message : "";
+  const rawMessage = extractAuthErrorMessage(error);
   const message = rawMessage.toLowerCase();
 
   if (message.includes("already registered") || message.includes("already exists")) {
     return "An account already exists for this email. Please sign in instead.";
+  }
+  if (message.includes("user_already_exists")) {
+    return "An account already exists for this email. Please sign in instead.";
+  }
+  if (message.includes("signup") && message.includes("disabled")) {
+    return "Email sign-up is disabled in the auth provider settings. Enable email sign-ups in Supabase Authentication.";
+  }
+  if (message.includes("email") && message.includes("not confirmed")) {
+    return "This email needs confirmation. Please check your inbox, then sign in.";
   }
   if (message.includes("invalid email")) {
     return "Please enter a valid email address.";
@@ -39,6 +48,29 @@ function getFriendlyAuthError(error: unknown, fallback: string): string {
   }
 
   return rawMessage || fallback;
+}
+
+function extractAuthErrorMessage(error: unknown): string {
+  if (!error) return "";
+  if (typeof error === "string") {
+    const clean = error.trim();
+    return clean === "{}" ? "" : clean;
+  }
+  if (error instanceof Error) {
+    return error.message && error.message !== "{}" ? error.message : "";
+  }
+  if (typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const fields = ["message", "error_description", "description", "details", "hint", "code", "name", "status"];
+    const parts = fields
+      .map((field) => record[field])
+      .filter((value): value is string | number => typeof value === "string" || typeof value === "number")
+      .map(String)
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0 && value !== "{}");
+    if (parts.length > 0) return parts.join(" ");
+  }
+  return "";
 }
 
 export type AuthProfile = {

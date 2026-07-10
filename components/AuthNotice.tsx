@@ -15,6 +15,11 @@ export function AuthNotice({
 }) {
   const cleanMessage = typeof message === "string" ? message.trim() : "";
   const shouldShowMessage = cleanMessage.length > 0 && cleanMessage !== "{}";
+  const visibleMessage = shouldShowMessage
+    ? cleanMessage
+    : danger
+      ? "We could not complete this request. If this email already has an account, use Sign In instead."
+      : "";
 
   return (
     <View style={[styles.notice, danger && styles.noticeDanger]}>
@@ -23,7 +28,7 @@ export function AuthNotice({
       </View>
       <View style={styles.noticeCopy}>
         <Text style={styles.noticeTitle}>{title}</Text>
-        {shouldShowMessage ? <Text style={styles.noticeText}>{cleanMessage}</Text> : null}
+        {visibleMessage ? <Text style={styles.noticeText}>{visibleMessage}</Text> : null}
       </View>
     </View>
   );
