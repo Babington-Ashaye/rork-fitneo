@@ -22,6 +22,7 @@ export default function SignInScreen() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
+  const authErrorMessage = getAuthErrorMessage(localError ?? error);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsScreenReady(true), 180);
@@ -156,7 +157,7 @@ export default function SignInScreen() {
 
           {statusMessage ? <AuthNotice icon="mail" title="Reset email sent" message={statusMessage} /> : null}
 
-          {localError || error ? <AuthNotice icon="alert-circle" title="Sign-in needs attention" message={localError ?? error ?? ""} danger /> : null}
+          {authErrorMessage ? <AuthNotice icon="alert-circle" title="Sign-in needs attention" message={authErrorMessage} danger /> : null}
 
           <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={submit} style={[styles.primaryButton, isLoading && styles.disabled]}>
             {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.primaryText}>Sign In</Text>}
@@ -173,16 +174,18 @@ export default function SignInScreen() {
             <Text style={styles.googleText}>Continue with Google</Text>
           </TouchableCard>
 
-          <Link href="/signup" asChild>
-            <TouchableOpacity activeOpacity={0.76} style={styles.signupRow}>
-              <Text style={styles.signupMuted}>Don't have an account?</Text>
-              <Text style={styles.signupAction}>Sign up</Text>
-            </TouchableOpacity>
-          </Link>
+          <View style={styles.footerBlock}>
+            <Link href="/signup" asChild>
+              <TouchableOpacity activeOpacity={0.76} style={styles.signupRow}>
+                <Text style={styles.signupMuted}>Don't have an account?</Text>
+                <Text style={styles.signupAction}>Sign up</Text>
+              </TouchableOpacity>
+            </Link>
 
-          <Text style={styles.legal}>
-            By continuing, you agree to FITNEO's Consumer Terms & Usage Policy and acknowledge our Privacy Policy.
-          </Text>
+            <Text style={styles.legal}>
+              By continuing, you agree to FITNEO's Consumer Terms & Usage Policy and acknowledge our Privacy Policy.
+            </Text>
+          </View>
 
         </View>
           </ScrollView>
@@ -190,6 +193,18 @@ export default function SignInScreen() {
       </KeyboardAvoidingView>
     </AppLayout>
   );
+}
+
+function getAuthErrorMessage(error: unknown): string | null {
+  if (!error) return null;
+  if (typeof error === "string") return error.trim() || null;
+  if (typeof error === "object") {
+    const record = error as { message?: unknown; code?: unknown };
+    const message = typeof record.message === "string" ? record.message.trim() : "";
+    const code = typeof record.code === "string" ? record.code.trim() : "";
+    return message || code || null;
+  }
+  return "Please check your details and try again.";
 }
 
 function Field({
@@ -444,6 +459,10 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 13,
     fontWeight: "900"
+  },
+  footerBlock: {
+    gap: 8,
+    paddingBottom: 8
   },
   legal: {
     color: colors.textTertiary,

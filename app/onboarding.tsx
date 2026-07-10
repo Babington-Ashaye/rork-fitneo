@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { GlassCard, TouchableCard } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
@@ -132,7 +132,15 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <AppLayout scroll contentContainerStyle={styles.screen}>
+    <AppLayout contentContainerStyle={styles.screen}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboard}>
+        <ScrollView
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+        >
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
       </View>
@@ -230,6 +238,8 @@ export default function OnboardingScreen() {
           {isSaving ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.continueText}>{step === totalSteps - 1 ? "Finish" : "Continue"}</Text>}
         </TouchableOpacity>
       </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </AppLayout>
   );
 }
@@ -295,7 +305,21 @@ function calculateTdee({
 
 const styles = StyleSheet.create({
   screen: {
-    paddingHorizontal: 24
+    paddingHorizontal: 0
+  },
+  keyboard: {
+    flex: 1,
+    width: "100%"
+  },
+  scroll: {
+    flex: 1,
+    width: "100%"
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingBottom: 24
   },
   progressTrack: {
     backgroundColor: "rgba(255,255,255,0.08)",

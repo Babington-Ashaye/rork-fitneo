@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthNotice } from "@/components/AuthNotice";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +15,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState("");
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const authErrorMessage = getAuthErrorMessage(localError ?? error);
 
   async function submit() {
     setLocalError(null);
@@ -43,15 +44,23 @@ export default function SignUpScreen() {
 
   return (
     <AppLayout style={styles.authViewport} contentContainerStyle={styles.screen}>
-      <View style={styles.logoBlock}>
-        <View style={styles.logoGlow}>
-          <Ionicons name="fitness" size={42} color={colors.accent} />
-        </View>
-        <Text style={styles.logo}>FITNEO</Text>
-        <Text style={styles.tagline}>Create your AI-powered fitness OS.</Text>
-      </View>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboard}>
+        <ScrollView
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.logoBlock}>
+            <View style={styles.logoGlow}>
+              <Ionicons name="fitness" size={42} color={colors.accent} />
+            </View>
+            <Text style={styles.logo}>FITNEO</Text>
+            <Text style={styles.tagline}>Create your AI-powered fitness OS.</Text>
+          </View>
 
-      <View style={styles.form}>
+          <View style={styles.form}>
         <Text style={styles.title}>Create Account</Text>
         <TextInput
           autoCapitalize="none"
@@ -89,7 +98,7 @@ export default function SignUpScreen() {
             ].filter(Boolean).join(" and ")}. Add it in Vercel Environment Variables, then redeploy with a clean build cache.`}
           />
         ) : null}
-        {localError || error ? <AuthNotice icon="alert-circle" title="Sign-up needs attention" message={localError ?? error ?? ""} danger /> : null}
+        {authErrorMessage ? <AuthNotice icon="alert-circle" title="Sign-up needs attention" message={authErrorMessage} danger /> : null}
         <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={submit} style={[styles.primaryButton, isLoading && styles.disabled]}>
           {isLoading ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.primaryText}>Create Account</Text>}
         </TouchableOpacity>
@@ -102,17 +111,34 @@ export default function SignUpScreen() {
           <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
           <Text style={styles.googleText}>Continue with Google</Text>
         </TouchableOpacity>
-        <Text style={styles.legal}>
-          By continuing, you agree to FITNEO's Consumer Terms & Usage Policy and acknowledge our Privacy Policy.
-        </Text>
-        <Link href="/auth/sign-in" asChild>
-          <TouchableOpacity activeOpacity={0.72}>
-            <Text style={styles.link}>Already have an account? Sign In</Text>
-          </TouchableOpacity>
-        </Link>
-      </View>
+        <View style={styles.footerBlock}>
+          <Text style={styles.legal}>
+            By continuing, you agree to FITNEO's Consumer Terms & Usage Policy and acknowledge our Privacy Policy.
+          </Text>
+          <Link href="/login" asChild>
+            <TouchableOpacity activeOpacity={0.72} style={styles.loginRow}>
+              <Text style={styles.loginMuted}>Already have an account?</Text>
+              <Text style={styles.loginAction}>Sign in</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </AppLayout>
   );
+}
+
+function getAuthErrorMessage(error: unknown): string | null {
+  if (!error) return null;
+  if (typeof error === "string") return error.trim() || null;
+  if (typeof error === "object") {
+    const record = error as { message?: unknown; code?: unknown };
+    const message = typeof record.message === "string" ? record.message.trim() : "";
+    const code = typeof record.code === "string" ? record.code.trim() : "";
+    return message || code || null;
+  }
+  return "Please check your details and try again.";
 }
 
 const styles = StyleSheet.create({
@@ -130,7 +156,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    paddingHorizontal: 24
+    paddingHorizontal: 0
+  },
+  keyboard: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    width: "100%"
+  },
+  scroll: {
+    flex: 1,
+    width: "100%"
+  },
+  scrollContent: {
+    alignItems: "center",
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 18
   },
   logoBlock: {
     alignItems: "center",
@@ -252,5 +295,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     textAlign: "center"
+  },
+  footerBlock: {
+    gap: 8,
+    paddingBottom: 8
+  },
+  loginRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    minHeight: 36
+  },
+  loginMuted: {
+    color: colors.textTertiary,
+    fontSize: 13,
+    fontWeight: "600"
+  },
+  loginAction: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "900"
   }
 });
