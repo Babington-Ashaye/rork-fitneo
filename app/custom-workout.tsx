@@ -10,17 +10,17 @@ import { colors, radii } from "@/lib/theme";
 import { useSubscription } from "@/context/SubscriptionContext";
 
 export default function CustomWorkoutScreen() {
-  const { isPremium } = useSubscription();
+  const { isPremium, userPlan } = useSubscription();
   const [name, setName] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Exercise[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<Exercise[]>(() => getAccessibleExercises(isPremium ? "premium" : "free"));
+  const [catalog, setCatalog] = useState<Exercise[]>(() => getAccessibleExercises(userPlan));
 
   useEffect(() => {
-    setCatalog(getAccessibleExercises(isPremium ? "premium" : "free"));
-  }, [isPremium]);
+    setCatalog(getAccessibleExercises(userPlan));
+  }, [userPlan]);
 
   const suggestions = useMemo(() => {
     const clean = query.trim().toLowerCase();

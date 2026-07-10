@@ -3,15 +3,17 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
-import { GlassCard, ScreenTitle } from "@/components/ScreenKit";
+import { ErrorState, GlassCard, LoadingState, ScreenTitle } from "@/components/ScreenKit";
+import { useSubscription } from "@/context/SubscriptionContext";
 import { completeWorkoutSession } from "@/lib/api";
-import { starterExercises } from "@/lib/exercises";
+import { getAccessibleExercises } from "@/lib/exercises";
 import { colors } from "@/lib/theme";
 
 type WorkoutPhase = "exercise" | "rest";
 
 export default function ActiveWorkoutScreen() {
   const { height, width } = useWindowDimensions();
+  const { isLoading: isSubscriptionLoading, userPlan } = useSubscription();
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const [setsCompleted, setSetsCompleted] = useState(0);
@@ -26,10 +28,12 @@ export default function ActiveWorkoutScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const exercise = starterExercises[exerciseIndex];
-  const timedSeconds = useMemo(() => parseTimedDuration(exercise.reps), [exercise.reps]);
-  const progress = ((exerciseIndex + 1) / starterExercises.length) * 100;
-  const mediaHeight = Math.max(128, Math.min(245, height * 0.25, width * 0.54));
+  const exercises = useMemo(() => getAccessibleExercises(userPlan), [userPlan]);
+  const currentExerciseIndex = exercises.length > 0 ? Math.min(exerciseIndex, exercises.length - 1) : 0;
+  const exercise = exercises[currentExerciseIndex];
+  const timedSeconds = useMemo(() => exercise ? parseTimedDuration(exercise.reps) : null, [exercise]);
+  const progress = exercises.length > 0 ? ((currentExerciseIndex + 1) / exercises.length) * 100 : 0;
+  const mediaHeight = Math.max(150, Math.min(260, height * 0.3, width * 0.5625));
 
   useEffect(() => {
     const timer = setInterval(() => setElapsed((current) => current + 1), 1000);
@@ -37,10 +41,17 @@ export default function ActiveWorkoutScreen() {
   }, []);
 
   useEffect(() => {
+    if (exerciseIndex >= exercises.length && exercises.length > 0) {
+      setExerciseIndex(exercises.length - 1);
+    }
+  }, [exerciseIndex, exercises.length]);
+
+  useEffect(() => {
+    if (!exercise) return;
     setTimerRunning(false);
     setTimerRemaining(timedSeconds ?? 0);
     setMediaFailed(false);
-  }, [exercise.id, currentSet, timedSeconds]);
+  }, [exercise, currentSet, timedSeconds]);
 
   useEffect(() => {
     if (phase !== "rest") return;
@@ -88,7 +99,7 @@ export default function ActiveWorkoutScreen() {
   }
 
   function advanceAfterSet() {
-    if (saving) return;
+    if (saving || !exercise) return;
     const nextCompleted = setsCompleted + 1;
     setSetsCompleted(nextCompleted);
     setTimerRunning(false);
@@ -98,7 +109,7 @@ export default function ActiveWorkoutScreen() {
       startRest(exercise.restSeconds);
       return;
     }
-    if (exerciseIndex < starterExercises.length - 1) {
+    if (currentExerciseIndex < exercises.length - 1) {
       setExerciseIndex((current) => current + 1);
       setCurrentSet(1);
       startRest(exercise.restSeconds);
@@ -118,13 +129,29 @@ export default function ActiveWorkoutScreen() {
 
   function skipExercise() {
     setTimerRunning(false);
-    if (exerciseIndex < starterExercises.length - 1) {
+    if (currentExerciseIndex < exercises.length - 1) {
       setExerciseIndex((current) => current + 1);
       setCurrentSet(1);
       setPhase("exercise");
       return;
     }
     void finishWorkout();
+  }
+
+  if (isSubscriptionLoading) {
+    return (
+      <AppLayout contentContainerStyle={styles.stateScreen}>
+        <LoadingState label="Loading your exercise access..." />
+      </AppLayout>
+    );
+  }
+
+  if (!exercise || exercises.length === 0) {
+    return (
+      <AppLayout contentContainerStyle={styles.stateScreen}>
+        <ErrorState message="No exercises available for this plan. Please refresh your subscription status or try again." />
+      </AppLayout>
+    );
   }
 
   if (finished) {
@@ -145,7 +172,7 @@ export default function ActiveWorkoutScreen() {
   return (
     <AppLayout contentContainerStyle={styles.screen}>
       <View style={styles.topRow}>
-        <ScreenTitle title="Active Workout" subtitle={`${exerciseIndex + 1} of ${starterExercises.length} exercises`} />
+        <ScreenTitle title="Active Workout" subtitle={`${currentExerciseIndex + 1} of ${exercises.length} exercises`} />
         <View style={styles.topActions}>
           <TouchableOpacity style={styles.demoToggle} onPress={() => setIsDemoVisible((current) => !current)}>
             <Ionicons name={isDemoVisible ? "eye-off-outline" : "eye-outline"} size={18} color={colors.textSecondary} />
@@ -197,7 +224,7 @@ export default function ActiveWorkoutScreen() {
                 <Text style={styles.muscle}>{exercise.muscleGroup.toUpperCase()}</Text>
                 <Text style={styles.exercise}>{exercise.name}</Text>
               </View>
-              <Text style={styles.exerciseCount}>{exerciseIndex + 1}/{starterExercises.length}</Text>
+              <Text style={styles.exerciseCount}>{currentExerciseIndex + 1}/{exercises.length}</Text>
             </View>
 
             <View style={styles.setMetrics}>
@@ -260,6 +287,7 @@ function formatTime(seconds: number) {
 
 const styles = StyleSheet.create({
   screen: { gap: 10, paddingBottom: 12 },
+  stateScreen: { justifyContent: "center" },
   flex: { flex: 1 },
   topRow: { alignItems: "flex-start", flexDirection: "row", gap: 10, justifyContent: "space-between" },
   topActions: { alignItems: "center", flexDirection: "row", gap: 8 },
@@ -267,8 +295,16 @@ const styles = StyleSheet.create({
   timer: { color: colors.accent, fontSize: 17, fontVariant: ["tabular-nums"], fontWeight: "900" },
   progressTrack: { backgroundColor: "rgba(255,255,255,0.09)", borderRadius: 4, height: 6, overflow: "hidden" },
   progressFill: { backgroundColor: colors.accent, borderRadius: 4, height: 6 },
-  mediaCard: { backgroundColor: "#FFFFFF", borderRadius: 18, flexShrink: 1, overflow: "hidden", position: "relative" },
-  animation: { height: "100%", resizeMode: "contain", width: "100%" },
+  mediaCard: {
+    backgroundColor: "#09090B",
+    borderColor: "rgba(0,163,255,0.18)",
+    borderRadius: 18,
+    borderWidth: 1,
+    flexShrink: 1,
+    overflow: "hidden",
+    position: "relative"
+  },
+  animation: { backgroundColor: "#09090B", height: "100%", resizeMode: "contain", width: "100%" },
   mediaFallback: { alignItems: "center", flex: 1, gap: 8, justifyContent: "center", paddingHorizontal: 24 },
   mediaFallbackText: { color: "#334155", fontSize: 12, lineHeight: 17, textAlign: "center" },
   mediaBadge: { alignItems: "center", backgroundColor: "rgba(6,9,20,0.88)", borderRadius: 9, bottom: 8, flexDirection: "row", gap: 5, paddingHorizontal: 8, paddingVertical: 5, position: "absolute", right: 8 },
@@ -280,7 +316,7 @@ const styles = StyleSheet.create({
   muscle: { color: colors.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1.4 },
   exercise: { color: colors.textPrimary, fontSize: 23, fontWeight: "900", marginTop: 2 },
   setMetrics: { flexDirection: "row", gap: 10 },
-  metric: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 12, flex: 1, padding: 10 },
+  metric: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 12, flex: 1, justifyContent: "center", minHeight: 78, padding: 10 },
   metricValue: { color: colors.textPrimary, fontSize: 23, fontVariant: ["tabular-nums"], fontWeight: "900" },
   metricLabel: { color: colors.textTertiary, fontSize: 8, fontWeight: "800", marginTop: 2 },
   coachingRow: { alignItems: "flex-start", flexDirection: "row", gap: 8 },

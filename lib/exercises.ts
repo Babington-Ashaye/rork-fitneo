@@ -133,17 +133,26 @@ export function findExercise(id: string) {
 }
 
 export function getAccessibleExercises(userPlan: ExerciseAccessPlan): Exercise[] {
+  if (__DEV__) {
+    console.log("[DEBUG] getAccessibleExercises called with plan:", userPlan);
+    console.log("[DEBUG] exerciseCatalog baseline count:", exerciseCatalog.length);
+  }
+
   if (__DEV__ && exerciseCatalog.length !== EXERCISE_CATALOG_BASELINE_COUNT) {
     console.warn(
       `FITNEO exercise catalog integrity warning: expected ${EXERCISE_CATALOG_BASELINE_COUNT}, received ${exerciseCatalog.length}.`
     );
   }
 
-  if (userPlan === "premium") {
-    return exerciseCatalog;
+  const exercises = userPlan === "premium"
+    ? exerciseCatalog
+    : exerciseCatalog.slice(0, FREE_EXERCISE_LIMIT);
+
+  if (__DEV__) {
+    console.log("[DEBUG] Returning exercises count:", exercises.length);
   }
 
-  return exerciseCatalog.slice(0, FREE_EXERCISE_LIMIT);
+  return exercises;
 }
 
 export function getCategorizedExerciseLibrary(minimumCount = 30) {

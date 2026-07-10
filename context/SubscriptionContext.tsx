@@ -5,6 +5,7 @@ import type {
   PurchasesOfferings,
   PurchasesPackage
 } from "react-native-purchases";
+import type { ExerciseAccessPlan } from "@/lib/exercises";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 const REVENUECAT_API_KEY = "test_ZzlVNfzMbUjBXRMknqDjIEOaWQe";
@@ -36,9 +37,11 @@ export type SubscriptionCheckoutResult = SubscriptionStatusResult & {
 
 type SubscriptionContextValue = {
   tier: SubscriptionTier;
+  userPlan: ExerciseAccessPlan;
   subscriptionPlatform: SubscriptionPlatform;
   revenueCatAvailable: boolean;
   isTrial: boolean;
+  trialDaysRemaining: number;
   isPremium: boolean;
   isElite: boolean;
   isLoading: boolean;
@@ -277,15 +280,21 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
     const tier = profile?.subscription_status ?? "free";
     const trialExpiresAt = profile?.trial_expires_at ? new Date(profile.trial_expires_at) : null;
     const isTrial = tier === "free" && Boolean(trialExpiresAt && trialExpiresAt.getTime() > Date.now());
+    const trialDaysRemaining = isTrial && trialExpiresAt
+      ? Math.max(1, Math.ceil((trialExpiresAt.getTime() - Date.now()) / 86400000))
+      : 0;
     const isElite = tier === "elite";
     const isPremium = tier === "pro" || tier === "elite" || isTrial;
+    const userPlan: ExerciseAccessPlan = isPremium ? "premium" : "free";
     const isFreeExpired = Boolean(profile) && tier === "free" && !isTrial;
 
     return {
       tier,
+      userPlan,
       subscriptionPlatform: Platform.OS === "web" ? "web" : "native",
       revenueCatAvailable: Platform.OS !== "web",
       isTrial,
+      trialDaysRemaining,
       isPremium,
       isElite,
       isLoading,
