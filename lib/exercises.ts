@@ -11,6 +11,11 @@ export type Exercise = {
   animationUrl: string;
 };
 
+export type ExerciseAccessPlan = "free" | "premium";
+
+export const EXERCISE_CATALOG_BASELINE_COUNT = 76;
+export const FREE_EXERCISE_LIMIT = 31;
+
 const videoBase = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos";
 const repositoryBase = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main";
 const remoteDatasetUrl = `${repositoryBase}/data/exercises.json`;
@@ -125,6 +130,20 @@ export const starterExercises = starterIds
 
 export function findExercise(id: string) {
   return exerciseCatalog.find((exercise) => exercise.id === id);
+}
+
+export function getAccessibleExercises(userPlan: ExerciseAccessPlan): Exercise[] {
+  if (__DEV__ && exerciseCatalog.length !== EXERCISE_CATALOG_BASELINE_COUNT) {
+    console.warn(
+      `FITNEO exercise catalog integrity warning: expected ${EXERCISE_CATALOG_BASELINE_COUNT}, received ${exerciseCatalog.length}.`
+    );
+  }
+
+  if (userPlan === "premium") {
+    return exerciseCatalog;
+  }
+
+  return exerciseCatalog.slice(0, FREE_EXERCISE_LIMIT);
 }
 
 export function getCategorizedExerciseLibrary(minimumCount = 30) {

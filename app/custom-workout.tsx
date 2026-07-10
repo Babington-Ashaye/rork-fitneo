@@ -5,7 +5,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOp
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, GlassCard, ScreenTitle } from "@/components/ScreenKit";
 import { saveCustomWorkout } from "@/lib/api";
-import { Exercise, exerciseCatalog, fetchRemoteExerciseCatalog } from "@/lib/exercises";
+import { Exercise, getAccessibleExercises } from "@/lib/exercises";
 import { colors, radii } from "@/lib/theme";
 import { useSubscription } from "@/context/SubscriptionContext";
 
@@ -16,27 +16,10 @@ export default function CustomWorkoutScreen() {
   const [selected, setSelected] = useState<Exercise[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<Exercise[]>(() => isPremium ? exerciseCatalog : exerciseCatalog.slice(0, 31));
+  const [catalog, setCatalog] = useState<Exercise[]>(() => getAccessibleExercises(isPremium ? "premium" : "free"));
 
   useEffect(() => {
-    if (!isPremium) {
-      setCatalog(exerciseCatalog.slice(0, 31));
-      return;
-    }
-    let mounted = true;
-    void fetchRemoteExerciseCatalog()
-      .then((remoteExercises) => {
-        if (!mounted) return;
-        const existingNames = new Set(exerciseCatalog.map((item) => item.name.toLowerCase()));
-        const additions = remoteExercises.filter((item) => !existingNames.has(item.name.toLowerCase()));
-        setCatalog([...exerciseCatalog, ...additions]);
-      })
-      .catch(() => {
-        if (mounted) setCatalog(exerciseCatalog);
-      });
-    return () => {
-      mounted = false;
-    };
+    setCatalog(getAccessibleExercises(isPremium ? "premium" : "free"));
   }, [isPremium]);
 
   const suggestions = useMemo(() => {
