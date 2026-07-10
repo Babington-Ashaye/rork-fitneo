@@ -24,14 +24,15 @@ export function WebViewportGuard() {
       body,
       #root {
         background: #000000;
-        height: 100%;
+        height: 100dvh;
         margin: 0;
+        max-height: 100dvh;
         max-width: 100%;
         min-height: 100dvh;
         overflow: hidden !important;
         padding: 0;
         touch-action: manipulation;
-        width: 100%;
+        width: 100dvw;
       }
 
       body {
@@ -52,6 +53,7 @@ export function WebViewportGuard() {
       button {
         background-color: #121214;
         color: #ffffff;
+        font-size: 16px !important;
         outline: none;
         -webkit-tap-highlight-color: transparent;
       }
@@ -75,9 +77,12 @@ export function WebViewportGuard() {
 
       [data-expo-root],
       #root > div {
+        height: 100dvh;
+        max-height: 100dvh;
         max-width: 100dvw;
         min-height: 100dvh;
         overflow: hidden !important;
+        width: 100dvw;
       }
     `;
 

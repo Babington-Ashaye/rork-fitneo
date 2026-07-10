@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -14,9 +15,9 @@ import {
 } from "@/lib/api";
 import { askFitneoCoachWithRetry } from "@/lib/edgeFunctions";
 import { colors, radii } from "@/lib/theme";
-import { useSubscription } from "@/context/SubscriptionContext";
 
 const suggestions = ["Build my weekly plan", "Generate a HIIT workout", "Review my recovery", "Tune my calories"];
+const LOCAL_HISTORY_KEY = "fitneo.ai.chatHistory.v1";
 
 const coachMemory: {
   activeSession: ChatSessionSummary | null;
@@ -28,8 +29,33 @@ const coachMemory: {
   sessions: []
 };
 
+type LocalCoachSnapshot = typeof coachMemory;
+
+async function loadLocalCoachSnapshot(): Promise<LocalCoachSnapshot | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LOCAL_HISTORY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LocalCoachSnapshot>;
+    if (!Array.isArray(parsed.messages) || !Array.isArray(parsed.sessions)) return null;
+    return {
+      activeSession: parsed.activeSession ?? parsed.sessions[0] ?? null,
+      messages: parsed.messages,
+      sessions: parsed.sessions
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function saveLocalCoachSnapshot(snapshot: LocalCoachSnapshot): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Local history is a convenience layer; it should never break the live chat UI.
+  }
+}
+
 export default function CoachScreen() {
-  const { isPremium } = useSubscription();
   const [prompt, setPrompt] = useState("");
   const [sessions, setSessions] = useState<ChatSessionSummary[]>(coachMemory.sessions);
   const [activeSession, setActiveSession] = useState<ChatSessionSummary | null>(coachMemory.activeSession);
@@ -78,6 +104,16 @@ export default function CoachScreen() {
         return;
       }
 
+      const localSnapshot = await loadLocalCoachSnapshot();
+      if (localSnapshot?.activeSession) {
+        coachMemory.activeSession = localSnapshot.activeSession;
+        coachMemory.messages = localSnapshot.messages;
+        coachMemory.sessions = localSnapshot.sessions;
+        setActiveSession(localSnapshot.activeSession);
+        setMessages(localSnapshot.messages);
+        setSessions(localSnapshot.sessions);
+      }
+
       try {
         const existing = await fetchChatSessions();
         setSessions(existing);
@@ -88,9 +124,11 @@ export default function CoachScreen() {
           await newChat();
         }
       } catch (err) {
-        const localSession = { id: `local-${Date.now()}`, title: "New Chat", createdAt: new Date().toISOString() };
-        setActiveSession(localSession);
-        setSessions([localSession]);
+        if (!localSnapshot?.activeSession) {
+          const localSession = { id: `local-${Date.now()}`, title: "New Chat", createdAt: new Date().toISOString() };
+          setActiveSession(localSession);
+          setSessions([localSession]);
+        }
         setError(null);
       } finally {
         setIsLoading(false);
@@ -103,6 +141,11 @@ export default function CoachScreen() {
     coachMemory.activeSession = activeSession;
     coachMemory.messages = messages;
     coachMemory.sessions = sessions;
+    void saveLocalCoachSnapshot({
+      activeSession,
+      messages,
+      sessions
+    });
   }, [activeSession, messages, sessions]);
 
   useEffect(() => {
@@ -193,7 +236,8 @@ export default function CoachScreen() {
     coachMemory.activeSession = activeSession;
     coachMemory.messages = messages;
     coachMemory.sessions = sessions;
-    setSaveStatus(messages.length > 0 ? "Conversation saved locally for this app session." : "Nothing to save yet.");
+    void saveLocalCoachSnapshot({ activeSession, messages, sessions });
+    setSaveStatus(messages.length > 0 ? "Conversation saved on this device." : "Nothing to save yet.");
   }
 
   return (

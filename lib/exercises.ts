@@ -16,7 +16,7 @@ export type ExerciseAccessPlan = "free" | "premium";
 export type ExerciseEquipmentTier = "none" | "few" | "full";
 
 export const EXERCISE_CATALOG_BASELINE_COUNT = 108;
-export const FREE_EXERCISE_LIMIT = 31;
+export const FREE_EXERCISE_LIMIT = EXERCISE_CATALOG_BASELINE_COUNT;
 
 const videoBase = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos";
 const repositoryBase = "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main";
@@ -146,27 +146,39 @@ const fullEquipmentKeywords = [
   "barbell",
   "bench",
   "cable",
-  "cycling",
-  "dumbbell",
   "hack",
   "lat_",
   "leg_curl",
   "leg_extension",
   "leg_press",
   "pulldown",
+  "preacher",
+  "rowing_machine",
   "seated_cable",
+  "smith",
   "stair",
+  "sled",
   "weighted"
 ];
 
 const fewEquipmentKeywords = [
   "ab_wheel",
+  "band",
   "battle_ropes",
   "box_jumps",
   "calf_raises",
+  "cycling",
+  "dumbbell",
+  "elliptical",
+  "farmer",
+  "goblet",
   "jump_rope",
+  "kettlebell",
+  "medicine_ball",
+  "resistance_band",
   "skull_crushers",
-  "overhead_tricep_ext"
+  "overhead_tricep_ext",
+  "trx"
 ];
 
 function inferEquipmentTier(id: string): ExerciseEquipmentTier {

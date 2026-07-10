@@ -46,8 +46,10 @@ function FloatingTabBar({ state, navigation }: any) {
               onPress={() => navigation.navigate(route.name)}
               style={[styles.navItem, isActive ? styles.navItemActive : styles.navItemInactive]}
             >
-              <Ionicons name={navIcons[route.name]} size={18} color={color} style={isActive ? styles.activeIcon : undefined} />
-              {isActive ? <Text style={styles.navLabel}>{t(navLabelKeys[route.name])}</Text> : null}
+              <Ionicons name={navIcons[route.name]} size={20} color={color} style={isActive ? styles.activeIcon : undefined} />
+              <Text numberOfLines={1} style={[styles.navLabel, isActive ? styles.navLabelActive : styles.navLabelInactive]}>
+                {t(navLabelKeys[route.name])}
+              </Text>
             </Pressable>
           );
         })}
@@ -98,9 +100,10 @@ const styles = StyleSheet.create({
     width: "88%",
     borderWidth: 1,
     flexDirection: "row",
-    gap: 2,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    gap: 4,
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingVertical: 7,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.52,
@@ -115,25 +118,33 @@ const styles = StyleSheet.create({
   navItem: {
     alignItems: "center",
     borderRadius: radii.round,
-    flexDirection: "row",
-    gap: 6,
-    minHeight: 42,
-    paddingVertical: 9
+    flex: 1,
+    flexDirection: "column",
+    gap: 3,
+    justifyContent: "center",
+    minHeight: 52,
+    paddingHorizontal: 4,
+    paddingVertical: 6
   },
   navItemActive: {
-    backgroundColor: "rgba(10,132,255,0.15)",
-    paddingHorizontal: 13
+    backgroundColor: "rgba(10,132,255,0.18)"
   },
   navItemInactive: {
-    paddingHorizontal: 10
+    backgroundColor: "transparent"
   },
   activeIcon: {
-    transform: [{ scale: 1.06 }]
+    transform: [{ scale: 1.02 }]
   },
   navLabel: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: "800"
+    fontSize: 10,
+    fontWeight: "800",
+    maxWidth: "100%"
+  },
+  navLabelActive: {
+    color: colors.accent
+  },
+  navLabelInactive: {
+    color: colors.textTertiary
   }
 });
 

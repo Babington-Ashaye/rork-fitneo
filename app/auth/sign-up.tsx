@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: 16,
     minHeight: 46,
     paddingHorizontal: 16
   },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   passwordInput: {
     color: colors.textPrimary,
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     minHeight: 46,
     paddingHorizontal: 16
   },

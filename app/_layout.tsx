@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { LanguageProvider } from "@/context/LanguageContext";
+import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { colors } from "@/lib/theme";
 import { AppOpenAdGate } from "@/components/AppOpenAdGate";
@@ -19,11 +19,16 @@ export default function RootLayout() {
       <WebViewportGuard />
       <LanguageProvider>
         <AuthProvider>
-          <RootNavigator />
+          <LocalizedRootNavigator />
         </AuthProvider>
       </LanguageProvider>
     </SafeAreaProvider>
   );
+}
+
+function LocalizedRootNavigator() {
+  const { language } = useLanguage();
+  return <RootNavigator key={language} />;
 }
 
 function RootNavigator() {
