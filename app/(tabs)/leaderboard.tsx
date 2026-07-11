@@ -4,6 +4,7 @@ import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, GlassCard, ScreenTitle, SkeletonBlock } from "@/components/ScreenKit";
 import { fetchLeaderboardEntries, LeaderboardEntry } from "@/lib/api";
+import { calculateXpProgress } from "@/lib/api";
 import { colors } from "@/lib/theme";
 
 type RankingMode = "xp" | "streak" | "week";
@@ -107,7 +108,7 @@ export default function LeaderboardScreen() {
           </View>
           <View style={styles.flex}>
             <Text style={[styles.name, entry.isCurrentUser && styles.you]}>{entry.displayName}{entry.isCurrentUser ? " (You)" : ""}</Text>
-            <Text style={styles.level}>Level {Math.max(1, Math.floor(entry.totalXp / 1000) + 1)}</Text>
+            <Text style={styles.level}>Level {calculateXpProgress(entry.totalXp).level}</Text>
           </View>
           <Text style={styles.value}>{mode === "xp" ? `${entry.totalXp.toLocaleString()} XP` : mode === "streak" ? `${entry.currentStreak} days` : `${entry.workoutsThisWeek} workouts`}</Text>
         </GlassCard>

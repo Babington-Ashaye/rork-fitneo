@@ -362,6 +362,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         throw new Error("Google sign-in did not return an authorization URL.");
       }
 
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.location.assign(data.url);
+        return true;
+      }
+
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
       if (result.type !== "success" || !result.url) {
         if (result.type === "cancel" || result.type === "dismiss") {

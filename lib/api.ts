@@ -138,12 +138,30 @@ export type OnboardingPayload = {
   answers: Record<string, unknown>;
 };
 
+export function calculateXpProgress(totalXp: number) {
+  let level = 1;
+  let remaining = Math.max(0, Math.floor(totalXp));
+  let xpSpan = 1000;
+
+  while (remaining >= xpSpan) {
+    remaining -= xpSpan;
+    level += 1;
+    xpSpan = level * 1000;
+  }
+
+  return {
+    level,
+    xpInto: remaining,
+    xpSpan
+  };
+}
+
 const fallbackDashboard: DashboardData = {
   displayName: "Athlete",
   streak: 0,
   level: 1,
   xp: 0,
-  xpSpan: 1000,
+  xpSpan: calculateXpProgress(0).xpSpan,
   rankTitle: "Foundation Builder",
   caloriesToday: 0,
   activeMinutes: 0,
@@ -219,6 +237,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
   const nutrition = (nutritionRes.data ?? []) as Record<string, any>[];
   const xpRows = (xpRes.data ?? []) as Record<string, any>[];
   const xp = xpRows.reduce((sum, row) => sum + Number(row.amount ?? 0), Number(profile.total_xp ?? 0));
+  const xpProgress = calculateXpProgress(xp);
   const caloriesToday = workouts
     .filter((row) => String(row.completed_at ?? "").startsWith(today))
     .reduce((sum, row) => sum + Number(row.calories_burned ?? 0), 0);
@@ -231,8 +250,9 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     ...fallbackDashboard,
     displayName: profile.display_name || profile.email?.split("@")[0] || "Athlete",
     streak: Number(profile.current_streak ?? profile.streak ?? 0),
-    level: Math.max(1, Math.floor(xp / 1000) + 1),
+    level: xpProgress.level,
     xp,
+    xpSpan: xpProgress.xpSpan,
     workoutsThisWeek: workouts.length,
     caloriesToday,
     activeMinutes,
@@ -365,11 +385,12 @@ export async function fetchProfileSummary(): Promise<ProfileSummary> {
 
   const profile = (profileRes.data ?? {}) as Record<string, any>;
   const xp = ((xpRes.data ?? []) as Record<string, any>[]).reduce((sum, row) => sum + Number(row.amount ?? 0), Number(profile.total_xp ?? 0));
+  const xpProgress = calculateXpProgress(xp);
 
   return {
     displayName: profile.display_name || profile.email?.split("@")[0] || "Athlete",
     email: profile.email ?? "",
-    level: Math.max(1, Math.floor(xp / 1000) + 1),
+    level: xpProgress.level,
     xp,
     rankTitle: "Foundation Builder",
     subscription: String(profile.subscription_status ?? "free"),
@@ -740,7 +761,7 @@ export async function completeWorkoutSession(input: {
     throw new Error("You must be signed in.");
   }
   const caloriesBurned = Math.max(40, Math.round(input.durationSeconds / 60 * 7));
-  const xpEarned = Math.max(50, input.setsCompleted * 20);
+  const xpEarned = Math.max(5, input.setsCompleted * 5);
   const { error } = await supabase.from("workout_sessions").insert({
     user_id: userId,
     session_name: input.name,

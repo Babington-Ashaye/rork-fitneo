@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ErrorState, GlassCard, LoadingState } from "@/components/ScreenKit";
 import { useSubscription } from "@/context/SubscriptionContext";
 import { completeWorkoutSession } from "@/lib/api";
-import { getWorkoutProgramExercises } from "@/lib/exercises";
+import { getEquipmentTierLabel, getWorkoutProgramExercises } from "@/lib/exercises";
 import { colors } from "@/lib/theme";
 
 type WorkoutPhase = "exercise" | "rest";
@@ -172,11 +172,15 @@ export default function ActiveWorkoutScreen() {
         <View style={styles.completeIcon}>
           <Ionicons name="checkmark-circle" size={78} color={colors.teal} />
         </View>
-        <Text style={styles.completeTitle}>Workout complete</Text>
-        <Text style={styles.completeCopy}>{setsCompleted} sets logged in {formatTime(elapsed)}.</Text>
-        <TouchableOpacity style={styles.primary} onPress={() => router.replace("/(tabs)")}>
-          <Text style={styles.primaryText}>Back to dashboard</Text>
-        </TouchableOpacity>
+        <GlassCard radius={24} style={styles.completeCard}>
+          <Text style={styles.completeKicker}>+{Math.max(5, setsCompleted * 5)} XP earned</Text>
+          <Text style={styles.completeTitle}>Workout complete</Text>
+          <Text style={styles.completeCopy}>{setsCompleted} sets logged in {formatTime(elapsed)}.</Text>
+          <TouchableOpacity style={styles.completePrimary} onPress={() => router.replace("/(tabs)")}>
+            <Ionicons name="home" size={17} color={colors.textPrimary} />
+            <Text style={styles.primaryText}>Back to dashboard</Text>
+          </TouchableOpacity>
+        </GlassCard>
       </AppLayout>
     );
   }
@@ -231,12 +235,22 @@ export default function ActiveWorkoutScreen() {
                 <Text style={styles.mediaBadgeText}>Hide video</Text>
               </TouchableOpacity>
             </View>
-          ) : null}
+          ) : (
+            <TouchableOpacity style={styles.showVideoButton} onPress={() => setIsDemoVisible(true)}>
+              <Ionicons name="play-circle" size={16} color={colors.accent} />
+              <Text style={styles.showVideoText}>Show video</Text>
+            </TouchableOpacity>
+          )}
 
           <GlassCard radius={18} style={[styles.exerciseCard, !isDemoVisible && styles.exerciseCardExpanded]}>
             <View style={styles.exerciseHeading}>
               <View style={styles.flex}>
-                <Text style={styles.muscle}>{exercise.muscleGroup.toUpperCase()}</Text>
+                <View style={styles.pillRow}>
+                  <Text style={styles.muscle}>{exercise.muscleGroup.toUpperCase()}</Text>
+                  <Text style={[styles.equipmentPill, exercise.equipmentTier === "none" && styles.noEquipmentPill]}>
+                    {getEquipmentTierLabel(exercise.equipmentTier)}
+                  </Text>
+                </View>
                 <Text style={styles.exercise}>{exercise.name}</Text>
               </View>
               <Text style={styles.exerciseCount}>{currentExerciseIndex + 1}/{exercises.length}</Text>
@@ -335,11 +349,16 @@ const styles = StyleSheet.create({
   mediaFallbackText: { color: "#334155", fontSize: 12, lineHeight: 17, textAlign: "center" },
   mediaBadge: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.82)", borderRadius: 12, flexDirection: "row", gap: 4, paddingHorizontal: 8, paddingVertical: 5, position: "absolute", right: 12, top: 12 },
   mediaBadgeText: { color: "#64748B", fontSize: 9, fontWeight: "900" },
+  showVideoButton: { alignItems: "center", alignSelf: "flex-end", backgroundColor: "rgba(0,163,255,0.12)", borderColor: "rgba(0,163,255,0.32)", borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
+  showVideoText: { color: colors.accent, fontSize: 12, fontWeight: "900" },
   exerciseCard: { flexShrink: 1, gap: 12, padding: 24 },
   exerciseCardExpanded: { flexGrow: 1, justifyContent: "center" },
   exerciseHeading: { alignItems: "center", flexDirection: "row", gap: 10 },
   exerciseCount: { color: colors.textTertiary, fontSize: 12, fontWeight: "800" },
+  pillRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8 },
   muscle: { color: colors.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1.4 },
+  equipmentPill: { backgroundColor: "rgba(255,199,51,0.12)", borderColor: "rgba(255,199,51,0.28)", borderRadius: 999, borderWidth: 1, color: colors.gold, fontSize: 8, fontWeight: "900", letterSpacing: 0.7, paddingHorizontal: 7, paddingVertical: 3, textTransform: "uppercase" },
+  noEquipmentPill: { backgroundColor: "rgba(0,217,178,0.12)", borderColor: "rgba(0,217,178,0.30)", color: colors.teal },
   exercise: { color: colors.textPrimary, fontSize: 30, fontWeight: "900", marginTop: 2 },
   setMetrics: { flexDirection: "row", gap: 12, justifyContent: "center" },
   metric: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 18, flex: 1, justifyContent: "center", minHeight: 82, padding: 10 },
@@ -362,6 +381,9 @@ const styles = StyleSheet.create({
   skipRestText: { color: colors.accent, fontSize: 14, fontWeight: "900" },
   completeScreen: { alignItems: "center", gap: 14, justifyContent: "center" },
   completeIcon: { alignItems: "center", backgroundColor: "rgba(0,217,178,0.1)", borderRadius: 58, height: 116, justifyContent: "center", width: 116 },
+  completeCard: { alignItems: "center", gap: 12, padding: 22, width: "100%" },
+  completeKicker: { color: colors.teal, fontSize: 12, fontWeight: "900", letterSpacing: 1.2 },
   completeTitle: { color: colors.textPrimary, fontSize: 28, fontWeight: "900" },
-  completeCopy: { color: colors.textSecondary, fontSize: 14, textAlign: "center" }
+  completeCopy: { color: colors.textSecondary, fontSize: 14, textAlign: "center" },
+  completePrimary: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 16, flexDirection: "row", gap: 8, justifyContent: "center", minHeight: 54, paddingHorizontal: 18, width: "100%" }
 });

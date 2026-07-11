@@ -51,6 +51,29 @@ export default function OnboardingScreen() {
     return <Redirect href="/auth/sign-in" />;
   }
 
+  if (isSaving) {
+    return (
+      <AppLayout contentContainerStyle={styles.calibrationScreen}>
+        <View style={styles.calibrationOrb}>
+          <ActivityIndicator color={colors.accent} />
+        </View>
+        <Text style={styles.calibrationKicker}>FITNEO AI CALIBRATION</Text>
+        <Text style={styles.calibrationTitle}>Building your personal plan</Text>
+        <Text style={styles.calibrationCopy}>
+          Matching your goal, equipment, schedule, recovery, and nutrition targets into your dashboard plan.
+        </Text>
+        <View style={styles.calibrationSteps}>
+          {["Reading onboarding answers", "Selecting suitable workout style", "Calibrating calories and macros", "Preparing your plan"].map((item) => (
+            <View key={item} style={styles.calibrationStep}>
+              <Ionicons name="checkmark-circle" size={15} color={colors.accent} />
+              <Text style={styles.calibrationStepText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      </AppLayout>
+    );
+  }
+
   function toggleMulti(value: string, list: string[], setter: (next: string[]) => void, exclusive?: string) {
     if (exclusive && value === exclusive) {
       setter([value]);
@@ -307,6 +330,14 @@ const styles = StyleSheet.create({
   screen: {
     paddingHorizontal: 0
   },
+  calibrationScreen: { alignItems: "center", gap: 14, justifyContent: "center", paddingHorizontal: 28 },
+  calibrationOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.12)", borderColor: "rgba(0,163,255,0.28)", borderRadius: 40, borderWidth: 1, height: 80, justifyContent: "center", width: 80 },
+  calibrationKicker: { color: colors.accent, fontSize: 11, fontWeight: "900", letterSpacing: 1.6 },
+  calibrationTitle: { color: colors.textPrimary, fontSize: 26, fontWeight: "900", textAlign: "center" },
+  calibrationCopy: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, textAlign: "center" },
+  calibrationSteps: { backgroundColor: "rgba(255,255,255,0.055)", borderColor: colors.cardStroke, borderRadius: 18, borderWidth: 1, gap: 10, marginTop: 8, padding: 16, width: "100%" },
+  calibrationStep: { alignItems: "center", flexDirection: "row", gap: 9 },
+  calibrationStepText: { color: colors.textSecondary, flex: 1, fontSize: 12, fontWeight: "700" },
   keyboard: {
     flex: 1,
     width: "100%"

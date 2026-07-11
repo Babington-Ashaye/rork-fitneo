@@ -22,9 +22,17 @@ function friendlyAiError(error: string | null | undefined) {
 
 function normalizeBase64Image(imageUri: string) {
   const trimmed = imageUri.trim();
-  const match = trimmed.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/s);
-  const mimeType = match?.[1]?.replace("image/jpg", "image/jpeg") ?? "image/jpeg";
-  const rawBase64 = (match?.[2] ?? trimmed)
+  let decoded = trimmed;
+  try {
+    decoded = trimmed.includes("%") ? decodeURIComponent(trimmed) : trimmed;
+  } catch {
+    decoded = trimmed;
+  }
+  const mimeMatch = decoded.match(/data:(image\/(?:jpeg|jpg|png|webp));base64,/i);
+  const base64Index = decoded.toLowerCase().lastIndexOf("base64,");
+  const mimeType = mimeMatch?.[1]?.replace("image/jpg", "image/jpeg") ?? "image/jpeg";
+  const payload = base64Index >= 0 ? decoded.slice(base64Index + "base64,".length) : decoded;
+  const rawBase64 = payload
     .replace(/\s/g, "")
     .replace(/-/g, "+")
     .replace(/_/g, "/");
@@ -311,15 +319,25 @@ export async function analyzeFoodPhoto(imageUri: string) {
   }
 
   const response = await callEdgeFunction<
-    { task: "food-scan"; prompt: string; imageUri: string; image_data: string; mimeType: string },
+    {
+      task: "food-scan";
+      prompt: string;
+      image: string;
+      imageUri: string;
+      image_data: string;
+      image_base64: string;
+      mimeType: string;
+    },
     FoodScanResult
   >(
     FITNEO_EDGE_FUNCTION,
     {
       task: "food-scan",
       prompt: "Identify this meal and estimate nutrition for the visible serving.",
+      image: normalizedImage.dataUri,
       imageUri: normalizedImage.dataUri,
       image_data: normalizedImage.imageData,
+      image_base64: normalizedImage.imageData,
       mimeType: normalizedImage.mimeType
     }
   );

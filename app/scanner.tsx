@@ -1,4 +1,5 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as FileSystem from "expo-file-system";
 import { useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -29,8 +30,10 @@ export default function ScannerScreen() {
         quality: 0.35,
         skipProcessing: false
       });
-      if (!photo?.base64) throw new Error("The camera did not return an image. Please retake the photo.");
-      const response = await analyzeFoodPhoto(`data:image/jpeg;base64,${photo.base64}`);
+      const base64 = photo?.base64 ?? (photo?.uri ? await FileSystem.readAsStringAsync(photo.uri, { encoding: "base64" as never }) : null);
+      if (!base64) throw new Error("The camera did not return an image. Please retake the photo.");
+      const dataUri = base64.startsWith("data:image") ? base64 : `data:image/jpeg;base64,${base64}`;
+      const response = await analyzeFoodPhoto(dataUri);
       if (response.error) throw new Error(response.error);
       if (!response.data) throw new Error("The scanner returned no nutrition estimate.");
       setResult(response.data);

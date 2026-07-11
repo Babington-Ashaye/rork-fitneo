@@ -5,7 +5,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOp
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, GlassCard, ScreenTitle } from "@/components/ScreenKit";
 import { saveCustomWorkout } from "@/lib/api";
-import { Exercise, ExerciseEquipmentTier, getAccessibleExercises, getExercisesByEquipmentTier } from "@/lib/exercises";
+import { Exercise, ExerciseEquipmentTier, getAccessibleExercises, getEquipmentTierLabel, getExercisesByEquipmentTier } from "@/lib/exercises";
 import { colors, radii } from "@/lib/theme";
 import { useSubscription } from "@/context/SubscriptionContext";
 
@@ -83,7 +83,7 @@ export default function CustomWorkoutScreen() {
       {!isPremium ? (
         <TouchableOpacity style={styles.libraryGate} onPress={() => router.push("/paywall")}>
           <Ionicons name="lock-closed" size={16} color={colors.gold} />
-          <Text style={styles.libraryGateText}>Free includes 31 foundational exercises. Upgrade to Pro for the complete library.</Text>
+          <Text style={styles.libraryGateText}>Your library includes the full exercise catalog with 0-equipment, few-equipment, and full-gym labels.</Text>
         </TouchableOpacity>
       ) : null}
       <GlassCard radius={radii.xxl} style={styles.card}>
@@ -133,7 +133,12 @@ export default function CustomWorkoutScreen() {
                 <View style={styles.exerciseIcon}><Ionicons name="barbell" size={16} color={colors.accent} /></View>
                 <View style={styles.flex}>
                   <Text style={styles.exerciseName}>{item.name}</Text>
-                  <Text style={styles.exerciseMeta}>{item.muscleGroup} · {item.difficulty} · {item.equipmentTier}</Text>
+                  <View style={styles.metaLine}>
+                    <Text style={styles.exerciseMeta}>{item.muscleGroup} · {item.difficulty}</Text>
+                    <Text style={[styles.equipmentPill, item.equipmentTier === "none" && styles.noEquipmentPill]}>
+                      {getEquipmentTierLabel(item.equipmentTier)}
+                    </Text>
+                  </View>
                 </View>
                 <Ionicons name="add-circle" size={22} color={colors.accent} />
               </TouchableOpacity>
@@ -200,6 +205,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   exerciseName: { color: colors.textPrimary, fontSize: 14, fontWeight: "800" },
   exerciseMeta: { color: colors.textTertiary, fontSize: 10, marginTop: 3 },
+  metaLine: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 2 },
+  equipmentPill: { backgroundColor: "rgba(255,199,51,0.12)", borderColor: "rgba(255,199,51,0.25)", borderRadius: 999, borderWidth: 1, color: colors.gold, fontSize: 8, fontWeight: "900", paddingHorizontal: 7, paddingVertical: 2, textTransform: "uppercase" },
+  noEquipmentPill: { backgroundColor: "rgba(0,217,178,0.12)", borderColor: "rgba(0,217,178,0.28)", color: colors.teal },
   selectedList: { maxHeight: 300 },
   selectedRow: { alignItems: "center", borderBottomColor: "rgba(255,255,255,0.07)", borderBottomWidth: 1, flexDirection: "row", gap: 10, minHeight: 62 },
   order: { color: colors.accent, fontSize: 13, fontWeight: "900", width: 20 },

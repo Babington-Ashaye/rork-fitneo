@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, IconBubble, MetaItem, PillButton, SectionHeader, SkeletonBlock, StatCard, TouchableCard, XPBar, withAlpha } from "@/components/ScreenKit";
-import { DashboardData, fetchActiveWorkoutPlan, fetchDashboardData, WorkoutProgram } from "@/lib/api";
+import { calculateXpProgress, DashboardData, fetchActiveWorkoutPlan, fetchDashboardData, WorkoutProgram } from "@/lib/api";
 import { colors, radii } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
 import { loadWaterIntake, saveWaterIntake } from "@/lib/water";
@@ -74,7 +74,7 @@ export default function DashboardScreen() {
     );
   }
 
-  const xpInto = data.xp % data.xpSpan;
+  const xpInto = calculateXpProgress(data.xp).xpInto;
 
   if (needsOnboarding) {
     return (

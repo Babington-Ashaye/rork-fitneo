@@ -67,7 +67,7 @@ const exerciseRows: Array<[
   ["crunches", "Crunches", "Core", "Beginner", 3, "20", 30, "0262-t6Q9YGn.gif"],
   ["russian_twists", "Russian Twists", "Core", "Beginner", 3, "20", 30, "0727-EfM77ZF.gif"],
   ["leg_raises", "Leg Raises", "Core", "Intermediate", 3, "15", 45, "0689-Hgs6Nl1.gif"],
-  ["mountain_climbers", "Mountain Climbers", "Core", "Beginner", 3, "40 sec", 30, "0566-7cDmC7G.gif"],
+  ["mountain_climbers", "Mountain Climbers", "Core", "Beginner", 3, "40 sec", 30, "0662-I4hDWkc.gif"],
   ["ab_wheel", "Ab Wheel", "Core", "Advanced", 3, "10", 60, "0103-xnInPfE.gif"],
   ["v_ups", "V-Ups", "Core", "Intermediate", 3, "15", 45, "1014-H6ETwO9.gif"],
   ["dead_bug", "Dead Bug", "Core", "Beginner", 3, "12 each", 30, "0262-t6Q9YGn.gif"],
@@ -210,6 +210,12 @@ export const starterExercises = starterIds
 
 export function findExercise(id: string) {
   return exerciseCatalog.find((exercise) => exercise.id === id);
+}
+
+export function getEquipmentTierLabel(tier: ExerciseEquipmentTier) {
+  if (tier === "none") return "0 equipment";
+  if (tier === "few") return "Few equipment";
+  return "Full gym";
 }
 
 export function getAccessibleExercises(userPlan: ExerciseAccessPlan): Exercise[] {
