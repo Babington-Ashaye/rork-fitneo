@@ -333,7 +333,8 @@ export async function analyzeFoodPhoto(imageUri: string) {
     FITNEO_EDGE_FUNCTION,
     {
       task: "food-scan",
-      prompt: "Identify this meal and estimate nutrition for the visible serving.",
+      prompt:
+        "Identify the visible food only and estimate nutrition for the visible serving. Be conservative and do not invent unrelated dishes. If the food appears to be a rolled wrap/shawarma/flatbread sandwich, describe it as a wrap or shawarma-style wrap instead of masala dosa or breakfast burrito unless those are visually certain. Return a concise JSON-compatible result with foodName, servingSize, calories, protein, carbs, fat, and confidence.",
       image: normalizedImage.dataUri,
       imageUri: normalizedImage.dataUri,
       image_data: normalizedImage.imageData,

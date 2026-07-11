@@ -1,8 +1,8 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system";
 import { useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenTitle } from "@/components/ScreenKit";
 import { saveNutritionLog } from "@/lib/api";
@@ -18,6 +18,23 @@ export default function ScannerScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [result, setResult] = useState<FoodScanResult | null>(null);
+  const scanLine = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!isScanning) {
+      scanLine.stopAnimation();
+      scanLine.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLine, { duration: 950, toValue: 1, useNativeDriver: true }),
+        Animated.timing(scanLine, { duration: 950, toValue: 0, useNativeDriver: true })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isScanning, scanLine]);
 
   async function captureAndAnalyze() {
     if (!cameraRef.current || isScanning) return;
@@ -92,6 +109,22 @@ export default function ScannerScreen() {
       <View style={styles.cameraFrame}>
         <CameraView ref={cameraRef} facing="back" style={StyleSheet.absoluteFill} />
         <View style={styles.guide} pointerEvents="none" />
+        {isScanning ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.scanLine,
+              {
+                transform: [{
+                  translateY: scanLine.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-118, 118]
+                  })
+                }]
+              }
+            ]}
+          />
+        ) : null}
       </View>
       {status ? <Text style={styles.status}>{status}</Text> : null}
       <TouchableOpacity activeOpacity={0.8} style={styles.button} onPress={captureAndAnalyze} disabled={isScanning}>
@@ -111,6 +144,7 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", gap: 16, justifyContent: "center", paddingHorizontal: 28 },
   cameraFrame: { borderRadius: 18, flex: 1, minHeight: 330, overflow: "hidden" },
   guide: { alignSelf: "center", borderColor: colors.accent, borderRadius: 22, borderWidth: 2, height: "66%", marginTop: "18%", width: "82%" },
+  scanLine: { alignSelf: "center", backgroundColor: colors.accent, borderRadius: 999, height: 3, opacity: 0.95, position: "absolute", shadowColor: colors.accent, shadowOpacity: 0.75, shadowRadius: 18, top: "50%", width: "82%" },
   title: { color: colors.textPrimary, fontSize: 18, fontWeight: "800", textAlign: "center" },
   status: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
   button: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 14, justifyContent: "center", minHeight: 52, paddingHorizontal: 18 },

@@ -2,9 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
-import { Chip, GlassCard, SkeletonBlock } from "@/components/ScreenKit";
+import { Chip, SkeletonBlock } from "@/components/ScreenKit";
 import {
   ChatMessageRecord,
   ChatSessionSummary,
@@ -267,6 +267,24 @@ export default function CoachScreen() {
     setSaveStatus(messages.length > 0 ? "Conversation saved on this device." : "Nothing to save yet.");
   }
 
+  async function copyMessage(content: string) {
+    const clean = formatCoachMessage(content);
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(clean);
+      setSaveStatus("Answer copied.");
+      return;
+    }
+    setSaveStatus("Copy is available in your browser menu on this device.");
+  }
+
+  async function shareMessage(content: string) {
+    try {
+      await Share.share({ message: formatCoachMessage(content) });
+    } catch {
+      setSaveStatus("Sharing is not available on this device.");
+    }
+  }
+
   return (
     <AppLayout contentContainerStyle={styles.screen}>
       <View style={styles.header}>
@@ -302,9 +320,11 @@ export default function CoachScreen() {
       </View>
 
       {historyOpen ? (
-        <GlassCard radius={16} style={styles.historyPanel}>
+        <View style={styles.drawerLayer}>
+          <TouchableOpacity activeOpacity={1} style={styles.drawerScrim} onPress={() => setHistoryOpen(false)} />
+          <View style={styles.historyPanel}>
           <View style={styles.historyHeader}>
-            <Text style={styles.historyTitle}>Chat history</Text>
+            <Text style={styles.drawerBrand}>ChatGPT-style history</Text>
             <TouchableOpacity onPress={() => void newChat()}>
               <Text style={styles.newChat}>+ New Chat</Text>
             </TouchableOpacity>
@@ -317,13 +337,19 @@ export default function CoachScreen() {
                 style={[styles.sessionRow, session.id === activeSession?.id && styles.sessionRowActive]}
               >
                 <Ionicons name="chatbubble-ellipses-outline" size={16} color={session.id === activeSession?.id ? colors.textPrimary : colors.textSecondary} />
-                <Text numberOfLines={1} style={[styles.sessionTitle, session.id === activeSession?.id && styles.sessionTitleActive]}>
+                <View style={styles.sessionTextBlock}>
+                  <Text numberOfLines={1} style={[styles.sessionTitle, session.id === activeSession?.id && styles.sessionTitleActive]}>
                   {session.title}
-                </Text>
+                  </Text>
+                  <Text numberOfLines={1} style={[styles.sessionPreview, session.id === activeSession?.id && styles.sessionPreviewActive]}>
+                    {session.id === activeSession?.id && messages[0]?.content ? messages[0].content : "Fitness coaching thread"}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </GlassCard>
+          </View>
+        </View>
       ) : null}
 
       <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={styles.messageContent} showsVerticalScrollIndicator={false}>
@@ -340,8 +366,26 @@ export default function CoachScreen() {
           </View>
         ) : (
           messages.map((message) => (
-            <View key={message.id} style={[styles.bubble, message.role === "user" ? styles.userBubble : styles.assistantBubble]}>
-              <Text style={styles.messageText}>{formatCoachMessage(message.content)}</Text>
+            <View key={message.id} style={[styles.messageGroup, message.role === "user" && styles.userMessageGroup]}>
+              <View style={[styles.bubble, message.role === "user" ? styles.userBubble : styles.assistantBubble]}>
+                <Text style={styles.messageText}>{formatCoachMessage(message.content)}</Text>
+              </View>
+              {message.role === "assistant" ? (
+                <View style={styles.messageActions}>
+                  <TouchableOpacity style={styles.messageAction} onPress={() => void copyMessage(message.content)}>
+                    <Ionicons name="copy-outline" size={15} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.messageAction} onPress={() => setSaveStatus("Thanks — FITNEO will tune future answers.")}>
+                    <Ionicons name="thumbs-up-outline" size={15} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.messageAction} onPress={() => setSaveStatus("Feedback noted — I’ll make the next answer cleaner.")}>
+                    <Ionicons name="thumbs-down-outline" size={15} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.messageAction} onPress={() => void shareMessage(message.content)}>
+                    <Ionicons name="share-outline" size={15} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </View>
           ))
         )}
@@ -432,31 +476,43 @@ const styles = StyleSheet.create({
   aiOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.14)", borderColor: "rgba(0,163,255,0.45)", borderRadius: 18, borderWidth: 1, height: 36, justifyContent: "center", shadowColor: colors.accent, shadowOpacity: 0.55, shadowRadius: 12, width: 36 },
   title: { color: colors.textPrimary, fontSize: 18, fontWeight: "900", letterSpacing: 2 },
   online: { color: colors.teal, fontSize: 9, fontWeight: "800", letterSpacing: 1.2 },
+  drawerLayer: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0, zIndex: 40 },
+  drawerScrim: { backgroundColor: "rgba(0,0,0,0.48)", bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
   historyPanel: {
-    bottom: 96,
-    gap: 12,
+    backgroundColor: "#050506",
+    borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 26,
+    borderWidth: 1,
+    bottom: 12,
+    gap: 18,
     left: 0,
-    maxWidth: 360,
-    padding: 14,
+    padding: 18,
     position: "absolute",
-    top: 92,
+    top: 0,
     width: "82%",
-    zIndex: 20
+    zIndex: 41
   },
   historyHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  historyTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "800" },
+  drawerBrand: { color: colors.textPrimary, fontSize: 22, fontWeight: "900", letterSpacing: -0.5 },
   newChat: { color: colors.accent, fontSize: 13, fontWeight: "800" },
-  sessionList: { gap: 8, paddingBottom: 12 },
-  sessionRow: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.055)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 10, minHeight: 48, paddingHorizontal: 12 },
+  sessionList: { gap: 10, paddingBottom: 18 },
+  sessionRow: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.07)", borderColor: colors.cardStroke, borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 10, minHeight: 58, paddingHorizontal: 12 },
   sessionRowActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  sessionTitle: { color: colors.textSecondary, flex: 1, fontSize: 13, fontWeight: "800" },
+  sessionTextBlock: { flex: 1, minWidth: 0 },
+  sessionTitle: { color: colors.textSecondary, fontSize: 13, fontWeight: "900" },
   sessionTitleActive: { color: colors.textPrimary },
+  sessionPreview: { color: colors.textTertiary, fontSize: 10, marginTop: 3 },
+  sessionPreviewActive: { color: "rgba(255,255,255,0.82)" },
   messages: { flex: 1, zIndex: 1 },
   messageContent: { flexGrow: 1, gap: 12, justifyContent: "flex-end", paddingBottom: 18, paddingTop: 18 },
-  bubble: { borderRadius: 20, maxWidth: "90%", paddingHorizontal: 16, paddingVertical: 13 },
+  messageGroup: { alignSelf: "flex-start", maxWidth: "94%" },
+  userMessageGroup: { alignSelf: "flex-end" },
+  bubble: { borderRadius: 20, maxWidth: "100%", paddingHorizontal: 16, paddingVertical: 13 },
   userBubble: { alignSelf: "flex-end", backgroundColor: "#253044", borderBottomRightRadius: 6 },
   assistantBubble: { alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.055)", borderColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderBottomLeftRadius: 5 },
   messageText: { color: colors.textPrimary, fontSize: 15, lineHeight: 23 },
+  messageActions: { alignItems: "center", flexDirection: "row", gap: 6, marginLeft: 6, marginTop: 7 },
+  messageAction: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 13, height: 26, justifyContent: "center", width: 26 },
   typingBubble: { alignItems: "center", flexDirection: "row", gap: 9 },
   typingDots: { alignItems: "center", flexDirection: "row", gap: 5, paddingHorizontal: 4, paddingVertical: 5 },
   typingDot: { backgroundColor: colors.accent, borderRadius: 4, height: 8, width: 8 },

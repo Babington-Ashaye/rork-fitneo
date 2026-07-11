@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
@@ -52,6 +53,13 @@ export default function LeaderboardScreen() {
       scroll
       refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.accent} onRefresh={() => void load(true)} />}
     >
+      <View style={styles.headerRow}>
+        <TouchableOpacity activeOpacity={0.78} style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Leaderboard</Text>
+      </View>
+
       <GlassCard radius={16} style={styles.weekly}>
         <View style={styles.inline}>
           <Ionicons name="trophy" size={17} color={colors.gold} />
@@ -119,6 +127,9 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerRow: { alignItems: "center", flexDirection: "row", gap: 12 },
+  backButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 40, justifyContent: "center", width: 40 },
+  headerTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "900" },
   weekly: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", padding: 14 },
   inline: { alignItems: "center", flexDirection: "row", gap: 8 },
   section: { color: colors.textTertiary, fontSize: 10, fontWeight: "900", letterSpacing: 1.3 },
