@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { LegalSettingsMenu } from "@/components/LegalSettingsMenu";
 import { EmptySpacer, ErrorState, LoadingState, RowCard, TouchableCard } from "@/components/ScreenKit";
@@ -16,12 +18,15 @@ import {
   setNotificationPreference
 } from "@/lib/notifications";
 
+const PROFILE_PHOTO_KEY = "fitneo.profile.photoUri";
+
 export default function ProfileScreen() {
   const { signOut, user } = useAuth();
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [activePreference, setActivePreference] = useState<NotificationPreference | null>(null);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
     workout: false,
@@ -43,6 +48,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     void loadProfile();
+    void AsyncStorage.getItem(PROFILE_PHOTO_KEY).then(setAvatarUri);
     void loadNotificationPreferences().then(setNotificationPreferences);
   }, []);
 
@@ -60,6 +66,24 @@ export default function ProfileScreen() {
     } finally {
       setIsExporting(false);
     }
+  }
+
+  async function pickProfilePhoto() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Photo permission", "Allow photo access to choose your FITNEO profile picture.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.82
+    });
+    if (result.canceled || !result.assets[0]?.uri) return;
+    const uri = result.assets[0].uri;
+    setAvatarUri(uri);
+    await AsyncStorage.setItem(PROFILE_PHOTO_KEY, uri);
   }
 
   function confirmReset() {
@@ -122,9 +146,16 @@ export default function ProfileScreen() {
     <AppLayout scroll>
       <TouchableCard radius={radii.hero} style={styles.profileHeader} onPress={() => router.push({ pathname: "/onboarding", params: { mode: "edit" } })}>
         <View style={styles.avatarGlow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitial}>{profile.displayName.slice(0, 1).toUpperCase()}</Text>
-          </View>
+          <TouchableOpacity activeOpacity={0.82} style={styles.avatar} onPress={pickProfilePhoto}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarInitial}>{profile.displayName.slice(0, 1).toUpperCase()}</Text>
+            )}
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={13} color={colors.textPrimary} />
+            </View>
+          </TouchableOpacity>
         </View>
         <Text style={styles.name}>{profile.displayName}</Text>
         <View style={styles.tags}>
@@ -248,7 +279,26 @@ const styles = StyleSheet.create({
     borderRadius: 43,
     height: 86,
     justifyContent: "center",
+    overflow: "hidden",
     width: 86
+  },
+  avatarImage: {
+    height: "100%",
+    resizeMode: "cover",
+    width: "100%"
+  },
+  cameraBadge: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderColor: "rgba(255,255,255,0.22)",
+    borderRadius: 14,
+    borderWidth: 1,
+    bottom: 4,
+    height: 28,
+    justifyContent: "center",
+    position: "absolute",
+    right: 4,
+    width: 28
   },
   avatarInitial: {
     color: colors.textPrimary,

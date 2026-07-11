@@ -105,7 +105,13 @@ function WorkoutCard({ canAccess, program }: { canAccess: boolean; program: Work
   const icon: keyof typeof Ionicons.glyphMap = program.category.toLowerCase().includes("mobility") ? "body" : program.category.toLowerCase().includes("conditioning") ? "flash" : "barbell";
 
   return (
-    <TouchableCard radius={radii.xl} style={styles.workoutCard} onPress={() => router.push(canAccess ? "/active-workout" : "/paywall")}>
+    <TouchableCard
+      radius={radii.xl}
+      style={styles.workoutCard}
+      onPress={() => router.push(canAccess
+        ? { pathname: "/active-workout", params: { programId: program.id, programName: program.name } }
+        : "/paywall")}
+    >
       <View style={styles.row}>
         <IconBubble icon={icon} tint={tint} shape="rounded" size={48} />
         <View style={styles.workoutTitleBlock}>

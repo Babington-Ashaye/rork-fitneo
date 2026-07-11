@@ -1,18 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
-import { ErrorState, GlassCard, LoadingState, ScreenTitle } from "@/components/ScreenKit";
+import { ErrorState, GlassCard, LoadingState } from "@/components/ScreenKit";
 import { useSubscription } from "@/context/SubscriptionContext";
 import { completeWorkoutSession } from "@/lib/api";
-import { getAccessibleExercises } from "@/lib/exercises";
+import { getWorkoutProgramExercises } from "@/lib/exercises";
 import { colors } from "@/lib/theme";
 
 type WorkoutPhase = "exercise" | "rest";
 
 export default function ActiveWorkoutScreen() {
   const { height, width } = useWindowDimensions();
+  const params = useLocalSearchParams<{ programId?: string; programName?: string }>();
   const { isLoading: isSubscriptionLoading, userPlan } = useSubscription();
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
@@ -28,12 +29,14 @@ export default function ActiveWorkoutScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const exercises = useMemo(() => getAccessibleExercises(userPlan), [userPlan]);
+  const programName = typeof params.programName === "string" ? params.programName : "Workout Session";
+  const programId = typeof params.programId === "string" ? params.programId : undefined;
+  const exercises = useMemo(() => getWorkoutProgramExercises(programId, userPlan), [programId, userPlan]);
   const currentExerciseIndex = exercises.length > 0 ? Math.min(exerciseIndex, exercises.length - 1) : 0;
   const exercise = exercises[currentExerciseIndex];
   const timedSeconds = useMemo(() => exercise ? parseTimedDuration(exercise.reps) : null, [exercise]);
   const progress = exercises.length > 0 ? ((currentExerciseIndex + 1) / exercises.length) * 100 : 0;
-  const mediaHeight = Math.max(150, Math.min(260, height * 0.3, width * 0.5625));
+  const mediaHeight = Math.max(178, Math.min(238, height * 0.28, width * 0.62));
 
   useEffect(() => {
     const timer = setInterval(() => setElapsed((current) => current + 1), 1000);
@@ -86,7 +89,7 @@ export default function ActiveWorkoutScreen() {
     setError(null);
     try {
       await completeWorkoutSession({
-        name: "Full Body Strength",
+        name: programName,
         durationSeconds: Math.max(60, elapsed),
         setsCompleted: Math.max(finalSetsCompleted, 1)
       });
@@ -138,6 +141,15 @@ export default function ActiveWorkoutScreen() {
     void finishWorkout();
   }
 
+  function previousExercise() {
+    setTimerRunning(false);
+    if (currentExerciseIndex > 0) {
+      setExerciseIndex((current) => Math.max(0, current - 1));
+      setCurrentSet(1);
+      setPhase("exercise");
+    }
+  }
+
   if (isSubscriptionLoading) {
     return (
       <AppLayout contentContainerStyle={styles.stateScreen}>
@@ -171,14 +183,17 @@ export default function ActiveWorkoutScreen() {
 
   return (
     <AppLayout contentContainerStyle={styles.screen}>
-      <View style={styles.topRow}>
-        <ScreenTitle title="Active Workout" subtitle={`${currentExerciseIndex + 1} of ${exercises.length} exercises`} />
-        <View style={styles.topActions}>
-          <TouchableOpacity style={styles.demoToggle} onPress={() => setIsDemoVisible((current) => !current)}>
-            <Ionicons name={isDemoVisible ? "eye-off-outline" : "eye-outline"} size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
+      <View style={styles.sessionHeader}>
+        <TouchableOpacity style={styles.roundButton} onPress={() => router.back()}>
+          <Ionicons name="close" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.headerTitleBlock}>
+          <Text style={styles.sessionTitle} numberOfLines={1}>{programName}</Text>
           <Text style={styles.timer}>{formatTime(elapsed)}</Text>
         </View>
+        <TouchableOpacity style={styles.roundButton} onPress={() => setTimerRunning((current) => !current)}>
+          <Ionicons name={timerRunning ? "pause" : "play"} size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.progressTrack}>
@@ -211,10 +226,10 @@ export default function ActiveWorkoutScreen() {
                   onError={() => setMediaFailed(true)}
                 />
               )}
-              <View style={styles.mediaBadge}>
-                <Ionicons name="repeat" size={12} color={colors.teal} />
-                <Text style={styles.mediaBadgeText}>DEMO</Text>
-              </View>
+              <TouchableOpacity style={styles.mediaBadge} onPress={() => setIsDemoVisible(false)}>
+                <Ionicons name="eye-off-outline" size={11} color={colors.textSecondary} />
+                <Text style={styles.mediaBadgeText}>Hide video</Text>
+              </TouchableOpacity>
             </View>
           ) : null}
 
@@ -242,12 +257,16 @@ export default function ActiveWorkoutScreen() {
               <Ionicons name="information-circle" size={16} color={colors.accent} />
               <Text numberOfLines={isDemoVisible ? 2 : 4} style={styles.coaching}>{exercise.instructions}</Text>
             </View>
+            <View style={styles.coachingRow}>
+              <Ionicons name="bulb" size={15} color={colors.gold} />
+              <Text numberOfLines={2} style={styles.coaching}>{exercise.tip}</Text>
+            </View>
           </GlassCard>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.controls}>
-            <TouchableOpacity style={styles.skipExercise} onPress={skipExercise} disabled={saving}>
-              <Text style={styles.skipExerciseText}>Skip exercise</Text>
+            <TouchableOpacity style={styles.skipExercise} onPress={previousExercise} disabled={saving || currentExerciseIndex === 0}>
+              <Ionicons name="chevron-back" size={19} color={colors.textSecondary} />
             </TouchableOpacity>
             {timedSeconds ? (
               <TouchableOpacity
@@ -263,6 +282,9 @@ export default function ActiveWorkoutScreen() {
                 {saving ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.primaryText}>Complete Set</Text>}
               </TouchableOpacity>
             )}
+            <TouchableOpacity style={styles.skipExercise} onPress={skipExercise} disabled={saving}>
+              <Ionicons name="chevron-forward" size={19} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
         </>
       )}
@@ -286,9 +308,13 @@ function formatTime(seconds: number) {
 }
 
 const styles = StyleSheet.create({
-  screen: { gap: 10, paddingBottom: 12 },
+  screen: { gap: 12, paddingBottom: 12 },
   stateScreen: { justifyContent: "center" },
   flex: { flex: 1 },
+  sessionHeader: { alignItems: "center", flexDirection: "row", gap: 12 },
+  headerTitleBlock: { flex: 1, gap: 2 },
+  sessionTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: "900" },
+  roundButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.075)", borderRadius: 19, height: 38, justifyContent: "center", width: 38 },
   topRow: { alignItems: "flex-start", flexDirection: "row", gap: 10, justifyContent: "space-between" },
   topActions: { alignItems: "center", flexDirection: "row", gap: 8 },
   demoToggle: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 17, height: 34, justifyContent: "center", width: 34 },
@@ -298,7 +324,7 @@ const styles = StyleSheet.create({
   mediaCard: {
     backgroundColor: "#09090B",
     borderColor: "rgba(0,163,255,0.18)",
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1,
     flexShrink: 1,
     overflow: "hidden",
@@ -307,22 +333,22 @@ const styles = StyleSheet.create({
   animation: { backgroundColor: "#09090B", height: "100%", resizeMode: "contain", width: "100%" },
   mediaFallback: { alignItems: "center", flex: 1, gap: 8, justifyContent: "center", paddingHorizontal: 24 },
   mediaFallbackText: { color: "#334155", fontSize: 12, lineHeight: 17, textAlign: "center" },
-  mediaBadge: { alignItems: "center", backgroundColor: "rgba(6,9,20,0.88)", borderRadius: 9, bottom: 8, flexDirection: "row", gap: 5, paddingHorizontal: 8, paddingVertical: 5, position: "absolute", right: 8 },
-  mediaBadgeText: { color: colors.teal, fontSize: 8, fontWeight: "900", letterSpacing: 1 },
-  exerciseCard: { flexShrink: 1, gap: 10, padding: 16 },
+  mediaBadge: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.82)", borderRadius: 12, flexDirection: "row", gap: 4, paddingHorizontal: 8, paddingVertical: 5, position: "absolute", right: 12, top: 12 },
+  mediaBadgeText: { color: "#64748B", fontSize: 9, fontWeight: "900" },
+  exerciseCard: { flexShrink: 1, gap: 12, padding: 24 },
   exerciseCardExpanded: { flexGrow: 1, justifyContent: "center" },
   exerciseHeading: { alignItems: "center", flexDirection: "row", gap: 10 },
   exerciseCount: { color: colors.textTertiary, fontSize: 12, fontWeight: "800" },
   muscle: { color: colors.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1.4 },
-  exercise: { color: colors.textPrimary, fontSize: 23, fontWeight: "900", marginTop: 2 },
-  setMetrics: { flexDirection: "row", gap: 10 },
-  metric: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 12, flex: 1, justifyContent: "center", minHeight: 78, padding: 10 },
-  metricValue: { color: colors.textPrimary, fontSize: 23, fontVariant: ["tabular-nums"], fontWeight: "900" },
-  metricLabel: { color: colors.textTertiary, fontSize: 8, fontWeight: "800", marginTop: 2 },
+  exercise: { color: colors.textPrimary, fontSize: 30, fontWeight: "900", marginTop: 2 },
+  setMetrics: { flexDirection: "row", gap: 12, justifyContent: "center" },
+  metric: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 18, flex: 1, justifyContent: "center", minHeight: 82, padding: 10 },
+  metricValue: { color: colors.textPrimary, fontSize: 34, fontVariant: ["tabular-nums"], fontWeight: "900" },
+  metricLabel: { color: colors.textTertiary, fontSize: 9, fontWeight: "800", marginTop: 2 },
   coachingRow: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
   coaching: { color: colors.textSecondary, flex: 1, fontSize: 12, lineHeight: 17 },
   controls: { alignItems: "center", flexDirection: "row", gap: 10, marginTop: "auto" },
-  skipExercise: { alignItems: "center", borderColor: "rgba(255,255,255,0.14)", borderRadius: 14, borderWidth: 1, justifyContent: "center", minHeight: 52, paddingHorizontal: 14 },
+  skipExercise: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.055)", borderColor: "rgba(255,255,255,0.10)", borderRadius: 16, borderWidth: 1, justifyContent: "center", minHeight: 52, width: 52 },
   skipExerciseText: { color: colors.textSecondary, fontSize: 12, fontWeight: "800" },
   primary: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 14, flex: 1, flexDirection: "row", gap: 7, justifyContent: "center", minHeight: 52, paddingHorizontal: 16 },
   primaryText: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" },

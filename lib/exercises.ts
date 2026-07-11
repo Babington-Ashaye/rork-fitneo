@@ -235,6 +235,49 @@ export function getAccessibleExercises(userPlan: ExerciseAccessPlan): Exercise[]
   return exercises;
 }
 
+const workoutProgramExerciseIds: Record<string, string[]> = {
+  "full-body-beginner": ["push_ups", "squats", "glute_bridges", "bent_over_rows", "plank"],
+  "upper-lower-split": ["dumbbell_press", "dumbbell_row", "goblet_squat", "romanian_deadlift", "lateral_raises"],
+  "push-pull-legs": ["push_ups", "dumbbell_press", "pull_ups", "dumbbell_row", "squats", "lunges"],
+  "home-no-equipment": ["push_ups", "squats", "lunges", "glute_bridges", "mountain_climbers", "plank"],
+  "hiit-burn": ["jumping_jacks", "high_knees", "burpees", "mountain_climbers", "jump_lunges", "shadow_boxing"],
+  "core-control": ["plank", "side_plank", "dead_bug", "bird_dogs", "bicycle_crunches", "reverse_crunches", "v_ups"],
+  "mobility-reset": ["cat_cow", "downward_dog", "hamstring_stretch", "hip_flexor_stretch", "childs_pose", "cobra_stretch", "pigeon_pose"],
+  "athletic-conditioning": ["shuttle_runs", "agility_ladder", "sprint_intervals", "bear_crawl", "box_jumps", "tuck_jumps", "farmer_carries", "battle_ropes"],
+  "leg-power": ["squats", "lunges", "bulgarian_split_squat", "goblet_squat", "step_ups", "wall_sit", "calf_raises"],
+  "upper-body-pump": ["push_ups", "dumbbell_press", "dumbbell_row", "dumbbell_shoulder_press", "bicep_curls", "tricep_dips", "band_pull_aparts"],
+  "fat-loss-circuit": ["jumping_jacks", "high_knees", "burpees", "mountain_climbers", "jump_lunges", "shadow_boxing", "bear_crawl", "tabata_rounds"],
+  "recovery-flow": ["cat_cow", "childs_pose", "downward_dog", "cobra_stretch", "pigeon_pose", "hamstring_stretch", "hip_flexor_stretch", "dead_bug"]
+};
+
+function pickExercisesByIds(ids: string[], source: Exercise[]) {
+  return ids
+    .map((id) => source.find((exercise) => exercise.id === id))
+    .filter((exercise): exercise is Exercise => Boolean(exercise));
+}
+
+export function getWorkoutProgramExercises(programId: string | undefined, userPlan: ExerciseAccessPlan): Exercise[] {
+  const accessible = getAccessibleExercises(userPlan);
+  const ids = programId ? workoutProgramExerciseIds[programId] : null;
+  const structured = ids ? pickExercisesByIds(ids, accessible) : [];
+  if (structured.length > 0) return structured;
+
+  const normalized = (programId ?? "").toLowerCase();
+  if (normalized.includes("recovery") || normalized.includes("mobility")) {
+    return accessible.filter((exercise) => exercise.muscleGroup === "Mobility").slice(0, 8);
+  }
+  if (normalized.includes("core")) {
+    return accessible.filter((exercise) => exercise.muscleGroup === "Core").slice(0, 7);
+  }
+  if (normalized.includes("fat") || normalized.includes("hiit") || normalized.includes("conditioning")) {
+    return accessible.filter((exercise) => exercise.muscleGroup === "Cardio").slice(0, 8);
+  }
+  if (normalized.includes("home") || normalized.includes("equipment")) {
+    return accessible.filter((exercise) => exercise.equipmentTier === "none").slice(0, 6);
+  }
+  return starterExercises;
+}
+
 export function getCategorizedExerciseLibrary(minimumCount = 30) {
   const library = exerciseCatalog.slice(0, Math.max(minimumCount, 30));
   return library.reduce<Record<string, Exercise[]>>((groups, exercise) => {

@@ -85,6 +85,16 @@ export default function CoachScreen() {
     setHistoryOpen(false);
   }
 
+  function getChatTitle(value: string) {
+    const clean = value.replace(/\s+/g, " ").trim();
+    if (!clean) return "New Chat";
+    return clean.length > 34 ? `${clean.slice(0, 34)}…` : clean;
+  }
+
+  function isGreeting(value: string) {
+    return /^(hi|hello|hey|yo|good morning|good afternoon|good evening)\W*$/i.test(value.trim());
+  }
+
   async function openSession(session: ChatSessionSummary) {
     setActiveSession(session);
     setHistoryOpen(false);
@@ -173,12 +183,17 @@ export default function CoachScreen() {
       let session = activeSession;
       if (!session) {
         try {
-          session = await createChatSession(cleanPrompt.slice(0, 42));
+          session = await createChatSession(getChatTitle(cleanPrompt));
         } catch {
-          session = { id: `local-${Date.now()}`, title: cleanPrompt.slice(0, 42), createdAt: new Date().toISOString() };
+          session = { id: `local-${Date.now()}`, title: getChatTitle(cleanPrompt), createdAt: new Date().toISOString() };
         }
         setActiveSession(session);
         setSessions((current) => [session!, ...current]);
+      } else if (session.title === "New Chat") {
+        const titledSession = { ...session, title: getChatTitle(cleanPrompt) };
+        session = titledSession;
+        setActiveSession(titledSession);
+        setSessions((current) => current.map((item) => item.id === titledSession.id ? titledSession : item));
       }
 
       const userMessage: ChatMessageRecord = {
@@ -194,11 +209,23 @@ export default function CoachScreen() {
         // Chat persistence must never block the live coaching request.
       }
 
+      if (isGreeting(cleanPrompt)) {
+        const assistantMessage: ChatMessageRecord = {
+          id: `local-assistant-${Date.now()}`,
+          role: "assistant",
+          content: "How can I assist your fitness journey today?",
+          createdAt: new Date().toISOString()
+        };
+        setMessages((current) => [...current, assistantMessage]);
+        setStreamingText("");
+        return;
+      }
+
       const response = await askFitneoCoachWithRetry(cleanPrompt, {
         sessionId: session.id,
         history: conversation,
         onChunk: setStreamingText
-      }, 2);
+      }, 1);
       if (response.error || !response.data?.message) {
         throw new Error(response.error ?? "FITNEO AI returned an empty response.");
       }
@@ -282,10 +309,17 @@ export default function CoachScreen() {
               <Text style={styles.newChat}>+ New Chat</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sessionList}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sessionList}>
             {sessions.map((session) => (
-              <TouchableOpacity key={session.id} onPress={() => void openSession(session)}>
-                <Chip title={session.title} active={session.id === activeSession?.id} />
+              <TouchableOpacity
+                key={session.id}
+                onPress={() => void openSession(session)}
+                style={[styles.sessionRow, session.id === activeSession?.id && styles.sessionRowActive]}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color={session.id === activeSession?.id ? colors.textPrimary : colors.textSecondary} />
+                <Text numberOfLines={1} style={[styles.sessionTitle, session.id === activeSession?.id && styles.sessionTitleActive]}>
+                  {session.title}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -398,11 +432,25 @@ const styles = StyleSheet.create({
   aiOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.14)", borderColor: "rgba(0,163,255,0.45)", borderRadius: 18, borderWidth: 1, height: 36, justifyContent: "center", shadowColor: colors.accent, shadowOpacity: 0.55, shadowRadius: 12, width: 36 },
   title: { color: colors.textPrimary, fontSize: 18, fontWeight: "900", letterSpacing: 2 },
   online: { color: colors.teal, fontSize: 9, fontWeight: "800", letterSpacing: 1.2 },
-  historyPanel: { gap: 12, padding: 14 },
+  historyPanel: {
+    bottom: 96,
+    gap: 12,
+    left: 0,
+    maxWidth: 360,
+    padding: 14,
+    position: "absolute",
+    top: 92,
+    width: "82%",
+    zIndex: 20
+  },
   historyHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   historyTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "800" },
   newChat: { color: colors.accent, fontSize: 13, fontWeight: "800" },
-  sessionList: { gap: 8 },
+  sessionList: { gap: 8, paddingBottom: 12 },
+  sessionRow: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.055)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 10, minHeight: 48, paddingHorizontal: 12 },
+  sessionRowActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  sessionTitle: { color: colors.textSecondary, flex: 1, fontSize: 13, fontWeight: "800" },
+  sessionTitleActive: { color: colors.textPrimary },
   messages: { flex: 1, zIndex: 1 },
   messageContent: { flexGrow: 1, gap: 12, justifyContent: "flex-end", paddingBottom: 18, paddingTop: 18 },
   bubble: { borderRadius: 20, maxWidth: "90%", paddingHorizontal: 16, paddingVertical: 13 },

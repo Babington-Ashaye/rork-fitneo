@@ -74,7 +74,12 @@ export default function CustomWorkoutScreen() {
 
   return (
     <AppLayout scroll>
-      <ScreenTitle title="Custom Workout" subtitle="Build a reusable routine from the complete FITNEO exercise library." />
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <ScreenTitle title="Custom Workout" subtitle="Build a reusable routine from the complete FITNEO exercise library." />
+      </View>
       {!isPremium ? (
         <TouchableOpacity style={styles.libraryGate} onPress={() => router.push("/paywall")}>
           <Ionicons name="lock-closed" size={16} color={colors.gold} />
@@ -175,6 +180,8 @@ export default function CustomWorkoutScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerRow: { alignItems: "center", flexDirection: "row", gap: 12 },
+  backButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.055)", borderRadius: 18, height: 40, justifyContent: "center", width: 40 },
   card: { gap: 12, padding: 18 },
   title: { color: colors.textPrimary, fontSize: 18, fontWeight: "800" },
   input: { backgroundColor: "rgba(255,255,255,0.04)", borderColor: colors.cardStroke, borderRadius: radii.md, borderWidth: 1, color: colors.textPrimary, minHeight: 52, paddingHorizontal: 14 },

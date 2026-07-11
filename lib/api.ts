@@ -311,6 +311,7 @@ export async function saveCustomWorkout(input: CustomWorkoutInput): Promise<Work
     .from("workout_programs")
     .insert({
       user_id: userId,
+      name: trimmedName,
       program_name: trimmedName,
       category: "custom",
       difficulty: 2,

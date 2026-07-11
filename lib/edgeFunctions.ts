@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { fetch as expoFetch } from "expo/fetch";
 
 export const FITNEO_EDGE_FUNCTION = "fitneo-ai-coach";
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 12_000;
 const RETRYABLE_ERROR_PATTERN = /high demand|overload|rate limit|resource exhausted|timeout|temporarily unavailable|503|429/i;
 
 function delay(milliseconds: number) {
@@ -147,7 +147,7 @@ export async function streamFitneoCoach(
     }
   }
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 1; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
@@ -238,7 +238,7 @@ export async function streamFitneoCoach(
         continue;
       }
       try {
-        return await withTimeout(askFitneoCoach(prompt, options), 20_000);
+        return await withTimeout(askFitneoCoach(prompt, options), 12_000);
       } catch (fallbackError) {
         return {
           data: null,
@@ -251,7 +251,7 @@ export async function streamFitneoCoach(
   }
 
   try {
-    return await withTimeout(askFitneoCoach(prompt, options), 20_000);
+    return await withTimeout(askFitneoCoach(prompt, options), 12_000);
   } catch (error) {
     return { data: null, error: friendlyAiError(error instanceof Error ? error.message : "FITNEO AI timed out.") };
   }

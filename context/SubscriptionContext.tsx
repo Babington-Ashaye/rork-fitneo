@@ -14,6 +14,11 @@ const WEB_CHECKOUT_URLS = {
   elite: process.env.EXPO_PUBLIC_STRIPE_ELITE_CHECKOUT_URL ?? "https://fitneo.app/checkout/elite"
 } as const;
 
+const FALLBACK_WEB_CHECKOUT_URLS = {
+  pro: "https://fitneo.app/checkout/pro",
+  elite: "https://fitneo.app/checkout/elite"
+} as const;
+
 let isRevenueCatConfigured = false;
 let revenueCatConfigurePromise: Promise<void> | null = null;
 
@@ -158,7 +163,10 @@ function getLocalActiveTier(profile: ProfileRow | null): RevenueCatActiveTier {
 }
 
 function getWebCheckoutUrl(tier: CheckoutTier, cadence?: BillingCadence): string {
-  const baseUrl = WEB_CHECKOUT_URLS[tier];
+  const configuredUrl = WEB_CHECKOUT_URLS[tier];
+  const baseUrl = configuredUrl.includes("auth.expo.io")
+    ? FALLBACK_WEB_CHECKOUT_URLS[tier]
+    : configuredUrl;
   return cadence ? `${baseUrl}?billing=${cadence}` : baseUrl;
 }
 

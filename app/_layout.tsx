@@ -83,8 +83,8 @@ function RootNavigator() {
         <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
         <Stack.Screen name="scanner" options={{ title: "AI Plate Scanner" }} />
         <Stack.Screen name="barcode-scanner" options={{ title: "Barcode Scanner" }} />
-        <Stack.Screen name="custom-workout" options={{ title: "Custom Workout" }} />
-        <Stack.Screen name="active-workout" options={{ title: "Workout Session" }} />
+        <Stack.Screen name="custom-workout" options={{ headerShown: false }} />
+        <Stack.Screen name="active-workout" options={{ headerShown: false }} />
         <Stack.Screen name="sports-mode" options={{ title: "Sports Mode" }} />
         <Stack.Screen name="badges" options={{ title: "Badges" }} />
         <Stack.Screen name="chat-history" options={{ title: "Chat History" }} />
