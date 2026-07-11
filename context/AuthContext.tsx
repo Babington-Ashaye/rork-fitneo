@@ -8,11 +8,26 @@ import { secureStorage } from "@/lib/secureStorage";
 
 const LOCAL_ONBOARDING_KEY = "fitneo.local.onboarding_completed";
 const LEGAL_ACCEPTANCE_PREFIX = "fitneo.legal.accepted";
+const PRODUCTION_AUTH_CALLBACK_URL = "https://o-phi.vercel.app/auth/callback";
 WebBrowser.maybeCompleteAuthSession();
 
 function getOAuthRedirectUrl() {
   if (Platform.OS === "web" && typeof window !== "undefined" && window.location?.origin) {
-    return `${window.location.origin}/auth/callback`;
+    const configuredUrl =
+      process.env.EXPO_PUBLIC_AUTH_REDIRECT_URL ??
+      process.env.EXPO_PUBLIC_SITE_URL ??
+      process.env.EXPO_PUBLIC_APP_URL ??
+      "";
+    if (configuredUrl.startsWith("http")) {
+      const normalized = configuredUrl.replace(/\/$/, "");
+      return normalized.endsWith("/auth/callback") ? normalized : `${normalized}/auth/callback`;
+    }
+
+    const origin = window.location.origin;
+    if (origin.includes("auth.expo.io") || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+      return PRODUCTION_AUTH_CALLBACK_URL;
+    }
+    return `${origin}/auth/callback`;
   }
 
   return Linking.createURL("auth/callback");

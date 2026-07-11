@@ -16,6 +16,16 @@ const trainingStyles = ["Strength Training", "HIIT", "Cardio", "Core & Abs", "Mo
 const injuries = ["No injuries or limitations", "Lower back", "Knee", "Shoulder", "Hip", "Wrist"];
 const dietOptions = ["Standard", "High Protein", "Vegetarian", "Vegan", "Mediterranean", "Keto"];
 const coachOptions = ["Supportive", "Motivational", "Data-driven", "Push me hard", "Mix of everything"];
+const onboardingStepInfo: Array<{ icon: keyof typeof Ionicons.glyphMap; label: string; copy: string }> = [
+  { icon: "person-circle", label: "Identity", copy: "Your baseline helps FITNEO size the plan safely." },
+  { icon: "flag", label: "Goal", copy: "This decides whether the plan leans fat loss, strength, performance, or consistency." },
+  { icon: "barbell", label: "Equipment", copy: "Exercises will match what you actually have access to." },
+  { icon: "calendar", label: "Schedule", copy: "FITNEO shapes the week around your available days and session length." },
+  { icon: "flash", label: "Style", copy: "Pick the training feel you will actually enjoy repeating." },
+  { icon: "battery-charging", label: "Recovery", copy: "Recovery signals keep intensity realistic, not random." },
+  { icon: "shield-checkmark", label: "Health", copy: "Limitations help FITNEO avoid exercises that do not fit your body today." },
+  { icon: "sparkles", label: "Calibration", copy: "Nutrition and coaching tone complete your AI fitness profile." }
+];
 
 export default function OnboardingScreen() {
   const { profile, markLocalOnboardingComplete, refreshProfile, session } = useAuth();
@@ -45,6 +55,7 @@ export default function OnboardingScreen() {
 
   const totalSteps = 8;
   const progress = (step + 1) / totalSteps;
+  const stepInfo = onboardingStepInfo[step];
   const tdee = useMemo(() => calculateTdee({ age, gender, weight, weightUnit, height, activity, goal }), [activity, age, gender, goal, height, weight, weightUnit]);
 
   if (!session) {
@@ -164,8 +175,35 @@ export default function OnboardingScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
         >
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <Ionicons name={stepInfo.icon} size={24} color={colors.accent} />
+        </View>
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroStep}>STEP {step + 1} OF {totalSteps} · {stepInfo.label.toUpperCase()}</Text>
+          <Text style={styles.heroText}>{stepInfo.copy}</Text>
+        </View>
+      </View>
+
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+      </View>
+
+      <View style={styles.signalRow}>
+        <View style={styles.signalPill}>
+          <Ionicons name="analytics" size={13} color={colors.teal} />
+          <Text style={styles.signalText}>{goal}</Text>
+        </View>
+        <View style={styles.signalPill}>
+          <Ionicons name="fitness" size={13} color={colors.teal} />
+          <Text style={styles.signalText}>{equipment.includes("No Equipment") ? "0 equipment" : equipment.includes("Full Gym") ? "Full gym" : "Few equipment"}</Text>
+        </View>
+      </View>
+
+      <View style={styles.dotRow}>
+        {Array.from({ length: totalSteps }).map((_, index) => (
+          <View key={index} style={[styles.dot, index <= step && styles.dotActive]} />
+        ))}
       </View>
 
       {step === 0 ? (
@@ -352,6 +390,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24
   },
+  hero: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.08)", borderColor: "rgba(0,163,255,0.22)", borderRadius: 22, borderWidth: 1, flexDirection: "row", gap: 12, marginTop: 8, padding: 14 },
+  heroIcon: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.14)", borderRadius: 18, height: 44, justifyContent: "center", width: 44 },
+  heroCopy: { flex: 1, gap: 3 },
+  heroStep: { color: colors.accent, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  heroText: { color: colors.textSecondary, fontSize: 12, lineHeight: 17 },
+  signalRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  signalPill: { alignItems: "center", backgroundColor: "rgba(0,217,178,0.10)", borderColor: "rgba(0,217,178,0.22)", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 6, paddingHorizontal: 10, paddingVertical: 7 },
+  signalText: { color: colors.teal, fontSize: 11, fontWeight: "900" },
+  dotRow: { flexDirection: "row", gap: 5, marginTop: 10 },
+  dot: { backgroundColor: "rgba(255,255,255,0.13)", borderRadius: 3, flex: 1, height: 5 },
+  dotActive: { backgroundColor: colors.accent },
   progressTrack: {
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: radii.round,
