@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { AppLayout } from "@/components/AppLayout";
 import { Chip, EmptySpacer, ErrorState, IconBubble, MetaItem, ScreenTitle, SkeletonBlock, TouchableCard } from "@/components/ScreenKit";
 import { fetchWorkoutPrograms, WorkoutProgram } from "@/lib/api";
+import { getEquipmentTierShortLabel, getWorkoutProgramExercises } from "@/lib/exercises";
 import { colors, radii } from "@/lib/theme";
 import { useSubscription } from "@/context/SubscriptionContext";
 
@@ -103,6 +104,9 @@ export default function WorkoutsScreen() {
 function WorkoutCard({ canAccess, program }: { canAccess: boolean; program: WorkoutProgram }) {
   const tint = program.category.toLowerCase().includes("conditioning") ? colors.coral : program.category.toLowerCase().includes("mobility") ? colors.teal : colors.accent;
   const icon: keyof typeof Ionicons.glyphMap = program.category.toLowerCase().includes("mobility") ? "body" : program.category.toLowerCase().includes("conditioning") ? "flash" : "barbell";
+  const equipmentLabels = Array.from(new Set(
+    getWorkoutProgramExercises(program.id, "free").map((exercise) => getEquipmentTierShortLabel(exercise.equipmentTier))
+  ));
 
   return (
     <TouchableCard
@@ -121,6 +125,11 @@ function WorkoutCard({ canAccess, program }: { canAccess: boolean; program: Work
         <Ionicons name={canAccess ? "chevron-forward" : "lock-closed"} size={16} color={canAccess ? colors.textTertiary : colors.gold} />
       </View>
       <Text style={styles.description} numberOfLines={2}>Balanced programming with progressions, rest timing, and FITNEO XP rewards.</Text>
+      <View style={styles.equipmentRow}>
+        {equipmentLabels.map((label) => (
+          <Text key={label} style={[styles.equipmentPill, label === "0 EQ" && styles.noEquipmentPill]}>{label}</Text>
+        ))}
+      </View>
       <View style={styles.metaFooter}>
         <MetaItem icon="time" text={`${program.durationMinutes}m`} />
         <MetaItem icon="flame" text={String(program.calories)} />
@@ -226,6 +235,28 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 19
+  },
+  equipmentRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7
+  },
+  equipmentPill: {
+    backgroundColor: "rgba(255,199,51,0.12)",
+    borderColor: "rgba(255,199,51,0.26)",
+    borderRadius: 999,
+    borderWidth: 1,
+    color: colors.gold,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+    paddingHorizontal: 8,
+    paddingVertical: 3
+  },
+  noEquipmentPill: {
+    backgroundColor: "rgba(0,217,178,0.12)",
+    borderColor: "rgba(0,217,178,0.3)",
+    color: colors.teal
   },
   metaFooter: {
     alignItems: "center",

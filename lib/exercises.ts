@@ -56,7 +56,7 @@ const exerciseRows: Array<[
   ["skull_crushers", "Skull Crushers", "Arms", "Intermediate", 3, "10", 60, "0060-h8LFzo9.gif"],
   ["concentration_curls", "Concentration Curls", "Arms", "Beginner", 3, "12", 45, "0976-kmVVAfu.gif"],
   ["overhead_tricep_ext", "Overhead Tricep Extension", "Arms", "Beginner", 3, "12", 45, "0060-h8LFzo9.gif"],
-  ["squats", "Squats", "Legs", "Beginner", 4, "12", 90, "0043-qXTaZnJ.gif"],
+  ["squats", "Bodyweight Squats", "Legs", "Beginner", 4, "12", 90, "0514-LIlE5Tn.gif"],
   ["lunges", "Lunges", "Legs", "Beginner", 3, "10 each", 60, "0054-t8iSghb.gif"],
   ["romanian_deadlift", "Romanian Deadlift", "Legs", "Intermediate", 4, "10", 90, "0043-qXTaZnJ.gif"],
   ["leg_press", "Leg Press", "Legs", "Beginner", 4, "12", 90, "0102-oR7O9LW.gif"],
@@ -67,7 +67,7 @@ const exerciseRows: Array<[
   ["crunches", "Crunches", "Core", "Beginner", 3, "20", 30, "0262-t6Q9YGn.gif"],
   ["russian_twists", "Russian Twists", "Core", "Beginner", 3, "20", 30, "0727-EfM77ZF.gif"],
   ["leg_raises", "Leg Raises", "Core", "Intermediate", 3, "15", 45, "0689-Hgs6Nl1.gif"],
-  ["mountain_climbers", "Mountain Climbers", "Core", "Beginner", 3, "40 sec", 30, "0662-I4hDWkc.gif"],
+  ["mountain_climbers", "Mountain Climbers", "Core", "Beginner", 3, "40 sec", 30, "0630-RJgzwny.gif"],
   ["ab_wheel", "Ab Wheel", "Core", "Advanced", 3, "10", 60, "0103-xnInPfE.gif"],
   ["v_ups", "V-Ups", "Core", "Intermediate", 3, "15", 45, "1014-H6ETwO9.gif"],
   ["dead_bug", "Dead Bug", "Core", "Beginner", 3, "12 each", 30, "0262-t6Q9YGn.gif"],
@@ -76,7 +76,7 @@ const exerciseRows: Array<[
   ["box_jumps", "Box Jumps", "Cardio", "Intermediate", 4, "12", 60, "1374-iPm26QU.gif"],
   ["high_knees", "High Knees", "Cardio", "Beginner", 4, "40 sec", 30, "3636-ealLwvX.gif"],
   ["sprint_intervals", "Sprint Intervals", "Cardio", "Advanced", 6, "30 sec", 60, "0858-Qoujh3Q.gif"],
-  ["jumping_jacks", "Jumping Jacks", "Cardio", "Beginner", 4, "45 sec", 30, "0501-mr7pkqP.gif"],
+  ["jumping_jacks", "Jumping Jacks", "Cardio", "Beginner", 4, "45 sec", 30, "3224-1g5bPpA.gif"],
   ["bear_crawl", "Bear Crawl", "Cardio", "Intermediate", 3, "40 sec", 45, "0134-DzAScWx.gif"],
   ["tabata_rounds", "Tabata Rounds", "Cardio", "Advanced", 8, "20 sec", 10, "1160-dK9394r.gif"],
   ["emom_sets", "EMOM Sets", "Cardio", "Intermediate", 10, "1 min", 0, "1160-dK9394r.gif"],
@@ -181,7 +181,52 @@ const fewEquipmentKeywords = [
   "trx"
 ];
 
+const equipmentTierOverrides: Partial<Record<string, ExerciseEquipmentTier>> = {
+  ab_wheel: "few",
+  bent_over_rows: "few",
+  chest_dips: "few",
+  deadlift: "few",
+  face_pulls: "few",
+  overhead_press: "few",
+  pull_ups: "few",
+  romanian_deadlift: "few",
+  tricep_dips: "few",
+  upright_rows: "few",
+
+  bicycle_crunches: "none",
+  bird_dogs: "none",
+  bodyweight_squats: "none",
+  burpees: "none",
+  calf_raises: "none",
+  crunches: "none",
+  dead_bug: "none",
+  decline_push_ups: "none",
+  diamond_push_ups: "none",
+  glute_bridges: "none",
+  high_knees: "none",
+  incline_push_ups: "none",
+  jump_lunges: "none",
+  jumping_jacks: "none",
+  lunges: "none",
+  mountain_climbers: "none",
+  pike_push_ups: "none",
+  plank: "none",
+  push_ups: "none",
+  reverse_crunches: "none",
+  russian_twists: "none",
+  shadow_boxing: "none",
+  side_plank: "none",
+  single_leg_glute_bridge: "none",
+  squats: "none",
+  supermans: "none",
+  v_ups: "none",
+  wall_sit: "none",
+  wide_push_ups: "none"
+};
+
 function inferEquipmentTier(id: string): ExerciseEquipmentTier {
+  const override = equipmentTierOverrides[id];
+  if (override) return override;
   if (fullEquipmentKeywords.some((keyword) => id.includes(keyword))) return "full";
   if (fewEquipmentKeywords.some((keyword) => id.includes(keyword))) return "few";
   return "none";
@@ -213,9 +258,15 @@ export function findExercise(id: string) {
 }
 
 export function getEquipmentTierLabel(tier: ExerciseEquipmentTier) {
-  if (tier === "none") return "0 equipment";
-  if (tier === "few") return "Few equipment";
-  return "Full gym";
+  if (tier === "none") return "No equipment";
+  if (tier === "few") return "Home gear";
+  return "Gym equipment";
+}
+
+export function getEquipmentTierShortLabel(tier: ExerciseEquipmentTier) {
+  if (tier === "none") return "0 EQ";
+  if (tier === "few") return "HOME";
+  return "GYM";
 }
 
 export function getAccessibleExercises(userPlan: ExerciseAccessPlan): Exercise[] {
