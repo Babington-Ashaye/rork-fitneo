@@ -3,6 +3,7 @@ const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
 const projectRoot = __dirname;
+const isProduction = process.env.NODE_ENV === "production";
 
 config.resolver = {
   ...config.resolver,
@@ -20,9 +21,9 @@ config.transformer.minifierPath = require.resolve("metro-minify-terser");
 config.transformer.minifierConfig = {
   compress: {
     dead_code: true,
-    drop_console: true,
+    drop_console: isProduction,
     drop_debugger: true,
-    passes: 3,
+    passes: isProduction ? 3 : 1,
     pure_getters: true,
     unused: true
   },
@@ -31,15 +32,17 @@ config.transformer.minifierConfig = {
   },
   keep_classnames: false,
   keep_fnames: false,
-  mangle: {
-    keep_classnames: false,
-    keep_fnames: false,
-    safari10: true,
-    toplevel: true
-  },
+  mangle: isProduction
+    ? {
+        keep_classnames: false,
+        keep_fnames: false,
+        safari10: true,
+        toplevel: true
+      }
+    : false,
   module: false,
-  sourceMap: false,
-  toplevel: true
+  sourceMap: !isProduction,
+  toplevel: isProduction
 };
 
 module.exports = config;

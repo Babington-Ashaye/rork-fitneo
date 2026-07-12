@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
-import { EmptySpacer, GlassCard, ScreenTitle, SkeletonBlock } from "@/components/ScreenKit";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { EmptySpacer, GlassCard, SkeletonBlock } from "@/components/ScreenKit";
 import { EarnedBadge, fetchEarnedBadges } from "@/lib/api";
 import { colors } from "@/lib/theme";
 
@@ -76,7 +77,7 @@ export default function BadgesScreen() {
 
   return (
     <AppLayout scroll>
-      <ScreenTitle title="Achievements" subtitle={`${earned.length} of ${catalog.length} milestones unlocked`} />
+      <ScreenHeader title="Achievements" subtitle={`${earned.length} of ${catalog.length} milestones unlocked`} />
       {loading ? (
         <View style={styles.grid}>
           {Array.from({ length: 6 }).map((_, index) => <SkeletonBlock key={index} height={154} radius={16} style={styles.cell} />)}

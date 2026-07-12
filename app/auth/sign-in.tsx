@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { makeRedirectUri } from "expo-auth-session";
+import * as Google from "expo-auth-session/providers/google";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { RefObject, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
@@ -8,8 +11,17 @@ import { AuthNotice } from "@/components/AuthNotice";
 import { AuthSkeleton } from "@/components/AuthSkeleton";
 import { TouchableCard } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
-import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase, supabaseConfigStatus } from "@/lib/supabase";
 import { colors, radii } from "@/lib/theme";
+
+/*
+  Google OAuth setup:
+  - Add EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    and EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID in .env and Vercel.
+  - Get the client IDs from console.cloud.google.com.
+  - Keep the app scheme as "fitneo" and allow the matching callback in Supabase.
+*/
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const { error, isLoading, resetPassword, signIn, signInWithGoogle } = useAuth();
@@ -22,12 +34,50 @@ export default function SignInScreen() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const authErrorMessage = getAuthErrorMessage(localError ?? error);
+  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri: makeRedirectUri({ scheme: "fitneo", path: "auth/callback" }),
+    scopes: ["openid", "profile", "email"]
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => setIsScreenReady(true), 180);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (googleResponse?.type !== "success") {
+      if (googleResponse?.type === "error") {
+        setLocalError(googleResponse.error?.message ?? "Google sign-in failed.");
+      }
+      return;
+    }
+
+    void (async () => {
+      setIsGoogleLoading(true);
+      setLocalError(null);
+      try {
+        const idToken = googleResponse.params.id_token;
+        if (!idToken) {
+          throw new Error("Google did not return an ID token. Check your Google Client ID configuration.");
+        }
+        const { error: tokenError } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: idToken
+        });
+        if (tokenError) throw tokenError;
+        router.replace("/");
+      } catch (err) {
+        setLocalError(err instanceof Error ? err.message : "Google sign-in failed.");
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    })();
+  }, [googleResponse]);
 
   async function submit() {
     setLocalError(null);
@@ -53,6 +103,16 @@ export default function SignInScreen() {
     setLocalError(null);
     setStatusMessage(null);
     setHintMessage(null);
+    if (googleRequest) {
+      setIsGoogleLoading(true);
+      try {
+        await promptGoogleAsync();
+      } finally {
+        setIsGoogleLoading(false);
+      }
+      return;
+    }
+
     const ok = await signInWithGoogle();
     if (ok) {
       router.replace("/");
@@ -170,9 +230,11 @@ export default function SignInScreen() {
             <View style={styles.divider} />
           </View>
 
+          {/* Google Client IDs must be configured in .env */}
+          {/* Get them from console.cloud.google.com */}
           <TouchableCard radius={radii.md} style={styles.googleButton} onPress={continueWithGoogle}>
             <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
-            <Text style={styles.googleText}>Continue with Google</Text>
+            {isGoogleLoading || isLoading ? <ActivityIndicator color="#333333" /> : <Text style={styles.googleText}>Continue with Google</Text>}
           </TouchableCard>
 
           <View style={styles.footerBlock}>

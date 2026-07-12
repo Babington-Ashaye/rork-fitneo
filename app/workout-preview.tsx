@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { EmptySpacer, GlassCard, MetaItem } from "@/components/ScreenKit";
 import {
   getCleanEquipmentTierLabel,
@@ -22,15 +23,7 @@ export default function WorkoutPreviewScreen() {
 
   return (
     <AppLayout scroll contentContainerStyle={styles.screen}>
-      <View style={styles.header}>
-        <TouchableOpacity activeOpacity={0.78} style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerCopy}>
-          <Text style={styles.category}>{program.category}</Text>
-          <Text style={styles.title}>{program.name}</Text>
-        </View>
-      </View>
+      <ScreenHeader title={program.name} subtitle={program.category} />
 
       <GlassCard radius={22} style={styles.heroCard}>
         <View style={styles.pillRow}>
@@ -95,11 +88,6 @@ export default function WorkoutPreviewScreen() {
 
 const styles = StyleSheet.create({
   screen: { gap: 16 },
-  header: { alignItems: "center", flexDirection: "row", gap: 12 },
-  backButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 20, height: 42, justifyContent: "center", width: 42 },
-  headerCopy: { flex: 1 },
-  category: { color: colors.accent, fontSize: 11, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase" },
-  title: { color: colors.textPrimary, fontSize: 28, fontWeight: "900", marginTop: 3 },
   heroCard: { gap: 14, padding: 18 },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   equipmentBadge: { borderRadius: 999, borderWidth: 1, fontSize: 10, fontWeight: "900", letterSpacing: 0.4, paddingHorizontal: 9, paddingVertical: 5 },

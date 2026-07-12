@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { Redirect, Tabs } from "expo-router";
 import { useEffect, useReducer } from "react";
-import { Platform, Pressable, StyleSheet, Text, Vibration, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radii } from "@/lib/theme";
@@ -59,7 +60,7 @@ function FloatingTabBar({ state, navigation }: any) {
               key={route.key}
               onPress={() => {
                 if (Platform.OS !== "web") {
-                  Vibration.vibrate(8);
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }
                 navigation.navigate(route.name);
               }}

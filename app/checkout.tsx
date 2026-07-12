@@ -31,7 +31,7 @@ export default function CheckoutScreen() {
       <Text style={styles.title}>{setupRequired ? "Checkout setup required" : "Opening payment"}</Text>
       <Text style={styles.copy}>
         {setupRequired
-          ? "FITNEO can open this page now, but live web payments need a real Stripe Payment Link or Checkout URL added in Vercel."
+          ? "Add your Paystack payment links in Vercel to activate live payments for Pro and Elite."
           : "Your selected payment plan is ready."}
       </Text>
 
@@ -48,10 +48,10 @@ export default function CheckoutScreen() {
 
       {setupRequired ? (
         <View style={styles.envCard}>
-          <Text style={styles.envTitle}>Add one of these in Vercel</Text>
-          <Text style={styles.envLine}>EXPO_PUBLIC_STRIPE_PRO_CHECKOUT_URL</Text>
-          <Text style={styles.envLine}>EXPO_PUBLIC_STRIPE_ELITE_CHECKOUT_URL</Text>
-          <Text style={styles.envHint}>Use real Stripe hosted payment links. The old checkout.fitneo.app domain has no working DNS/deployment.</Text>
+          <Text style={styles.envTitle}>Add these in Vercel environment variables</Text>
+          <Text style={styles.envLine}>EXPO_PUBLIC_PAYSTACK_PRO_URL</Text>
+          <Text style={styles.envLine}>EXPO_PUBLIC_PAYSTACK_ELITE_URL</Text>
+          <Text style={styles.envHint}>Get payment links from your Paystack or Flutterwave dashboard. International cards accepted via Flutterwave.</Text>
         </View>
       ) : null}
 

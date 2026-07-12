@@ -31,7 +31,9 @@
       "infoPlist": {
         "NSUserTrackingUsageDescription": "This identifier will be used to show you personalized fitness content and ads relevant to your goals",
         "NSCameraUsageDescription": "FITNEO needs camera access to scan food barcodes and identify meals from photos.",
-        "NSPhotoLibraryUsageDescription": "FITNEO needs photo access when you choose meal images for nutrition analysis."
+        "NSPhotoLibraryUsageDescription": "FITNEO needs photo access when you choose meal images for nutrition analysis.",
+        "GADApplicationIdentifier": "$(EXPO_PUBLIC_ADMOB_IOS_APP_ID)",
+        "NSAdvertisingAttributionReportEndpoint": "https://appattest.apple.com"
       }
     },
     "android": {
@@ -42,7 +44,8 @@
         "backgroundColor": "#080A0F"
       },
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "com.google.android.gms.permission.AD_ID"
       ]
     },
     "web": {
@@ -52,6 +55,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-web-browser",
       [
         "expo-notifications",
         {

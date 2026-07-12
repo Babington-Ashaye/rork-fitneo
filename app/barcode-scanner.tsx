@@ -4,7 +4,8 @@ import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
-import { GlassCard, ScreenTitle } from "@/components/ScreenKit";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { GlassCard } from "@/components/ScreenKit";
 import { saveNutritionLog } from "@/lib/api";
 import { colors, radii } from "@/lib/theme";
 
@@ -119,7 +120,7 @@ export default function BarcodeScannerScreen() {
 
   return (
     <AppLayout contentContainerStyle={styles.screen}>
-      <ScreenTitle title="Barcode Scanner" subtitle={`Point the frame at a packaged food barcode for ${mealType}.`} />
+      <ScreenHeader title="Barcode Scanner" subtitle={`Point the frame at a packaged food barcode for ${mealType}.`} />
       <View style={styles.cameraShell}>
         <CameraView
           barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "code93", "itf14", "qr"] }}

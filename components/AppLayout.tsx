@@ -1,10 +1,12 @@
 import { ReactNode } from "react";
+import { router } from "expo-router";
 import {
   ScrollView,
   ScrollViewProps,
   StyleProp,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
   ViewStyle
 } from "react-native";
@@ -84,6 +86,9 @@ function TrialBanner({ daysRemaining }: { daysRemaining: number }) {
       <Text style={styles.trialText}>
         {daysRemaining} {daysRemaining === 1 ? "day" : "days"} left in your free trial
       </Text>
+      <TouchableOpacity activeOpacity={0.78} style={styles.trialUpgrade} onPress={() => router.push("/paywall")}>
+        <Text style={styles.trialUpgradeText}>Upgrade</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -130,7 +135,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: 8,
-    justifyContent: "center",
+    justifyContent: "space-between",
     minHeight: 38,
     paddingHorizontal: 14
   },
@@ -145,5 +150,17 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 12,
     fontWeight: "700"
+  },
+  trialUpgrade: {
+    borderColor: "rgba(0,163,255,0.30)",
+    borderRadius: radii.round,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  trialUpgradeText: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: "900"
   }
 });

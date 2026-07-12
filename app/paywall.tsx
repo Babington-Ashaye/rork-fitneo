@@ -88,7 +88,7 @@ export default function PaywallScreen() {
         <Text style={styles.title}>Choose Your Plan</Text>
         <Text style={styles.subtitle}>
           {subscriptionPlatform === "web"
-            ? "Web checkout redirects to the secure Stripe payment gateway."
+            ? "Web checkout redirects to the secure Paystack payment gateway."
             : "Android native testing uses the RevenueCat SDK checkout."}
         </Text>
       </View>
@@ -121,6 +121,7 @@ export default function PaywallScreen() {
           <Text style={styles.price}>{price.main}</Text>
           <Text style={styles.period}>{price.period}</Text>
         </View>
+        <Text style={styles.priceSubtitle}>Prices shown in NGN · Accepts cards from all countries</Text>
         {price.detail ? <Text style={styles.breakdown}>{price.detail}</Text> : null}
         {selected.features.map((feature) => (
           <View key={feature} style={styles.featureRow}>
@@ -181,6 +182,7 @@ const styles = StyleSheet.create({
   priceRow: { alignItems: "baseline", flexDirection: "row", gap: 4 },
   price: { color: colors.textPrimary, fontSize: 30, fontWeight: "900" },
   period: { color: colors.textSecondary, fontSize: 13 },
+  priceSubtitle: { color: colors.textTertiary, fontSize: 11, fontWeight: "800", marginTop: -7 },
   breakdown: { color: colors.teal, fontSize: 12, fontWeight: "700" },
   featureRow: { alignItems: "flex-start", flexDirection: "row", gap: 9 },
   feature: { color: colors.textSecondary, flex: 1, fontSize: 13, lineHeight: 19 },

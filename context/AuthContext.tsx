@@ -302,8 +302,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!cleanEmail) {
         throw new Error("Please enter your email address.");
       }
-      if (password.length < 6) {
-        throw new Error("Password must be at least 6 characters.");
+      if (password.length < 8) {
+        throw new Error("Password must be at least 8 characters.");
       }
       if (!isSupabaseConfigured) {
         setError(missingSupabaseConfigMessage);

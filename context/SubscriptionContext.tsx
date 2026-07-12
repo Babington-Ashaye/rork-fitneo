@@ -11,19 +11,13 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 const REVENUECAT_API_KEY = "test_ZzlVNfzMbUjBXRMknqDjIEOaWQe";
 const WEB_CHECKOUT_URLS = {
   pro: {
-    monthly: process.env.EXPO_PUBLIC_STRIPE_PRO_MONTHLY_CHECKOUT_URL?.trim(),
-    yearly: process.env.EXPO_PUBLIC_STRIPE_PRO_YEARLY_CHECKOUT_URL?.trim(),
-    default: process.env.EXPO_PUBLIC_STRIPE_PRO_CHECKOUT_URL?.trim()
+    default: process.env.EXPO_PUBLIC_PAYSTACK_PRO_URL?.trim()
   },
   elite: {
-    monthly: process.env.EXPO_PUBLIC_STRIPE_ELITE_MONTHLY_CHECKOUT_URL?.trim(),
-    yearly: process.env.EXPO_PUBLIC_STRIPE_ELITE_YEARLY_CHECKOUT_URL?.trim(),
-    default: process.env.EXPO_PUBLIC_STRIPE_ELITE_CHECKOUT_URL?.trim()
+    default: process.env.EXPO_PUBLIC_PAYSTACK_ELITE_URL?.trim()
   }
 } as const;
-const GENERIC_WEB_CHECKOUT_URL =
-  process.env.EXPO_PUBLIC_STRIPE_CHECKOUT_URL?.trim() ??
-  process.env.EXPO_PUBLIC_CHECKOUT_URL?.trim();
+const GENERIC_WEB_CHECKOUT_URL = process.env.EXPO_PUBLIC_PAYSTACK_URL?.trim();
 const FALLBACK_SITE_URL =
   process.env.EXPO_PUBLIC_SITE_URL?.trim() ??
   process.env.EXPO_PUBLIC_APP_URL?.trim() ??
@@ -218,10 +212,7 @@ function assertResolvableCheckoutUrl(
 }
 
 function getWebCheckoutUrl(tier: CheckoutTier, cadence?: BillingCadence): string {
-  const configuredUrl =
-    (cadence ? WEB_CHECKOUT_URLS[tier][cadence] : undefined) ??
-    WEB_CHECKOUT_URLS[tier].default ??
-    GENERIC_WEB_CHECKOUT_URL;
+  const configuredUrl = WEB_CHECKOUT_URLS[tier].default ?? GENERIC_WEB_CHECKOUT_URL;
   const url = assertResolvableCheckoutUrl(configuredUrl, tier, cadence);
 
   if (configuredUrl === GENERIC_WEB_CHECKOUT_URL) {
@@ -325,7 +316,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
         activeTier: getLocalActiveTier(profile),
         activeEntitlements: {},
         message: usingFallbackCheckout
-          ? "Opening FITNEO checkout setup. Add Stripe Payment Links in Vercel to activate live payments."
+          ? "Opening FITNEO checkout setup. Add Paystack payment links in Vercel to activate live payments."
           : `Redirecting to secure ${requestedTier.toUpperCase()} payment checkout.`
       };
     }
