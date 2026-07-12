@@ -364,7 +364,7 @@ export async function fetchProfileSummary(): Promise<ProfileSummary> {
       rankTitle: "Foundation Builder",
       subscription: "free",
       badgesEarned: 0,
-      badgesTotal: 12
+      badgesTotal: 50
     };
   }
 
@@ -395,7 +395,7 @@ export async function fetchProfileSummary(): Promise<ProfileSummary> {
     rankTitle: "Foundation Builder",
     subscription: String(profile.subscription_status ?? "free"),
     badgesEarned: (badgesRes.data ?? []).length,
-    badgesTotal: 12
+    badgesTotal: 50
   };
 }
 

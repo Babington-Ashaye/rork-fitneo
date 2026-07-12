@@ -1193,7 +1193,7 @@ export function getWorkoutProgramExercises(
   programId: string | undefined,
   _userPlan?: ExerciseAccessPlan
 ): Exercise[] {
-  const program = workoutPrograms.find((p) => p.id === programId);
+  const program = workoutPrograms.find((p) => p.id === programId) ?? workoutPrograms.find((p) => p.id === "full-body-beginner-home");
   if (!program) return [];
   return program.exerciseIds
     .map((id) => findExercise(id))
