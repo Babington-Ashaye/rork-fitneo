@@ -1,5 +1,5 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 import type {
   CustomerInfo,
   PurchasesOfferings,
@@ -9,15 +9,7 @@ import type { ExerciseAccessPlan } from "@/lib/exercises";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 const REVENUECAT_API_KEY = "test_ZzlVNfzMbUjBXRMknqDjIEOaWQe";
-const WEB_CHECKOUT_URLS = {
-  pro: process.env.EXPO_PUBLIC_STRIPE_PRO_CHECKOUT_URL ?? "https://fitneo.app/checkout/pro",
-  elite: process.env.EXPO_PUBLIC_STRIPE_ELITE_CHECKOUT_URL ?? "https://fitneo.app/checkout/elite"
-} as const;
-
-const FALLBACK_WEB_CHECKOUT_URLS = {
-  pro: "https://fitneo.app/checkout/pro",
-  elite: "https://fitneo.app/checkout/elite"
-} as const;
+const PRODUCTION_CHECKOUT_URL = "https://checkout.fitneo.app";
 
 let isRevenueCatConfigured = false;
 let revenueCatConfigurePromise: Promise<void> | null = null;
@@ -163,11 +155,12 @@ function getLocalActiveTier(profile: ProfileRow | null): RevenueCatActiveTier {
 }
 
 function getWebCheckoutUrl(tier: CheckoutTier, cadence?: BillingCadence): string {
-  const configuredUrl = WEB_CHECKOUT_URLS[tier];
-  const baseUrl = configuredUrl.includes("auth.expo.io")
-    ? FALLBACK_WEB_CHECKOUT_URLS[tier]
-    : configuredUrl;
-  return cadence ? `${baseUrl}?billing=${cadence}` : baseUrl;
+  const url = new URL(PRODUCTION_CHECKOUT_URL);
+  url.searchParams.set("plan", tier);
+  if (cadence) {
+    url.searchParams.set("billing", cadence);
+  }
+  return url.toString();
 }
 
 export function SubscriptionProvider({ children }: PropsWithChildren) {
@@ -258,19 +251,32 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
       };
     }
 
-    await configureRevenueCat();
-    const Purchases = await getNativePurchases();
-    const offerings = await Purchases.getOfferings();
-    const selectedPackage = findTierPackage(offerings, requestedTier, cadence);
-    const { customerInfo } = await Purchases.purchasePackage(selectedPackage);
+    try {
+      await configureRevenueCat();
+      const Purchases = await getNativePurchases();
+      const offerings = await Purchases.getOfferings();
+      const selectedPackage = findTierPackage(offerings, requestedTier, cadence);
+      const { customerInfo } = await Purchases.purchasePackage(selectedPackage);
 
-    return {
-      platform: "native",
-      requestedTier,
-      activeTier: getRevenueCatTier(customerInfo),
-      activeEntitlements: customerInfo.entitlements.active as Record<string, unknown>,
-      message: `Completed ${requestedTier.toUpperCase()} native checkout.`
-    };
+      return {
+        platform: "native",
+        requestedTier,
+        activeTier: getRevenueCatTier(customerInfo),
+        activeEntitlements: customerInfo.entitlements.active as Record<string, unknown>,
+        message: `Completed ${requestedTier.toUpperCase()} native checkout.`
+      };
+    } catch (error) {
+      const checkoutUrl = getWebCheckoutUrl(requestedTier, cadence);
+      await Linking.openURL(checkoutUrl);
+      return {
+        platform: "web",
+        requestedTier,
+        checkoutUrl,
+        activeTier: getLocalActiveTier(profile),
+        activeEntitlements: {},
+        message: `Opened secure ${requestedTier.toUpperCase()} web checkout.`
+      };
+    }
   }
 
   useEffect(() => {
