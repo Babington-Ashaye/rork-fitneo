@@ -2,8 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
-import { EmptySpacer, ErrorState, GlassCard, ScreenTitle, SkeletonBlock } from "@/components/ScreenKit";
+import { EmptySpacer, ErrorState, GlassCard, SkeletonBlock } from "@/components/ScreenKit";
 import { fetchLeaderboardEntries, LeaderboardEntry } from "@/lib/api";
 import { calculateXpProgress } from "@/lib/api";
 import { colors } from "@/lib/theme";
@@ -11,6 +12,7 @@ import { colors } from "@/lib/theme";
 type RankingMode = "xp" | "streak" | "week";
 
 export default function LeaderboardScreen() {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [mode, setMode] = useState<RankingMode>("xp");
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function LeaderboardScreen() {
     try {
       setEntries(await fetchLeaderboardEntries());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load the leaderboard.");
+      setError(err instanceof Error ? err.message : t("leaderboard.loadFailed"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -35,15 +37,16 @@ export default function LeaderboardScreen() {
   }, []);
 
   const ranked = useMemo(() => {
-    const value = (entry: LeaderboardEntry) =>
+    const getValue = (entry: LeaderboardEntry) =>
       mode === "xp" ? entry.totalXp : mode === "streak" ? entry.currentStreak : entry.workoutsThisWeek;
-    const sorted = [...entries].sort((a, b) => value(b) - value(a));
-    return sorted.map((entry, index) => ({
-      entry,
-      rank: index > 0 && value(sorted[index - 1]) === value(entry)
-        ? sorted.slice(0, index).findIndex((candidate) => value(candidate) === value(entry)) + 1
-        : index + 1
-    }));
+    const sorted = [...entries].sort((a, b) => getValue(b) - getValue(a));
+    let currentRank = 1;
+    return sorted.map((entry, index) => {
+      if (index > 0 && getValue(sorted[index - 1]) !== getValue(entry)) {
+        currentRank = index + 1;
+      }
+      return { entry, rank: currentRank };
+    });
   }, [entries, mode]);
 
   const ownRank = ranked.find((item) => item.entry.isCurrentUser)?.rank;
@@ -57,33 +60,32 @@ export default function LeaderboardScreen() {
         <TouchableOpacity activeOpacity={0.78} style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Leaderboard</Text>
+        <Text style={styles.headerTitle}>{t("leaderboard.title")}</Text>
       </View>
 
       <GlassCard radius={16} style={styles.weekly}>
         <View style={styles.inline}>
           <Ionicons name="trophy" size={17} color={colors.gold} />
-          <Text style={styles.section}>THIS WEEK COMPETITION</Text>
+          <Text style={styles.section}>{t("leaderboard.thisWeekCompetition")}</Text>
         </View>
-        <Text style={styles.reset}>Resets Monday</Text>
+        <Text style={styles.reset}>{t("leaderboard.resetsMonday")}</Text>
       </GlassCard>
 
       {ownRank ? (
         <GlassCard radius={16} selected style={styles.rankContext}>
           <Ionicons name="medal" size={24} color={ownRank <= 3 ? colors.gold : colors.accent} />
           <View>
-            <Text style={styles.rankTitle}>You are Rank #{ownRank}</Text>
-            <Text style={styles.rankCopy}>among {ranked.length} active athletes</Text>
+            <Text style={styles.rankTitle}>{t("leaderboard.youAreRank", { rank: ownRank })}</Text>
+            <Text style={styles.rankCopy}>{t("leaderboard.amongAthletes", { count: ranked.length })}</Text>
           </View>
         </GlassCard>
       ) : null}
 
-      <ScreenTitle title="Leaderboard" subtitle="Live rankings from the FITNEO community" />
       <View style={styles.segment}>
         {([
-          ["xp", "XP"],
-          ["streak", "Streak"],
-          ["week", "This Week"]
+          ["xp", t("leaderboard.xp")],
+          ["streak", t("leaderboard.streak")],
+          ["week", t("leaderboard.thisWeek")]
         ] as Array<[RankingMode, string]>).map(([key, label]) => (
           <TouchableOpacity key={key} onPress={() => setMode(key)} style={[styles.segmentItem, mode === key && styles.segmentActive]}>
             <Text style={[styles.segmentText, mode === key && styles.segmentActiveText]}>{label}</Text>
@@ -102,8 +104,8 @@ export default function LeaderboardScreen() {
       {!loading && !error && ranked.length === 0 ? (
         <GlassCard radius={16} style={styles.empty}>
           <Ionicons name="people" size={26} color={colors.textTertiary} />
-          <Text style={styles.emptyTitle}>No rankings yet</Text>
-          <Text style={styles.emptyCopy}>Complete a workout to publish your first live score.</Text>
+          <Text style={styles.emptyTitle}>{t("leaderboard.noRankings")}</Text>
+          <Text style={styles.emptyCopy}>{t("leaderboard.completeWorkout")}</Text>
         </GlassCard>
       ) : null}
       {!loading && !error ? ranked.map(({ entry, rank }) => (
@@ -115,10 +117,16 @@ export default function LeaderboardScreen() {
             <Text style={styles.initial}>{entry.displayName.slice(0, 1).toUpperCase()}</Text>
           </View>
           <View style={styles.flex}>
-            <Text style={[styles.name, entry.isCurrentUser && styles.you]}>{entry.displayName}{entry.isCurrentUser ? " (You)" : ""}</Text>
-            <Text style={styles.level}>Level {calculateXpProgress(entry.totalXp).level}</Text>
+            <Text style={[styles.name, entry.isCurrentUser && styles.you]}>{entry.displayName}{entry.isCurrentUser ? ` (${t("leaderboard.you")})` : ""}</Text>
+            <Text style={styles.level}>{t("leaderboard.level", { level: calculateXpProgress(entry.totalXp).level })}</Text>
           </View>
-          <Text style={styles.value}>{mode === "xp" ? `${entry.totalXp.toLocaleString()} XP` : mode === "streak" ? `${entry.currentStreak} days` : `${entry.workoutsThisWeek} workouts`}</Text>
+          <Text style={styles.value}>
+            {mode === "xp"
+              ? t("leaderboard.xpValue", { count: entry.totalXp.toLocaleString() })
+              : mode === "streak"
+                ? t("leaderboard.daysValue", { count: entry.currentStreak })
+                : t("leaderboard.workoutsValue", { count: entry.workoutsThisWeek })}
+          </Text>
         </GlassCard>
       )) : null}
       <EmptySpacer />

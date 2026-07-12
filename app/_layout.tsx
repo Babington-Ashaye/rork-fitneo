@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { colors } from "@/lib/theme";
 import { AppOpenAdGate } from "@/components/AppOpenAdGate";
@@ -19,16 +19,11 @@ export default function RootLayout() {
       <WebViewportGuard />
       <LanguageProvider>
         <AuthProvider>
-          <LocalizedRootNavigator />
+          <RootNavigator />
         </AuthProvider>
       </LanguageProvider>
     </SafeAreaProvider>
   );
-}
-
-function LocalizedRootNavigator() {
-  const { language } = useLanguage();
-  return <RootNavigator key={language} />;
 }
 
 function RootNavigator() {
@@ -38,7 +33,7 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoading) return;
     const firstSegment = segments[0];
-    const inAuth = firstSegment === "auth" || firstSegment === "login" || firstSegment === "signup";
+    const inAuth = firstSegment === "auth";
     const inCheckout = firstSegment === "checkout";
     const inLegalConsent = firstSegment === "legal-consent";
     const inOnboarding = firstSegment === "onboarding";
@@ -76,8 +71,6 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
         <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="signup" options={{ headerShown: false }} />
         <Stack.Screen name="auth/callback" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="legal-consent" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
@@ -86,6 +79,7 @@ function RootNavigator() {
         <Stack.Screen name="scanner" options={{ title: "AI Plate Scanner" }} />
         <Stack.Screen name="barcode-scanner" options={{ title: "Barcode Scanner" }} />
         <Stack.Screen name="custom-workout" options={{ headerShown: false }} />
+        <Stack.Screen name="workout-preview" options={{ headerShown: false }} />
         <Stack.Screen name="active-workout" options={{ headerShown: false }} />
         <Stack.Screen name="sports-mode" options={{ title: "Sports Mode" }} />
         <Stack.Screen name="badges" options={{ title: "Badges" }} />

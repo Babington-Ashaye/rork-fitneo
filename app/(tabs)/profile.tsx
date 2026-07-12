@@ -1,13 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { LegalSettingsMenu } from "@/components/LegalSettingsMenu";
 import { EmptySpacer, ErrorState, LoadingState, RowCard, TouchableCard } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
+import { useSubscription } from "@/context/SubscriptionContext";
 import { fetchProfileSummary, ProfileSummary } from "@/lib/api";
 import { colors, radii } from "@/lib/theme";
 import { clearAllLocalAppData, exportCurrentUserData } from "@/lib/dataOperations";
@@ -21,7 +24,9 @@ import {
 const PROFILE_PHOTO_KEY = "fitneo.profile.photoUri";
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const { signOut, user } = useAuth();
+  const { isFreeExpired, isTrial, trialDaysRemaining } = useSubscription();
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,7 +45,7 @@ export default function ProfileScreen() {
     try {
       setProfile(await fetchProfileSummary());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load profile.");
+      setError(err instanceof Error ? err.message : t("profileScreen.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -48,9 +53,32 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     void loadProfile();
-    void AsyncStorage.getItem(PROFILE_PHOTO_KEY).then(setAvatarUri);
+    void loadStoredAvatar();
     void loadNotificationPreferences().then(setNotificationPreferences);
   }, []);
+
+  async function loadStoredAvatar() {
+    const storedUri = await AsyncStorage.getItem(PROFILE_PHOTO_KEY);
+    if (!storedUri) {
+      setAvatarUri(null);
+      return;
+    }
+    if (/^https?:\/\//i.test(storedUri) || storedUri.startsWith("data:") || storedUri.startsWith("blob:")) {
+      setAvatarUri(storedUri);
+      return;
+    }
+    try {
+      const info = await FileSystem.getInfoAsync(storedUri);
+      if (info.exists) {
+        setAvatarUri(storedUri);
+        return;
+      }
+    } catch {
+      // Fall through to clearing the stale URI.
+    }
+    await AsyncStorage.removeItem(PROFILE_PHOTO_KEY);
+    setAvatarUri(null);
+  }
 
   async function logout() {
     await signOut();
@@ -62,7 +90,7 @@ export default function ProfileScreen() {
     try {
       await exportCurrentUserData();
     } catch (err) {
-      Alert.alert("Export failed", err instanceof Error ? err.message : "Could not export your data.");
+      Alert.alert(t("profileScreen.exportFailed"), err instanceof Error ? err.message : t("profileScreen.exportFailedCopy"));
     } finally {
       setIsExporting(false);
     }
@@ -71,7 +99,7 @@ export default function ProfileScreen() {
   async function pickProfilePhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Photo permission", "Allow photo access to choose your FITNEO profile picture.");
+      Alert.alert(t("profileScreen.photoPermission"), t("profileScreen.photoPermissionCopy"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -88,12 +116,12 @@ export default function ProfileScreen() {
 
   function confirmReset() {
     Alert.alert(
-      "Reset all local data?",
-      "This signs you out, removes cached workouts, preferences, reminders, and secure local acceptance state from this device. Cloud activity history is not deleted.",
+      t("profileScreen.resetConfirmTitle"),
+      t("profileScreen.resetConfirmCopy"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Reset",
+          text: t("profileScreen.reset"),
           style: "destructive",
           onPress: () => {
             void (async () => {
@@ -105,7 +133,7 @@ export default function ProfileScreen() {
               }
               router.replace("/auth/sign-in");
             })().catch((err) => {
-              Alert.alert("Reset failed", err instanceof Error ? err.message : "Could not reset local data.");
+              Alert.alert(t("profileScreen.resetFailed"), err instanceof Error ? err.message : t("profileScreen.resetFailedCopy"));
             });
           }
         }
@@ -120,7 +148,7 @@ export default function ProfileScreen() {
       await setNotificationPreference(preference, nextValue);
       setNotificationPreferences((current) => ({ ...current, [preference]: nextValue }));
     } catch (err) {
-      Alert.alert("Notifications", err instanceof Error ? err.message : "Could not update this reminder.");
+      Alert.alert(t("profileScreen.notifications"), err instanceof Error ? err.message : t("profileScreen.notificationFailed"));
     } finally {
       setActivePreference(null);
     }
@@ -129,7 +157,7 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <AppLayout scroll>
-        <LoadingState label="Loading profile..." />
+        <LoadingState label={t("profileScreen.loading")} />
       </AppLayout>
     );
   }
@@ -137,10 +165,19 @@ export default function ProfileScreen() {
   if (error || !profile) {
     return (
       <AppLayout scroll>
-        <ErrorState message={error ?? "Profile is unavailable."} onRetry={loadProfile} />
+        <ErrorState message={error ?? t("profileScreen.unavailable")} onRetry={loadProfile} />
       </AppLayout>
     );
   }
+
+  const subscriptionLabel = getSubscriptionLabel(profile.subscription);
+  const subscriptionSubtitle = getSubscriptionSubtitle({
+    isFreeExpired,
+    isTrial,
+    status: profile.subscription,
+    t,
+    trialDaysRemaining
+  });
 
   return (
     <AppLayout scroll>
@@ -170,15 +207,15 @@ export default function ProfileScreen() {
           <Ionicons name={profile.subscription === "free" ? "lock-closed" : "trophy"} size={20} color={profile.subscription === "free" ? colors.textTertiary : colors.gold} />
         </View>
         <View style={styles.flex}>
-          <Text style={styles.cardTitle}>FITNEO {profile.subscription.toUpperCase()}</Text>
-          <Text style={styles.cardSubtitle}>{profile.subscription === "free" ? "Tap to start free trial" : "Manage your plan"}</Text>
+          <Text style={styles.cardTitle}>FITNEO {subscriptionLabel}</Text>
+          <Text style={styles.cardSubtitle}>{subscriptionSubtitle}</Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
       </TouchableCard>
 
       <TouchableCard radius={radii.xl} style={styles.badgesCard} onPress={() => router.push("/badges")}>
         <View style={styles.rowBetween}>
-          <Text style={styles.section}>BADGES</Text>
+          <Text style={styles.section}>{t("profileScreen.badges")}</Text>
           <Text style={styles.accent}>{profile.badgesEarned} / {profile.badgesTotal}</Text>
         </View>
         <View style={styles.badgeRow}>
@@ -191,18 +228,18 @@ export default function ProfileScreen() {
         </View>
       </TouchableCard>
 
-      <RowCard icon="trophy" title="Leaderboard" subtitle="See where you rank" onPress={() => router.push("/(tabs)/leaderboard")} />
-      <RowCard icon="person-circle" title="Tell us about yourself" subtitle="Mirror and update onboarding answers" onPress={() => router.push({ pathname: "/onboarding", params: { mode: "edit" } })} />
+      <RowCard icon="trophy" title={t("profileScreen.leaderboard")} subtitle={t("profileScreen.leaderboardSubtitle")} onPress={() => router.push("/(tabs)/leaderboard")} />
+      <RowCard icon="person-circle" title={t("profileScreen.tellUs")} subtitle={t("profileScreen.tellUsSubtitle")} onPress={() => router.push({ pathname: "/onboarding", params: { mode: "edit" } })} />
       <LegalSettingsMenu />
 
       <TouchableCard radius={radii.xl} style={styles.settingsCard}>
-        <Text style={styles.section}>NOTIFICATIONS</Text>
-        <SettingsRow icon="notifications" title="Workout reminders" enabled={notificationPreferences.workout} loading={activePreference === "workout"} onPress={() => void toggleNotification("workout")} />
-        <SettingsRow icon="flame" title="Streak alerts" enabled={notificationPreferences.streak} loading={activePreference === "streak"} onPress={() => void toggleNotification("streak")} />
-        <SettingsRow icon="bulb" title="FITNEO AI daily check-in" enabled={notificationPreferences.coach} loading={activePreference === "coach"} onPress={() => void toggleNotification("coach")} />
+        <Text style={styles.section}>{t("profileScreen.notifications")}</Text>
+        <SettingsRow icon="notifications" title={t("profileScreen.workoutReminders")} enabled={notificationPreferences.workout} loading={activePreference === "workout"} onPress={() => void toggleNotification("workout")} />
+        <SettingsRow icon="flame" title={t("profileScreen.streakAlerts")} enabled={notificationPreferences.streak} loading={activePreference === "streak"} onPress={() => void toggleNotification("streak")} />
+        <SettingsRow icon="bulb" title={t("profileScreen.aiCheckIn")} enabled={notificationPreferences.coach} loading={activePreference === "coach"} onPress={() => void toggleNotification("coach")} />
       </TouchableCard>
 
-      <RowCard icon="share-outline" title={isExporting ? "Preparing Export..." : "Export Data"} subtitle="Share your profile and history as JSON" onPress={isExporting ? undefined : () => void exportData()} />
+      <RowCard icon="share-outline" title={isExporting ? t("profileScreen.preparingExport") : t("profileScreen.exportData")} subtitle={t("profileScreen.exportSubtitle")} onPress={isExporting ? undefined : () => void exportData()} />
       {__DEV__ ? (
         <RowCard
           icon="card"
@@ -213,15 +250,41 @@ export default function ProfileScreen() {
       ) : null}
       <TouchableCard radius={radii.xl} style={styles.resetCard} onPress={confirmReset}>
         {isExporting ? <ActivityIndicator size="small" color={colors.danger} /> : <Ionicons name="trash" size={16} color={colors.danger} />}
-        <Text style={styles.resetText}>Reset All Data</Text>
+        <Text style={styles.resetText}>{t("profileScreen.resetAllData")}</Text>
       </TouchableCard>
       <TouchableOpacity activeOpacity={0.78} style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutText}>Sign Out</Text>
+        <Text style={styles.logoutText}>{t("profileScreen.signOut")}</Text>
       </TouchableOpacity>
 
       <EmptySpacer />
     </AppLayout>
   );
+}
+
+function getSubscriptionLabel(status: string) {
+  if (status === "elite") return "ELITE";
+  if (status === "pro") return "PRO";
+  return "FREE";
+}
+
+function getSubscriptionSubtitle({
+  isFreeExpired,
+  isTrial,
+  status,
+  t,
+  trialDaysRemaining
+}: {
+  isFreeExpired: boolean;
+  isTrial: boolean;
+  status: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  trialDaysRemaining: number;
+}) {
+  if (isTrial) return t("profileScreen.trialDaysLeft", { count: trialDaysRemaining });
+  if (status === "elite") return t("profileScreen.manageElite");
+  if (status === "pro") return t("profileScreen.managePro");
+  if (isFreeExpired || status === "free") return t("profileScreen.upgradeToPro");
+  return t("profileScreen.managePlan");
 }
 
 function Tag({ text }: { text: string }) {

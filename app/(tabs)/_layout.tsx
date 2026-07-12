@@ -1,10 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useReducer } from "react";
+import { Platform, Pressable, StyleSheet, Text, Vibration, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radii } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import i18n from "@/lib/i18n";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -27,14 +30,25 @@ const navLabelKeys: Record<string, string> = {
 function FloatingTabBar({ state, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const { language } = useLanguage();
+  const [, forceRender] = useReducer((value: number) => value + 1, 0);
   const activeRoute = state.routes[state.index];
+
+  useEffect(() => {
+    const rerender = () => forceRender();
+    i18n.on("languageChanged", rerender);
+    return () => {
+      i18n.off("languageChanged", rerender);
+    };
+  }, []);
+
   if (activeRoute?.name === "coach") return null;
 
   const visibleRoutes = state.routes.filter((route: any) => navIcons[route.name]);
 
   return (
     <View pointerEvents="box-none" style={[styles.tabHost, { bottom: Math.max(8, insets.bottom + 2) }]}>
-      <View style={styles.floatingNav}>
+      <View key={language} style={styles.floatingNav}>
         {visibleRoutes.map((route: any) => {
           const routeIndex = state.routes.findIndex((item: any) => item.key === route.key);
           const isActive = state.index === routeIndex;
@@ -43,7 +57,12 @@ function FloatingTabBar({ state, navigation }: any) {
           return (
             <Pressable
               key={route.key}
-              onPress={() => navigation.navigate(route.name)}
+              onPress={() => {
+                if (Platform.OS !== "web") {
+                  Vibration.vibrate(8);
+                }
+                navigation.navigate(route.name);
+              }}
               style={[styles.navItem, isActive ? styles.navItemActive : styles.navItemInactive]}
             >
               <Ionicons name={navIcons[route.name]} size={20} color={color} style={isActive ? styles.activeIcon : undefined} />

@@ -1,7 +1,8 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import i18n, {
-  changeAppLanguage,
   getCurrentLanguage,
+  LANGUAGE_STORAGE_KEY,
   SupportedLanguage,
   supportedLanguages
 } from "@/lib/i18n";
@@ -35,7 +36,8 @@ export function LanguageProvider({ children }: PropsWithChildren) {
     languages: supportedLanguages,
     setLanguage: async (nextLanguage) => {
       setCurrentLanguage(nextLanguage);
-      await changeAppLanguage(nextLanguage);
+      await i18n.changeLanguage(nextLanguage);
+      await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
     }
   }), [language]);
 

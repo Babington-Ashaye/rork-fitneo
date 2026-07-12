@@ -1,14 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
-import { AdaptiveBanner } from "@/components/AdaptiveBanner";
 import { EmptySpacer, ErrorState, IconBubble, LoadingState, ScreenTitle, TouchableCard } from "@/components/ScreenKit";
 import { fetchNutritionData, NutritionData, saveNutritionLog } from "@/lib/api";
 import { FoodItem, searchFoods } from "@/lib/foods";
 import { colors, radii } from "@/lib/theme";
-import { useSubscription } from "@/context/SubscriptionContext";
 
 const mealIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   Breakfast: "sunny",
@@ -19,7 +18,7 @@ const mealIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
 const PAGE_SIZE = 12;
 
 export default function NutritionScreen() {
-  const { isLoading: isSubscriptionLoading, isPremium } = useSubscription();
+  const { t } = useTranslation();
   const [data, setData] = useState<NutritionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,10 +66,10 @@ export default function NutritionScreen() {
         scanMethod: "manual"
       });
       setFoodPickerOpen(false);
-      setNotice(`${item.name} added to ${foodMeal}.`);
+      setNotice(t("nutrition.addedFood", { food: item.name, meal: t(`nutrition.meals.${foodMeal}`) }));
       await loadNutrition();
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Could not add this food.");
+      setNotice(err instanceof Error ? err.message : t("nutrition.addFailed"));
     } finally {
       setSavingFoodId(null);
     }
@@ -82,7 +81,7 @@ export default function NutritionScreen() {
     try {
       setData(await fetchNutritionData());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load nutrition.");
+      setError(err instanceof Error ? err.message : t("nutrition.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +94,7 @@ export default function NutritionScreen() {
   if (isLoading) {
     return (
       <AppLayout scroll>
-        <LoadingState label="Loading live nutrition..." />
+        <LoadingState label={t("nutrition.loading")} />
       </AppLayout>
     );
   }
@@ -103,7 +102,7 @@ export default function NutritionScreen() {
   if (error || !data) {
     return (
       <AppLayout scroll>
-        <ErrorState message={error ?? "Nutrition data is unavailable."} onRetry={loadNutrition} />
+        <ErrorState message={error ?? t("nutrition.unavailable")} onRetry={loadNutrition} />
       </AppLayout>
     );
   }
@@ -113,62 +112,54 @@ export default function NutritionScreen() {
 
   return (
     <AppLayout scroll>
-      <ScreenTitle title="Nutrition" subtitle={data.dateLabel} />
+      <ScreenTitle title={t("nutrition.title")} subtitle={data.dateLabel} />
       <TouchableCard radius={radii.hero} style={styles.summaryCard} onPress={loadNutrition}>
         <View style={styles.macroRing}>
           <View style={styles.ringOuter}>
             <View style={styles.ringInner}>
               <Text style={styles.ringValue}>{macroTotal}g</Text>
-              <Text style={styles.ringLabel}>macros</Text>
+              <Text style={styles.ringLabel}>{t("nutrition.macros")}</Text>
             </View>
           </View>
         </View>
         <View style={styles.summaryText}>
           <Text style={styles.remaining}>{remaining}</Text>
-          <Text style={styles.remainingLabel}>kcal remaining</Text>
-          <MacroLegend name="Protein" grams={`${Math.round(data.protein)}g`} color={colors.accent} />
-          <MacroLegend name="Carbs" grams={`${Math.round(data.carbs)}g`} color={colors.coral} />
-          <MacroLegend name="Fat" grams={`${Math.round(data.fat)}g`} color={colors.gold} />
+          <Text style={styles.remainingLabel}>{t("nutrition.kcalRemaining")}</Text>
+          <MacroLegend name={t("nutrition.protein")} grams={`${Math.round(data.protein)}g`} color={colors.accent} />
+          <MacroLegend name={t("nutrition.carbs")} grams={`${Math.round(data.carbs)}g`} color={colors.coral} />
+          <MacroLegend name={t("nutrition.fat")} grams={`${Math.round(data.fat)}g`} color={colors.gold} />
         </View>
       </TouchableCard>
 
       <TouchableCard radius={radii.xxl} style={styles.scanCard} onPress={() => openScanPicker()}>
         <IconBubble icon="camera" size={48} />
         <View style={styles.flex}>
-          <Text style={styles.scanTitle}>Scan Meal</Text>
-          <Text style={styles.scanSubtitle}>Secure AI photo analysis through Supabase Edge Functions</Text>
+          <Text style={styles.scanTitle}>{t("nutrition.scanMeal")}</Text>
+          <Text style={styles.scanSubtitle}>{t("nutrition.scanSubtitle")}</Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
       </TouchableCard>
 
       {data.meals.map((meal) => (
-        <Fragment key={meal.title}>
-        <TouchableCard radius={radii.xl} style={styles.mealCard} onPress={() => openScanPicker(meal.title)}>
+        <TouchableCard key={meal.title} radius={radii.xl} style={styles.mealCard} onPress={() => openScanPicker(meal.title)}>
           <View style={styles.mealHeader}>
             <View style={styles.mealTitleWrap}>
               <Ionicons name={mealIcons[meal.title] ?? "restaurant"} size={17} color={colors.textPrimary} />
-              <Text style={styles.mealTitle}>{meal.title}</Text>
+              <Text style={styles.mealTitle}>{t(`nutrition.meals.${meal.title}`)}</Text>
             </View>
             <Text style={styles.mealKcal}>{meal.kcal} kcal</Text>
           </View>
           <View style={styles.addRow}>
             <TouchableOpacity activeOpacity={0.78} style={styles.addFood} onPress={() => openFoodPicker(meal.title)}>
               <Ionicons name="add-circle" size={17} color={colors.accent} />
-              <Text style={styles.addText}>Add food</Text>
+              <Text style={styles.addText}>{t("nutrition.addFood")}</Text>
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.78} style={styles.scanPill} onPress={() => openScanPicker(meal.title)}>
               <Ionicons name="camera" size={12} color={colors.accent} />
-              <Text style={styles.scanPillText}>Scan</Text>
+              <Text style={styles.scanPillText}>{t("nutrition.scan")}</Text>
             </TouchableOpacity>
           </View>
         </TouchableCard>
-        {!isSubscriptionLoading && !isPremium && (meal.title === "Breakfast" || meal.title === "Lunch") ? (
-          <View style={styles.inlineAd}>
-            <Text style={styles.adLabel}>SPONSORED</Text>
-            <AdaptiveBanner enabled />
-          </View>
-        ) : null}
-        </Fragment>
       ))}
 
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -178,21 +169,21 @@ export default function NutritionScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setScanPickerOpen(false)}>
           <Pressable style={styles.actionSheet} onPress={(event) => event.stopPropagation()}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetEyebrow}>{scanMeal.toUpperCase()}</Text>
-            <Text style={styles.sheetTitle}>How would you like to scan?</Text>
+            <Text style={styles.sheetEyebrow}>{t(`nutrition.meals.${scanMeal}`).toUpperCase()}</Text>
+            <Text style={styles.sheetTitle}>{t("nutrition.scanQuestion")}</Text>
             <TouchableOpacity style={styles.scanChoice} onPress={() => startScan("/scanner")}>
               <View style={styles.choiceIcon}><Ionicons name="camera" size={22} color={colors.accent} /></View>
               <View style={styles.flex}>
-                <Text style={styles.choiceTitle}>Scan Meal via Camera</Text>
-                <Text style={styles.choiceCopy}>AI identifies the meal and estimates macros.</Text>
+                <Text style={styles.choiceTitle}>{t("nutrition.scanMealCamera")}</Text>
+                <Text style={styles.choiceCopy}>{t("nutrition.scanCameraCopy")}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.scanChoice} onPress={() => startScan("/barcode-scanner")}>
               <View style={styles.choiceIcon}><Ionicons name="barcode" size={24} color={colors.teal} /></View>
               <View style={styles.flex}>
-                <Text style={styles.choiceTitle}>Scan Barcode</Text>
-                <Text style={styles.choiceCopy}>Look up packaged foods instantly.</Text>
+                <Text style={styles.choiceTitle}>{t("nutrition.scanBarcode")}</Text>
+                <Text style={styles.choiceCopy}>{t("nutrition.scanBarcodeCopy")}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
             </TouchableOpacity>
@@ -205,8 +196,8 @@ export default function NutritionScreen() {
           <View style={styles.foodSheet}>
             <View style={styles.foodSheetHeader}>
               <View>
-                <Text style={styles.sheetEyebrow}>ADD TO {foodMeal.toUpperCase()}</Text>
-                <Text style={styles.sheetTitle}>Common foods</Text>
+                <Text style={styles.sheetEyebrow}>{t("nutrition.addToMeal", { meal: t(`nutrition.meals.${foodMeal}`).toUpperCase() })}</Text>
+                <Text style={styles.sheetTitle}>{t("nutrition.commonFoods")}</Text>
               </View>
               <TouchableOpacity style={styles.closeButton} onPress={() => setFoodPickerOpen(false)}>
                 <Ionicons name="close" size={21} color={colors.textPrimary} />
@@ -216,7 +207,7 @@ export default function NutritionScreen() {
               <Ionicons name="search" size={18} color={colors.textTertiary} />
               <TextInput
                 autoFocus
-                placeholder="Search foods or categories"
+                placeholder={t("nutrition.searchPlaceholder")}
                 placeholderTextColor={colors.textTertiary}
                 style={styles.foodSearchInput}
                 value={foodQuery}
@@ -239,10 +230,26 @@ export default function NutritionScreen() {
                   {savingFoodId === item.id ? <ActivityIndicator color={colors.accent} /> : <Text style={styles.foodCalories}>{item.calories} kcal</Text>}
                 </TouchableOpacity>
               )}
-              ListEmptyComponent={<Text style={styles.emptyFood}>No common foods match that search.</Text>}
+              ListEmptyComponent={(
+                <View style={styles.emptyFoodCard}>
+                  <Ionicons name="search" size={24} color={colors.textTertiary} />
+                  <Text style={styles.emptyFoodTitle}>{t("nutrition.noFoodsFound")}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.78}
+                    style={styles.tryScannerButton}
+                    onPress={() => {
+                      setFoodPickerOpen(false);
+                      setScanMeal(foodMeal);
+                      setScanPickerOpen(true);
+                    }}
+                  >
+                    <Text style={styles.tryScannerText}>{t("nutrition.tryScanner")}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               ListFooterComponent={visibleFoods.length < matchingFoods.length ? (
                 <TouchableOpacity style={styles.loadMore} onPress={() => setFoodPage((current) => current + 1)}>
-                  <Text style={styles.loadMoreText}>Load more</Text>
+                  <Text style={styles.loadMoreText}>{t("nutrition.loadMore")}</Text>
                 </TouchableOpacity>
               ) : null}
             />
@@ -425,10 +432,10 @@ const styles = StyleSheet.create({
   foodName: { color: colors.textPrimary, fontSize: 14, fontWeight: "800" },
   foodMeta: { color: colors.textTertiary, fontSize: 10, marginTop: 4 },
   foodCalories: { color: colors.textSecondary, fontSize: 12, fontWeight: "700" },
-  emptyFood: { color: colors.textTertiary, paddingVertical: 40, textAlign: "center" },
+  emptyFoodCard: { alignItems: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 42 },
+  emptyFoodTitle: { color: colors.textSecondary, fontSize: 14, fontWeight: "800", textAlign: "center" },
+  tryScannerButton: { backgroundColor: "rgba(10,132,255,0.14)", borderColor: "rgba(10,132,255,0.34)", borderRadius: 14, borderWidth: 1, marginTop: 4, paddingHorizontal: 14, paddingVertical: 10 },
+  tryScannerText: { color: colors.accent, fontSize: 12, fontWeight: "900" },
   loadMore: { alignItems: "center", borderColor: colors.cardStroke, borderRadius: 12, borderWidth: 1, marginTop: 12, padding: 13 },
   loadMoreText: { color: colors.accent, fontSize: 13, fontWeight: "800" }
-  ,
-  inlineAd: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.025)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, minHeight: 62, overflow: "hidden", paddingTop: 3 },
-  adLabel: { color: colors.textTertiary, fontSize: 8, fontWeight: "800", letterSpacing: 1.2 }
 });

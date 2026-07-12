@@ -14,7 +14,7 @@ type WorkoutPhase = "exercise" | "rest";
 export default function ActiveWorkoutScreen() {
   const { height, width } = useWindowDimensions();
   const params = useLocalSearchParams<{ programId?: string; programName?: string }>();
-  const { isLoading: isSubscriptionLoading, userPlan } = useSubscription();
+  const { isLoading: isSubscriptionLoading } = useSubscription();
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const [setsCompleted, setSetsCompleted] = useState(0);
@@ -31,7 +31,7 @@ export default function ActiveWorkoutScreen() {
 
   const programName = typeof params.programName === "string" ? params.programName : "Workout Session";
   const programId = typeof params.programId === "string" ? params.programId : undefined;
-  const exercises = useMemo(() => getWorkoutProgramExercises(programId, userPlan), [programId, userPlan]);
+  const exercises = useMemo(() => getWorkoutProgramExercises(programId), [programId]);
   const trainingFrequency = useMemo(() => getWorkoutTrainingFrequency(programId), [programId]);
   const currentExerciseIndex = exercises.length > 0 ? Math.min(exerciseIndex, exercises.length - 1) : 0;
   const exercise = exercises[currentExerciseIndex];

@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text } from "react-native";
-import { PageGradient } from "@/components/ScreenKit";
+import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 
@@ -45,7 +45,7 @@ export default function AuthCallbackScreen() {
   }, [params.access_token, params.code, params.error_description, params.refresh_token]);
 
   return (
-    <PageGradient style={styles.screen}>
+    <AppLayout contentContainerStyle={styles.screen}>
       {error ? (
         <>
           <Text style={styles.title}>Sign-in could not finish</Text>
@@ -58,12 +58,12 @@ export default function AuthCallbackScreen() {
           <Text style={styles.copy}>Finishing secure Google sign-in…</Text>
         </>
       )}
-    </PageGradient>
+    </AppLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { alignItems: "center", flex: 1, gap: 12, justifyContent: "center", padding: 28 },
+  screen: { alignItems: "center", gap: 12, justifyContent: "center", padding: 28 },
   title: { color: colors.textPrimary, fontSize: 22, fontWeight: "900", textAlign: "center" },
   copy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
   link: { color: colors.accent, fontSize: 14, fontWeight: "800", marginTop: 8 }

@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { PageGradient } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
 import { colors, radii } from "@/lib/theme";
 
@@ -32,7 +31,7 @@ export default function LegalConsentScreen() {
   }
 
   return (
-    <PageGradient style={styles.root}>
+    <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.brand}>
           <View style={styles.brandIcon}><Ionicons name="shield-checkmark" size={30} color={colors.accent} /></View>
@@ -76,7 +75,7 @@ export default function LegalConsentScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </PageGradient>
+    </View>
   );
 }
 
@@ -111,7 +110,7 @@ function ConsentRow({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   content: { flexGrow: 1, justifyContent: "center", padding: 22, paddingBottom: 40, paddingTop: 54 },
   brand: { alignItems: "center", gap: 8, marginBottom: 24 },
   brandIcon: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.14)", borderRadius: 28, height: 56, justifyContent: "center", width: 56 },

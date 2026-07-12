@@ -176,7 +176,7 @@ export default function SignInScreen() {
           </TouchableCard>
 
           <View style={styles.footerBlock}>
-            <Link href="/signup" asChild>
+            <Link href="/auth/sign-up" asChild>
               <TouchableOpacity activeOpacity={0.76} style={styles.signupRow}>
                 <Text style={styles.signupMuted}>Don't have an account?</Text>
                 <Text style={styles.signupAction}>Sign up</Text>

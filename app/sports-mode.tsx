@@ -110,7 +110,7 @@ export default function SportsModeScreen() {
 
   const selectedSport = getSportMeta(selected);
   const programId = getSportProgramId(selected);
-  const program = workoutPrograms.find((item) => item.id === programId) ?? workoutPrograms.find((item) => item.id === "sports-no-equipment") ?? workoutPrograms[0];
+  const program = workoutPrograms.find((item) => item.id === programId) ?? workoutPrograms.find((item) => item.id === "home-no-equipment") ?? workoutPrograms[0];
   const positionOptions = positions[selected] ?? [];
   const finalPosition = useMemo(() => {
     if (selected === "Other") return customSport.trim() || "Custom sport";
@@ -179,7 +179,7 @@ export default function SportsModeScreen() {
           .from("workout_sessions")
           .select("session_name,xp_earned")
           .eq("user_id", user.id)
-          .ilike("session_name", `%${selected.split(" ")[0]}%`),
+          .ilike("session_name", `%${programId}%`),
         supabase
           .from("user_profiles")
           .select("current_streak,total_xp")

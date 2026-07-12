@@ -59,9 +59,6 @@ export default function WorkoutsScreen() {
         <TouchableOpacity activeOpacity={0.78} style={styles.segmentInactive} onPress={() => router.push("/sports-mode")}>
           <Text style={styles.segmentInactiveText}>Sports</Text>
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.78} style={styles.segmentInactive} onPress={() => router.push("/(tabs)/nutrition")}>
-          <Text style={styles.segmentInactiveText}>Eating</Text>
-        </TouchableOpacity>
       </View>
 
       <ScreenTitle title="Workouts" subtitle="Programs tuned to your level" />
@@ -114,7 +111,7 @@ function WorkoutCard({ isPaired, program }: { isPaired: boolean; program: Workou
     <TouchableCard
       radius={radii.xl}
       style={[styles.workoutCard, isPaired && styles.pairedCard]}
-      onPress={() => router.push({ pathname: "/active-workout", params: { programId: program.id, programName: program.name } })}
+      onPress={() => router.push({ pathname: "/workout-preview", params: { programId: program.id, programName: program.name } })}
     >
       <View style={styles.row}>
         <IconBubble icon={icon} tint={tint} shape="rounded" size={48} />

@@ -27,8 +27,8 @@ export default function SignUpScreen() {
       setLocalError("Please enter your email.");
       return;
     }
-    if (password.length < 6) {
-      setLocalError("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setLocalError("Password must be at least 8 characters");
       return;
     }
     const result = await signUp(cleanEmail, password);
@@ -107,6 +107,7 @@ export default function SignUpScreen() {
             <Ionicons name={showPassword ? "eye" : "eye-off"} size={18} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
+        <PasswordStrengthIndicator password={password} />
         {!isSupabaseConfigured ? (
           <AuthNotice
             icon="cloud-offline"
@@ -135,7 +136,7 @@ export default function SignUpScreen() {
           <Text style={styles.legal}>
             By continuing, you agree to FITNEO's Consumer Terms & Usage Policy and acknowledge our Privacy Policy.
           </Text>
-          <Link href="/login" asChild>
+          <Link href="/auth/sign-in" asChild>
             <TouchableOpacity activeOpacity={0.72} style={styles.loginRow}>
               <Text style={styles.loginMuted}>Already have an account?</Text>
               <Text style={styles.loginAction}>Sign in</Text>
@@ -146,6 +147,30 @@ export default function SignUpScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </AppLayout>
+  );
+}
+
+function getPasswordStrength(password: string) {
+  if (password.length < 8) return 1;
+  if (!/[0-9\W_]/.test(password)) return 2;
+  return 3;
+}
+
+function PasswordStrengthIndicator({ password }: { password: string }) {
+  const strength = getPasswordStrength(password);
+  const color = strength === 1 ? colors.danger : strength === 2 ? colors.gold : colors.teal;
+  return (
+    <View style={styles.strengthWrap} accessibilityLabel="Password strength indicator">
+      {[1, 2, 3].map((segment) => (
+        <View
+          key={segment}
+          style={[
+            styles.strengthSegment,
+            segment <= strength ? { backgroundColor: color } : styles.strengthSegmentInactive
+          ]}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -287,6 +312,19 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: "center",
     width: 44
+  },
+  strengthWrap: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: -4
+  },
+  strengthSegment: {
+    borderRadius: 999,
+    flex: 1,
+    height: 5
+  },
+  strengthSegmentInactive: {
+    backgroundColor: "rgba(255,255,255,0.10)"
   },
   primaryButton: {
     alignItems: "center",

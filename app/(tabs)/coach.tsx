@@ -4,14 +4,15 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
-import { Chip, SkeletonBlock } from "@/components/ScreenKit";
+import { SkeletonBlock } from "@/components/ScreenKit";
 import {
   ChatMessageRecord,
   ChatSessionSummary,
   createChatSession,
   fetchChatMessages,
   fetchChatSessions,
-  saveChatMessage
+  saveChatMessage,
+  updateChatSessionTitle
 } from "@/lib/api";
 import { askFitneoCoachWithRetry } from "@/lib/edgeFunctions";
 import { colors, radii } from "@/lib/theme";
@@ -77,6 +78,8 @@ export default function CoachScreen() {
   async function newChat() {
     setError(null);
     setSaveStatus(null);
+    setHistoryOpen(false);
+    setMenuOpen(false);
     let session: ChatSessionSummary;
     try {
       session = await createChatSession("New Chat");
@@ -126,6 +129,18 @@ export default function CoachScreen() {
       if (messages.length === 0) return "New conversation";
     }
     return session.title && session.title !== "New Chat" ? "Saved coaching thread" : "New conversation";
+  }
+
+  function persistSessionTitle(session: ChatSessionSummary, title: string) {
+    const titledSession = { ...session, title };
+    setActiveSession((current) => current?.id === session.id ? titledSession : current);
+    setSessions((current) => current.map((item) => item.id === session.id ? titledSession : item));
+    if (!session.id.startsWith("local-")) {
+      void updateChatSessionTitle(session.id, title).catch(() => {
+        // Local title is still useful even if cloud title sync is unavailable.
+      });
+    }
+    return titledSession;
   }
 
   async function openSession(session: ChatSessionSummary) {
@@ -227,19 +242,17 @@ export default function CoachScreen() {
     setStreamingText("");
     try {
       let session = activeSession;
+      const nextTitle = getChatTitle(cleanPrompt);
       if (!session) {
         try {
-          session = await createChatSession(getChatTitle(cleanPrompt));
+          session = await createChatSession(nextTitle);
         } catch {
-          session = { id: `local-${Date.now()}`, title: getChatTitle(cleanPrompt), createdAt: new Date().toISOString() };
+          session = { id: `local-${Date.now()}`, title: nextTitle, createdAt: new Date().toISOString() };
         }
         setActiveSession(session);
         setSessions((current) => [session!, ...current]);
       } else if (session.title === "New Chat") {
-        const titledSession = { ...session, title: getChatTitle(cleanPrompt) };
-        session = titledSession;
-        setActiveSession(titledSession);
-        setSessions((current) => current.map((item) => item.id === titledSession.id ? titledSession : item));
+        session = persistSessionTitle(session, nextTitle);
       }
 
       const userMessage: ChatMessageRecord = {
@@ -291,6 +304,7 @@ export default function CoachScreen() {
       setStreamingText("");
     } catch (err) {
       setLastFailedPrompt(cleanPrompt);
+      setStreamingText("");
       setError(err instanceof Error ? err.message : "FITNEO AI is busy right now. Please try again in a moment.");
     } finally {
       setIsSending(false);
@@ -345,13 +359,13 @@ export default function CoachScreen() {
           </View>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => setHistoryOpen((current) => !current)} style={styles.iconButton}>
+          <TouchableOpacity onPress={() => { setMenuOpen(false); setHistoryOpen((current) => !current); }} style={styles.iconButton}>
             <Ionicons name="albums-outline" size={18} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => void newChat()} style={styles.iconButton}>
             <Ionicons name="create-outline" size={18} color={colors.textPrimary} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setMenuOpen((current) => !current)} style={styles.iconButton}>
+          <TouchableOpacity onPress={() => { setHistoryOpen(false); setMenuOpen((current) => !current); }} style={styles.iconButton}>
             <Ionicons name="ellipsis-horizontal" size={18} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -476,16 +490,6 @@ export default function CoachScreen() {
         {saveStatus ? <Text style={styles.saveStatus}>{saveStatus}</Text> : null}
       </ScrollView>
 
-      {messages.length > 0 ? (
-        <ScrollView horizontal style={styles.suggestionScroller} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestions}>
-          {suggestions.map((suggestion) => (
-            <TouchableOpacity key={suggestion} onPress={() => void sendPrompt(suggestion)}>
-              <Chip title={suggestion} />
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      ) : null}
-
       <View style={styles.composerSeparator} />
       <View style={[styles.composer, composerFocused && styles.composerFocused]}>
         <View style={styles.composerMark}>
@@ -591,11 +595,9 @@ const styles = StyleSheet.create({
   emptySuggestions: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 12, width: "100%" },
   emptySuggestionChip: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.055)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: 10, width: "47%" },
   emptySuggestionText: { color: colors.textSecondary, fontSize: 11, fontWeight: "800", textAlign: "center" },
-  suggestionScroller: { flexGrow: 0, maxHeight: 44, zIndex: 4 },
-  suggestions: { alignItems: "center", gap: 8, paddingRight: 8 },
   composerSeparator: { backgroundColor: "rgba(255,255,255,0.08)", height: 1, marginBottom: 2 },
   composer: { alignItems: "center", backgroundColor: "#101015", borderColor: "rgba(0,163,255,0.34)", borderRadius: 22, borderWidth: 1, flexDirection: "row", gap: 5, padding: 5, shadowColor: colors.accent, shadowOpacity: 0.18, shadowRadius: 16, zIndex: 5 },
-  composerFocused: { borderColor: "rgba(0,163,255,0.72)", marginHorizontal: -10, shadowOpacity: 0.32 },
+  composerFocused: { borderColor: "rgba(0,163,255,0.72)", shadowOpacity: 0.32 },
   composerMark: { alignItems: "center", height: 38, justifyContent: "center", width: 36 },
   input: { color: colors.textPrimary, flex: 1, fontSize: 14, maxHeight: 56, minHeight: 38, paddingHorizontal: 4, paddingVertical: 8 },
   sendButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 19, height: 38, justifyContent: "center", width: 38 },

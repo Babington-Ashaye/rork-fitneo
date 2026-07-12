@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, IconBubble, MetaItem, PillButton, SectionHeader, SkeletonBlock, StatCard, TouchableCard, XPBar, withAlpha } from "@/components/ScreenKit";
 import { calculateXpProgress, DashboardData, fetchActiveWorkoutPlan, fetchDashboardData, WorkoutProgram } from "@/lib/api";
@@ -11,6 +12,7 @@ import { loadWaterIntake, saveWaterIntake } from "@/lib/water";
 
 export default function DashboardScreen() {
   const { needsOnboarding, user } = useAuth();
+  const { t } = useTranslation();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,18 +28,29 @@ export default function DashboardScreen() {
         fetchActiveWorkoutPlan()
       ]);
       const waterCurrent = await loadWaterIntake(user?.id ?? null, dashboard.waterGoal);
-      setData({ ...dashboard, waterCurrent });
+      setData((current) => ({ ...dashboard, waterCurrent: current?.waterCurrent ?? waterCurrent }));
       setPlan(activePlan);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dashboard.");
+      setError(err instanceof Error ? err.message : t("dashboard.loadFailed"));
     } finally {
       setIsLoading(false);
     }
   }
 
   useEffect(() => {
+    if (needsOnboarding) {
+      setIsLoading(false);
+      return;
+    }
     void loadDashboard();
-  }, []);
+  }, [needsOnboarding]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return t("dashboard.goodMorning");
+    if (hour < 18) return t("dashboard.goodAfternoon");
+    return t("dashboard.goodEvening");
+  }, [t]);
 
   async function updateWaterIntake(amount: number) {
     if (!data) return;
@@ -50,6 +63,21 @@ export default function DashboardScreen() {
       setData((current) => current ? { ...current, waterCurrent: previous } : current);
     }
   }
+  if (needsOnboarding) {
+    return (
+      <AppLayout scroll>
+        <TouchableCard radius={radii.xxl} style={styles.onboardingGate} onPress={() => router.replace("/onboarding")}>
+          <IconBubble icon="person-circle" size={52} />
+          <View style={styles.flex}>
+            <Text style={styles.gateTitle}>{t("dashboard.completeProfileTitle")}</Text>
+            <Text style={styles.gateCopy}>{t("dashboard.completeProfileCopy")}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+        </TouchableCard>
+      </AppLayout>
+    );
+  }
+
   if (isLoading) {
     return (
       <AppLayout scroll>
@@ -69,36 +97,22 @@ export default function DashboardScreen() {
   if (error || !data) {
     return (
       <AppLayout scroll>
-        <ErrorState message={error ?? "Dashboard data is unavailable."} onRetry={loadDashboard} />
+        <ErrorState message={error ?? t("dashboard.dataUnavailable")} onRetry={loadDashboard} />
       </AppLayout>
     );
   }
 
   const xpInto = calculateXpProgress(data.xp).xpInto;
-
-  if (needsOnboarding) {
-    return (
-      <AppLayout scroll>
-        <TouchableCard radius={radii.xxl} style={styles.onboardingGate} onPress={() => router.replace("/onboarding")}>
-          <IconBubble icon="person-circle" size={52} />
-          <View style={styles.flex}>
-            <Text style={styles.gateTitle}>Complete your profile to see your plan</Text>
-            <Text style={styles.gateCopy}>FITNEO needs your goals, fitness level, and baseline metrics before generating your My Plan dashboard.</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-        </TouchableCard>
-      </AppLayout>
-    );
-  }
+  const insight = getDashboardInsight(data, t);
 
   return (
     <AppLayout scroll>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
-          <Text style={styles.greeting}>Good morning</Text>
+          <Text style={styles.greeting}>{greeting}</Text>
           <Text numberOfLines={1} adjustsFontSizeToFit style={styles.name}>{data.displayName}</Text>
         </View>
-        <TouchableCard radius={radii.lg} style={styles.streakPill} onPress={() => Alert.alert("Streak", `${data.streak} day streak`)}>
+        <TouchableCard radius={radii.lg} style={styles.streakPill} onPress={() => Alert.alert(t("dashboard.streak"), t("dashboard.dayStreak", { count: data.streak }))}>
           <Ionicons name="flame" size={28} color={colors.coral} />
           <Text style={styles.streakText}>{data.streak}</Text>
         </TouchableCard>
@@ -109,7 +123,7 @@ export default function DashboardScreen() {
       <TouchableCard radius={radii.xxl} style={styles.planHeader} onPress={() => setPlanOpen((current) => !current)}>
         <View style={styles.inline}>
           <Ionicons name="sparkles" size={14} color={colors.accent} />
-          <SectionHeader title="MY PLAN" accent />
+          <SectionHeader title={t("dashboard.myPlan")} accent />
           <Text numberOfLines={1} style={styles.planName}>{plan?.name ?? data.todayWorkout.name}</Text>
         </View>
         <Ionicons name={planOpen ? "chevron-up" : "chevron-down"} size={14} color={colors.textSecondary} />
@@ -121,9 +135,9 @@ export default function DashboardScreen() {
             <MetaItem icon="layers" text={`${plan?.exercises ?? 6} exercises`} />
             <MetaItem icon="bar-chart" text={plan?.category ?? data.todayWorkout.category} />
           </View>
-          <Text style={styles.planCopy}>Your active plan is calibrated from onboarding and your latest FITNEO AI programming.</Text>
+          <Text style={styles.planCopy}>{t("dashboard.planCopy")}</Text>
           <TouchableOpacity style={styles.planStart} onPress={() => router.push("/active-workout")}>
-            <Text style={styles.planStartText}>Start active plan</Text>
+            <Text style={styles.planStartText}>{t("dashboard.startActivePlan")}</Text>
             <Ionicons name="play" size={14} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -133,7 +147,7 @@ export default function DashboardScreen() {
         <View style={styles.heroTop}>
           <View style={styles.inline}>
             <Ionicons name="sparkles" size={13} color={colors.accent} />
-            <Text style={styles.heroKicker}>TODAY'S WORKOUT</Text>
+            <Text style={styles.heroKicker}>{t("dashboard.todaysWorkout")}</Text>
           </View>
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryText}>{data.todayWorkout.category}</Text>
@@ -147,7 +161,7 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.heroActions}>
           <TouchableOpacity activeOpacity={0.78} style={styles.quickStart} onPress={() => router.push("/active-workout")}>
-            <PillButton title="Quick Start" icon="play" />
+            <PillButton title={t("dashboard.quickStart")} icon="play" />
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.78} style={styles.aiButton} onPress={() => router.push("/(tabs)/coach")}>
             <Ionicons name="sparkles" size={21} color={colors.accent} />
@@ -158,26 +172,26 @@ export default function DashboardScreen() {
       </TouchableCard>
 
       <View style={styles.statRow}>
-        <StatCard icon="flame" value={String(data.caloriesToday)} label="Cal today" tint={colors.coral} onPress={() => Alert.alert("Calories burned today", `${data.caloriesToday} kcal`)} />
-        <StatCard icon="barbell" value={String(data.workoutsThisWeek)} label="This week" onPress={() => router.push("/(tabs)/progress")} />
+        <StatCard icon="flame" value={String(data.caloriesToday)} label={t("dashboard.calToday")} tint={colors.coral} onPress={() => Alert.alert(t("dashboard.caloriesBurnedToday"), `${data.caloriesToday} kcal`)} />
+        <StatCard icon="barbell" value={String(data.workoutsThisWeek)} label={t("dashboard.thisWeek")} onPress={() => router.push("/(tabs)/progress")} />
       </View>
       <View style={styles.statRow}>
-        <StatCard icon="time" value={String(data.activeMinutes)} label="Active min" tint={colors.teal} onPress={() => Alert.alert("Active minutes", `${data.activeMinutes} minutes today`)} />
-        <StatCard icon="flame-outline" value={String(data.streak)} label="Streak" tint="#FF9500" onPress={() => Alert.alert("Streak", `${data.streak} day streak`)} />
+        <StatCard icon="time" value={String(data.activeMinutes)} label={t("dashboard.activeMin")} tint={colors.teal} onPress={() => Alert.alert(t("dashboard.activeMinutes"), t("dashboard.minutesToday", { count: data.activeMinutes }))} />
+        <StatCard icon="flame-outline" value={String(data.streak)} label={t("dashboard.streak")} tint="#FF9500" onPress={() => Alert.alert(t("dashboard.streak"), t("dashboard.dayStreak", { count: data.streak }))} />
       </View>
 
       <TouchableCard radius={radii.xxl} style={styles.cardStack} onPress={() => router.push("/(tabs)/progress")}>
-        <SectionHeader title="GOALS" />
-        <GoalRow title="Weekly workouts" value={data.workoutsThisWeek} target={data.weeklyWorkoutGoal} tint={colors.accent} />
-        <GoalRow title="Calories burned" value={data.caloriesToday} target={data.calorieBurnGoal} tint={colors.coral} />
-        <GoalRow title="Calories eaten" value={data.caloriesEaten} target={data.calorieEatGoal} tint={colors.gold} />
+        <SectionHeader title={t("dashboard.goals")} />
+        <GoalRow title={t("dashboard.weeklyWorkouts")} value={data.workoutsThisWeek} target={data.weeklyWorkoutGoal} tint={colors.accent} />
+        <GoalRow title={t("dashboard.caloriesBurned")} value={data.caloriesToday} target={data.calorieBurnGoal} tint={colors.coral} />
+        <GoalRow title={t("dashboard.caloriesEaten")} value={data.caloriesEaten} target={data.calorieEatGoal} tint={colors.gold} />
       </TouchableCard>
 
       <TouchableCard radius={radii.xxl} style={styles.cardStack}>
         <View style={styles.rowBetween}>
           <View style={styles.inline}>
             <Ionicons name="water" size={16} color={colors.textPrimary} />
-            <Text style={styles.cardTitle}>Water intake</Text>
+            <Text style={styles.cardTitle}>{t("dashboard.waterIntake")}</Text>
           </View>
           <Text style={styles.accentMeta}>{data.waterCurrent} / {data.waterGoal}</Text>
         </View>
@@ -193,7 +207,7 @@ export default function DashboardScreen() {
               style={styles.waterInput}
               underlineColorAndroid="transparent"
             />
-            <Text style={styles.waterInputLabel}>cups</Text>
+            <Text style={styles.waterInputLabel}>{t("dashboard.cups")}</Text>
           </View>
           <TouchableOpacity accessibilityLabel="Increase water intake" style={[styles.waterAdjust, styles.waterAdjustActive]} onPress={() => void updateWaterIntake(data.waterCurrent + 1)}>
             <Ionicons name="add" size={18} color={colors.textPrimary} />
@@ -212,23 +226,23 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={styles.waterLiters}>{(data.waterCurrent * 0.25).toFixed(2)} L logged today</Text>
+        <Text style={styles.waterLiters}>{t("dashboard.litersLogged", { liters: (data.waterCurrent * 0.25).toFixed(2) })}</Text>
       </TouchableCard>
 
       <TouchableCard radius={radii.xxl} style={styles.insightCard} onPress={() => router.push("/(tabs)/coach")}>
         <IconBubble icon="bulb" size={44} />
         <View style={styles.flex}>
-          <Text style={styles.insightTitle}>FITNEO AI Insight</Text>
-          <Text style={styles.insightText}>You are building momentum. Keep today's session controlled and finish with protein.</Text>
+          <Text style={styles.insightTitle}>{t("dashboard.aiInsight")}</Text>
+          <Text style={styles.insightText}>{insight}</Text>
         </View>
       </TouchableCard>
 
       <TouchableCard radius={radii.xxl} style={styles.cardStack} onPress={() => router.push("/(tabs)/progress")}>
-        <SectionHeader title="RECENT ACTIVITY" />
+        <SectionHeader title={t("dashboard.recentActivity")} />
         {data.recentActivity.length > 0 ? (
           data.recentActivity.map((item) => <Text key={item} style={styles.activityText}>{item}</Text>)
         ) : (
-          <Text style={styles.emptyText}>No workouts yet - start your first session to see it here.</Text>
+          <Text style={styles.emptyText}>{t("dashboard.noWorkoutsYet")}</Text>
         )}
       </TouchableCard>
 
@@ -249,6 +263,23 @@ function GoalRow({ title, value, target, tint }: { title: string; value: number;
       </View>
     </View>
   );
+}
+
+function getDashboardInsight(data: DashboardData, t: (key: string, options?: Record<string, unknown>) => string) {
+  const hour = new Date().getHours();
+  if (data.streak === 0) {
+    return t("dashboard.insightStartStreak");
+  }
+  if (data.workoutsThisWeek >= data.weeklyWorkoutGoal) {
+    return t("dashboard.insightWeeklyTarget");
+  }
+  if (data.caloriesToday < 200 && hour >= 14) {
+    return t("dashboard.insightLowBurn");
+  }
+  if (data.caloriesEaten > data.calorieEatGoal) {
+    return t("dashboard.insightCalorieTarget");
+  }
+  return t("dashboard.insightDefault");
 }
 
 const styles = StyleSheet.create({

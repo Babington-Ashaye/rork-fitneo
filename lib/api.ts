@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { exerciseCatalog } from "@/lib/exercises";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 export type DashboardData = {
@@ -49,6 +50,11 @@ export type ProfileSummary = {
   badgesTotal: number;
 };
 
+export type FavoriteMuscleGroup = {
+  name: string;
+  count: number;
+};
+
 export type NutritionData = {
   dateLabel: string;
   calorieTarget: number;
@@ -73,6 +79,7 @@ export type ProgressData = {
   totalXp: number;
   bmi: number | null;
   goalPaceWeeks: number | null;
+  favoriteMuscleGroups: FavoriteMuscleGroup[];
 };
 
 export type ChatSessionSummary = {
@@ -463,7 +470,8 @@ export async function fetchProgressData(): Promise<ProgressData> {
       caloriesBurned: 0,
       totalXp: 0,
       bmi: null,
-      goalPaceWeeks: null
+      goalPaceWeeks: null,
+      favoriteMuscleGroups: []
     };
   }
 
@@ -504,6 +512,34 @@ export async function fetchProgressData(): Promise<ProgressData> {
   const bmi = latestWeight > 0 && heightMeters > 0 ? Number((latestWeight / (heightMeters * heightMeters)).toFixed(1)) : null;
   const goalWeight = Number(profile.goal_weight_kg ?? 0);
   const goalPaceWeeks = latestWeight > 0 && goalWeight > 0 ? Math.max(1, Math.round(Math.abs(latestWeight - goalWeight) / 0.5)) : null;
+  const sessionIds = workouts.map((row) => String(row.id)).filter(Boolean);
+  let favoriteMuscleGroups: FavoriteMuscleGroup[] = [];
+
+  if (sessionIds.length > 0) {
+    try {
+      const { data: setRows } = await supabase
+        .from("session_sets_log")
+        .select("exercise_name")
+        .in("session_id", sessionIds);
+      const counts = new Map<string, number>();
+      ((setRows ?? []) as Array<{ exercise_name?: string | null }>).forEach((row) => {
+        const exerciseName = String(row.exercise_name ?? "").trim().toLowerCase();
+        const match = exerciseCatalog.find((exercise) =>
+          exercise.name.toLowerCase() === exerciseName || exercise.id.toLowerCase() === exerciseName
+        );
+        const muscleGroup = match?.muscleGroup ?? (exerciseName ? "Mixed Training" : "");
+        if (muscleGroup) {
+          counts.set(muscleGroup, (counts.get(muscleGroup) ?? 0) + 1);
+        }
+      });
+      favoriteMuscleGroups = [...counts.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+    } catch {
+      favoriteMuscleGroups = [];
+    }
+  }
 
   return {
     streak: Number(profile.current_streak ?? 0),
@@ -515,7 +551,8 @@ export async function fetchProgressData(): Promise<ProgressData> {
     caloriesBurned: workouts.reduce((sum, row) => sum + Number(row.calories_burned ?? 0), 0),
     totalXp: ((xpRes.data ?? []) as Record<string, any>[]).reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
     bmi,
-    goalPaceWeeks
+    goalPaceWeeks,
+    favoriteMuscleGroups
   };
 }
 
@@ -628,6 +665,21 @@ export async function fetchChatSessions(): Promise<ChatSessionSummary[]> {
     title: String(row.title ?? "FITNEO Chat"),
     createdAt: String(row.created_at)
   }));
+}
+
+export async function updateChatSessionTitle(sessionId: string, title: string): Promise<void> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    throw new Error("You must be signed in.");
+  }
+  const { error } = await supabase
+    .from("chat_sessions")
+    .update({ title })
+    .eq("id", sessionId)
+    .eq("user_id", userId);
+  if (error) {
+    throw error;
+  }
 }
 
 export async function fetchChatMessages(sessionId: string): Promise<ChatMessageRecord[]> {

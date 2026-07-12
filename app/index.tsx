@@ -1,5 +1,6 @@
 import { Redirect } from "expo-router";
-import { PageGradient, LoadingState, ErrorState } from "@/components/ScreenKit";
+import { AppLayout } from "@/components/AppLayout";
+import { LoadingState, ErrorState } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Index() {
@@ -7,17 +8,17 @@ export default function Index() {
 
   if (isLoading) {
     return (
-      <PageGradient>
+      <AppLayout contentContainerStyle={{ flex: 1, justifyContent: "center" }}>
         <LoadingState label="Restoring your FITNEO session..." />
-      </PageGradient>
+      </AppLayout>
     );
   }
 
   if (error) {
     return (
-      <PageGradient>
+      <AppLayout contentContainerStyle={{ flex: 1, justifyContent: "center" }}>
         <ErrorState message={error} onRetry={refreshProfile} />
-      </PageGradient>
+      </AppLayout>
     );
   }
 

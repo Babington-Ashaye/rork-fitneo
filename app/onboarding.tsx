@@ -3,6 +3,7 @@ import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { GlassCard, TouchableCard } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
@@ -10,24 +11,24 @@ import { saveOnboardingProfile } from "@/lib/api";
 import { colors, radii } from "@/lib/theme";
 
 const goals = ["Lose Weight", "Build Muscle", "Improve Endurance", "Athletic Performance", "Stay Active"];
-const levels = ["Beginner", "Intermediate", "Advanced"];
 const equipmentOptions = ["No Equipment", "Dumbbells", "Full Gym", "Yoga & Mobility"];
 const trainingStyles = ["Strength Training", "HIIT", "Cardio", "Core & Abs", "Mobility", "Mixed"];
 const injuries = ["No injuries or limitations", "Lower back", "Knee", "Shoulder", "Hip", "Wrist"];
 const dietOptions = ["Standard", "High Protein", "Vegetarian", "Vegan", "Mediterranean", "Keto"];
 const coachOptions = ["Supportive", "Motivational", "Data-driven", "Push me hard", "Mix of everything"];
-const onboardingStepInfo: Array<{ icon: keyof typeof Ionicons.glyphMap; label: string; copy: string }> = [
-  { icon: "person-circle", label: "Identity", copy: "Your baseline helps FITNEO size the plan safely." },
-  { icon: "flag", label: "Goal", copy: "This decides whether the plan leans fat loss, strength, performance, or consistency." },
-  { icon: "barbell", label: "Equipment", copy: "Exercises will match what you actually have access to." },
-  { icon: "calendar", label: "Schedule", copy: "FITNEO shapes the week around your available days and session length." },
-  { icon: "flash", label: "Style", copy: "Pick the training feel you will actually enjoy repeating." },
-  { icon: "battery-charging", label: "Recovery", copy: "Recovery signals keep intensity realistic, not random." },
-  { icon: "shield-checkmark", label: "Health", copy: "Limitations help FITNEO avoid exercises that do not fit your body today." },
-  { icon: "sparkles", label: "Calibration", copy: "Nutrition and coaching tone complete your AI fitness profile." }
+const onboardingStepInfo: Array<{ icon: keyof typeof Ionicons.glyphMap; labelKey: string; copy: string }> = [
+  { icon: "person-circle", labelKey: "onboarding.step.aboutYou", copy: "Your baseline helps FITNEO size the plan safely." },
+  { icon: "flag", labelKey: "onboarding.step.goals", copy: "This decides whether the plan leans fat loss, strength, performance, or consistency." },
+  { icon: "barbell", labelKey: "onboarding.step.equipment", copy: "Exercises will match what you actually have access to." },
+  { icon: "calendar", labelKey: "onboarding.step.schedule", copy: "FITNEO shapes the week around your available days and session length." },
+  { icon: "flash", labelKey: "onboarding.step.style", copy: "Pick the training feel you will actually enjoy repeating." },
+  { icon: "battery-charging", labelKey: "onboarding.step.recovery", copy: "Recovery signals keep intensity realistic, not random." },
+  { icon: "shield-checkmark", labelKey: "onboarding.step.health", copy: "Limitations help FITNEO avoid exercises that do not fit your body today." },
+  { icon: "sparkles", labelKey: "onboarding.step.nutrition", copy: "Nutrition and coaching tone complete your AI fitness profile." }
 ];
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const { profile, markLocalOnboardingComplete, refreshProfile, session } = useAuth();
   const params = useLocalSearchParams<{ mode?: string }>();
   const isEditing = params.mode === "edit";
@@ -56,6 +57,7 @@ export default function OnboardingScreen() {
   const totalSteps = 8;
   const progress = (step + 1) / totalSteps;
   const stepInfo = onboardingStepInfo[step];
+  const stepLabel = t(stepInfo.labelKey).toUpperCase();
   const tdee = useMemo(() => calculateTdee({ age, gender, weight, weightUnit, height, activity, goal }), [activity, age, gender, goal, height, weight, weightUnit]);
 
   if (!session) {
@@ -68,13 +70,18 @@ export default function OnboardingScreen() {
         <View style={styles.calibrationOrb}>
           <ActivityIndicator color={colors.accent} />
         </View>
-        <Text style={styles.calibrationKicker}>FITNEO AI CALIBRATION</Text>
-        <Text style={styles.calibrationTitle}>Building your personal plan</Text>
+        <Text style={styles.calibrationKicker}>{t("onboarding.calibration.kicker")}</Text>
+        <Text style={styles.calibrationTitle}>{t("onboarding.calibration.title")}</Text>
         <Text style={styles.calibrationCopy}>
           Matching your goal, equipment, schedule, recovery, and nutrition targets into your dashboard plan.
         </Text>
         <View style={styles.calibrationSteps}>
-          {["Reading onboarding answers", "Selecting suitable workout style", "Calibrating calories and macros", "Preparing your plan"].map((item) => (
+          {[
+            t("onboarding.calibration.step1"),
+            t("onboarding.calibration.step2"),
+            t("onboarding.calibration.step3"),
+            t("onboarding.calibration.step4")
+          ].map((item) => (
             <View key={item} style={styles.calibrationStep}>
               <Ionicons name="checkmark-circle" size={15} color={colors.accent} />
               <Text style={styles.calibrationStepText}>{item}</Text>
@@ -110,38 +117,42 @@ export default function OnboardingScreen() {
     return true;
   }
 
-  async function finish() {
-    setError(null);
-    setIsSaving(true);
+  function buildOnboardingPayload() {
     const dailyProteinTarget = Math.round((tdee * 0.3) / 4);
     const dailyCarbsTarget = Math.round((tdee * 0.4) / 4);
     const dailyFatTarget = Math.round((tdee * 0.3) / 9);
 
+    return {
+      displayName: name.trim() || "Athlete",
+      age: Number(age) || 25,
+      gender,
+      weightKg: weightUnit === "lbs" ? Number(weight) * 0.453592 : Number(weight),
+      heightCm: Number(height) || 175,
+      primaryGoal: goal,
+      fitnessLevel: level,
+      activityLevel: activity,
+      dietaryPreference: diet,
+      dailyCalorieTarget: tdee,
+      dailyProteinTarget,
+      dailyCarbsTarget,
+      dailyFatTarget,
+      answers: {
+        equipment,
+        days,
+        duration,
+        trainingStyles: selectedStyles,
+        recovery,
+        injuries: selectedInjuries,
+        coach
+      }
+    };
+  }
+
+  async function finish() {
+    setError(null);
+    setIsSaving(true);
     try {
-      await saveOnboardingProfile({
-        displayName: name.trim() || "Athlete",
-        age: Number(age) || 25,
-        gender,
-        weightKg: weightUnit === "lbs" ? Number(weight) * 0.453592 : Number(weight),
-        heightCm: Number(height) || 175,
-        primaryGoal: goal,
-        fitnessLevel: level,
-        activityLevel: activity,
-        dietaryPreference: diet,
-        dailyCalorieTarget: tdee,
-        dailyProteinTarget,
-        dailyCarbsTarget,
-        dailyFatTarget,
-        answers: {
-          equipment,
-          days,
-          duration,
-          trainingStyles: selectedStyles,
-          recovery,
-          injuries: selectedInjuries,
-          coach
-        }
-      });
+      await saveOnboardingProfile(buildOnboardingPayload());
       await markLocalOnboardingComplete();
       await refreshProfile();
       router.replace("/(tabs)");
@@ -154,7 +165,7 @@ export default function OnboardingScreen() {
 
   function next() {
     if (!canContinue()) {
-      setError("Complete this step to continue.");
+      setError(t("onboarding.error.incomplete"));
       return;
     }
     setError(null);
@@ -163,6 +174,23 @@ export default function OnboardingScreen() {
       return;
     }
     setStep((current) => Math.min(totalSteps - 1, current + 1));
+  }
+
+  async function skipOnboarding() {
+    setError(null);
+    try {
+      await saveOnboardingProfile(buildOnboardingPayload());
+      await markLocalOnboardingComplete();
+      await refreshProfile();
+    } catch {
+      try {
+        await markLocalOnboardingComplete();
+      } catch {
+        // Skip should never block navigation.
+      }
+    } finally {
+      router.replace("/(tabs)");
+    }
   }
 
   return (
@@ -180,9 +208,14 @@ export default function OnboardingScreen() {
           <Ionicons name={stepInfo.icon} size={24} color={colors.accent} />
         </View>
         <View style={styles.heroCopy}>
-          <Text style={styles.heroStep}>STEP {step + 1} OF {totalSteps} · {stepInfo.label.toUpperCase()}</Text>
+          <Text style={styles.heroStep}>STEP {step + 1} OF {totalSteps} · {stepLabel}</Text>
           <Text style={styles.heroText}>{stepInfo.copy}</Text>
         </View>
+        {step < totalSteps - 1 ? (
+          <TouchableOpacity activeOpacity={0.78} style={styles.skipButton} onPress={() => void skipOnboarding()}>
+            <Text style={styles.skipButtonText}>{t("onboarding.skip")}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View style={styles.progressTrack}>
@@ -207,7 +240,7 @@ export default function OnboardingScreen() {
       </View>
 
       {step === 0 ? (
-        <StepShell kicker={isEditing ? "EDIT PROFILE" : "ABOUT YOU"} title="Tell us about yourself">
+        <StepShell kicker={isEditing ? t("onboarding.step.editProfile") : t("onboarding.step.aboutYou")} title={t("onboarding.title.identity")}>
           <TextInput placeholder="Your name" placeholderTextColor={colors.textTertiary} style={styles.input} value={name} onChangeText={setName} underlineColorAndroid="transparent" />
           <View style={styles.inputGrid}>
             <TextInput keyboardType="number-pad" placeholder="Age" placeholderTextColor={colors.textTertiary} style={styles.gridInput} value={age} onChangeText={setAge} underlineColorAndroid="transparent" />
@@ -222,13 +255,13 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 1 ? (
-        <StepShell kicker="GOALS" title="What do you want to achieve?">
+        <StepShell kicker={t("onboarding.step.goals")} title={t("onboarding.title.goal")}>
           {goals.map((item) => <SelectCard key={item} title={item} selected={goal === item} onPress={() => setGoal(item)} />)}
         </StepShell>
       ) : null}
 
       {step === 2 ? (
-        <StepShell kicker="EQUIPMENT" title="What do you have access to?">
+        <StepShell kicker={t("onboarding.step.equipment")} title={t("onboarding.title.equipment")}>
           {equipmentOptions.map((item) => (
             <SelectCard key={item} title={item} selected={equipment.includes(item)} onPress={() => toggleMulti(item, equipment, setEquipment)} />
           ))}
@@ -236,7 +269,7 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 3 ? (
-        <StepShell kicker="SCHEDULE" title="How often will you train?">
+        <StepShell kicker={t("onboarding.step.schedule")} title={t("onboarding.title.schedule")}>
           {[2, 3, 4, 5, 6].map((item) => <SelectCard key={item} title={`${item} days per week`} selected={days === item} onPress={() => setDays(item)} />)}
           {["15-20 min", "20-30 min", "30-45 min", "45-60 min", "60+ min"].map((item) => (
             <SelectCard key={item} title={item} selected={duration === item} onPress={() => setDuration(item)} />
@@ -245,7 +278,7 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 4 ? (
-        <StepShell kicker="TRAINING STYLE" title="What type of training do you prefer?">
+        <StepShell kicker={t("onboarding.step.style")} title={t("onboarding.title.style")}>
           {trainingStyles.map((item) => (
             <SelectCard key={item} title={item} selected={selectedStyles.includes(item)} onPress={() => toggleMulti(item, selectedStyles, setSelectedStyles)} />
           ))}
@@ -253,7 +286,7 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 5 ? (
-        <StepShell kicker="RECOVERY" title="How active and recovered are you?">
+        <StepShell kicker={t("onboarding.step.recovery")} title={t("onboarding.title.recovery")}>
           {["Sedentary", "Lightly active", "Moderately active", "Very active"].map((item) => (
             <SelectCard key={item} title={item} selected={activity === item} onPress={() => setActivity(item)} />
           ))}
@@ -264,7 +297,7 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 6 ? (
-        <StepShell kicker="HEALTH CHECK" title="Any injuries or limitations?">
+        <StepShell kicker={t("onboarding.step.health")} title={t("onboarding.title.health")}>
           {injuries.map((item) => (
             <SelectCard
               key={item}
@@ -277,7 +310,7 @@ export default function OnboardingScreen() {
       ) : null}
 
       {step === 7 ? (
-        <StepShell kicker="NUTRITION & COACH" title="Final calibration">
+        <StepShell kicker={t("onboarding.step.nutrition")} title={t("onboarding.title.calibration")}>
           {dietOptions.map((item) => <SelectCard key={item} title={item} selected={diet === item} onPress={() => setDiet(item)} />)}
           {coachOptions.map((item) => <SelectCard key={item} title={item} selected={coach === item} onPress={() => setCoach(item)} />)}
           <GlassCard radius={radii.xl} style={styles.tdeeCard}>
@@ -296,7 +329,7 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         ) : null}
         <TouchableOpacity activeOpacity={0.82} disabled={isSaving || !canContinue()} onPress={next} style={[styles.continueButton, (!canContinue() || isSaving) && styles.disabled]}>
-          {isSaving ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.continueText}>{step === totalSteps - 1 ? "Finish" : "Continue"}</Text>}
+          {isSaving ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.continueText}>{step === totalSteps - 1 ? t("onboarding.finish") : t("onboarding.continue")}</Text>}
         </TouchableOpacity>
       </View>
         </ScrollView>
@@ -395,6 +428,8 @@ const styles = StyleSheet.create({
   heroCopy: { flex: 1, gap: 3 },
   heroStep: { color: colors.accent, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
   heroText: { color: colors.textSecondary, fontSize: 12, lineHeight: 17 },
+  skipButton: { alignSelf: "flex-start", paddingHorizontal: 4, paddingVertical: 4 },
+  skipButtonText: { color: colors.textTertiary, fontSize: 14, fontWeight: "800" },
   signalRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   signalPill: { alignItems: "center", backgroundColor: "rgba(0,217,178,0.10)", borderColor: "rgba(0,217,178,0.22)", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 6, paddingHorizontal: 10, paddingVertical: 7 },
   signalText: { color: colors.teal, fontSize: 11, fontWeight: "900" },

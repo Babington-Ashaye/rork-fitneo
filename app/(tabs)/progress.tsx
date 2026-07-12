@@ -1,12 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, LoadingState, ScreenTitle, SectionHeader, StatCard, TouchableCard } from "@/components/ScreenKit";
 import { fetchProgressData, ProgressData } from "@/lib/api";
 import { colors, radii } from "@/lib/theme";
 
 export default function ProgressScreen() {
+  const { t } = useTranslation();
   const [data, setData] = useState<ProgressData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,7 +19,7 @@ export default function ProgressScreen() {
     try {
       setData(await fetchProgressData());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load progress.");
+      setError(err instanceof Error ? err.message : t("progress.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -28,11 +30,16 @@ export default function ProgressScreen() {
   }, []);
 
   const max = useMemo(() => Math.max(1, ...(data?.weeklyWorkouts ?? [0])), [data?.weeklyWorkouts]);
+  const weekLabels = useMemo(() => getWeekLabels(data?.weeklyWorkouts.length ?? 0, t), [data?.weeklyWorkouts.length, t]);
+  const favoriteMax = useMemo(
+    () => Math.max(1, ...(data?.favoriteMuscleGroups.map((item) => item.count) ?? [0])),
+    [data?.favoriteMuscleGroups]
+  );
 
   if (isLoading) {
     return (
       <AppLayout scroll>
-        <LoadingState label="Loading live progress..." />
+        <LoadingState label={t("progress.loading")} />
       </AppLayout>
     );
   }
@@ -40,70 +47,98 @@ export default function ProgressScreen() {
   if (error || !data) {
     return (
       <AppLayout scroll>
-        <ErrorState message={error ?? "Progress data is unavailable."} onRetry={loadProgress} />
+        <ErrorState message={error ?? t("progress.unavailable")} onRetry={loadProgress} />
       </AppLayout>
     );
   }
 
   return (
     <AppLayout scroll>
-      <ScreenTitle title="Progress" subtitle="Your data, decoded" />
+      <ScreenTitle title={t("progress.title")} subtitle={t("progress.subtitle")} />
       <TouchableCard radius={radii.xxl} style={styles.streakCard} onPress={loadProgress}>
         <Ionicons name="flame" size={34} color={colors.coral} />
         <View style={styles.flex}>
-          <Text style={styles.streakTitle}>{data.streak} day streak</Text>
-          <Text style={styles.subtle}>Longest: {data.longestStreak} days</Text>
+          <Text style={styles.streakTitle}>{t("progress.dayStreak", { count: data.streak })}</Text>
+          <Text style={styles.subtle}>{t("progress.longest", { count: data.longestStreak })}</Text>
         </View>
         <View style={styles.center}>
           <Text style={styles.consistency}>{data.consistency}%</Text>
-          <Text style={styles.subtleSmall}>consistency</Text>
+          <Text style={styles.subtleSmall}>{t("progress.consistency")}</Text>
         </View>
       </TouchableCard>
 
-      <TouchableCard radius={radii.xxl} style={styles.cardStack} onPress={loadProgress}>
-        <SectionHeader title="WORKOUTS / WEEK" />
+      <TouchableCard radius={radii.xxl} style={styles.cardStack}>
+        <SectionHeader title={t("progress.workoutsPerWeek")} />
         <View style={styles.chart}>
           {data.weeklyWorkouts.map((count, index) => (
             <View key={index} style={styles.barItem}>
               <Text style={[styles.barCount, { opacity: count > 0 ? 1 : 0.3 }]}>{count}</Text>
               <View style={[styles.bar, { height: Math.max(6, (count / max) * 90) }]} />
-              <Text style={styles.barLabel}>W{index + 1}</Text>
+              <Text style={styles.barLabel}>{weekLabels[index]}</Text>
             </View>
           ))}
         </View>
       </TouchableCard>
 
       <View style={styles.gridRow}>
-        <StatCard icon="barbell" value={String(data.totalWorkouts)} label="Total workouts" onPress={loadProgress} />
-        <StatCard icon="layers" value={String(data.totalSets)} label="Total sets" tint={colors.coral} onPress={loadProgress} />
+        <StatCard icon="barbell" value={String(data.totalWorkouts)} label={t("progress.totalWorkouts")} />
+        <StatCard icon="layers" value={String(data.totalSets)} label={t("progress.totalSets")} tint={colors.coral} />
       </View>
       <View style={styles.gridRow}>
-        <StatCard icon="flame" value={data.caloriesBurned.toLocaleString()} label="Calories burned" tint="#FF9500" onPress={loadProgress} />
-        <StatCard icon="flash" value={data.totalXp.toLocaleString()} label="Total XP" tint={colors.teal} onPress={loadProgress} />
+        <StatCard icon="flame" value={data.caloriesBurned.toLocaleString()} label={t("progress.caloriesBurned")} tint="#FF9500" />
+        <StatCard icon="flash" value={data.totalXp.toLocaleString()} label={t("progress.totalXp")} tint={colors.teal} />
       </View>
 
-      <TouchableCard radius={radii.xxl} style={styles.cardStack} onPress={loadProgress}>
-        <SectionHeader title="BODY METRICS" />
+      <TouchableCard radius={radii.xxl} style={styles.cardStack}>
+        <SectionHeader title={t("progress.bodyMetrics")} />
         <View style={styles.rowBetween}>
           <View>
             <Text style={styles.bmi}>{data.bmi ? data.bmi.toFixed(1) : "--"}</Text>
-            <Text style={styles.subtle}>BMI {data.bmi ? "tracked" : "not enough data"}</Text>
+            <Text style={styles.subtle}>
+              {data.bmi ? t("progress.bmiTracked") : t("progress.bmiGuidance")}
+            </Text>
           </View>
           <View style={styles.rightText}>
-            <Text style={styles.goalPace}>{data.goalPaceWeeks ? `~${data.goalPaceWeeks} weeks` : "--"}</Text>
-            <Text style={styles.subtleSmall}>est. goal pace</Text>
+            <Text style={styles.goalPace}>{data.goalPaceWeeks ? t("progress.weeksApprox", { count: data.goalPaceWeeks }) : "--"}</Text>
+            <Text style={styles.subtleSmall}>{t("progress.goalPace")}</Text>
           </View>
         </View>
       </TouchableCard>
 
-      <TouchableCard radius={radii.xxl} style={styles.cardStack} onPress={loadProgress}>
-        <SectionHeader title="FAVORITE MUSCLE GROUPS" />
-        <Text style={styles.emptyText}>Complete workouts to build your live training split.</Text>
+      <TouchableCard radius={radii.xxl} style={styles.cardStack}>
+        <SectionHeader title={t("progress.favoriteMuscleGroups")} />
+        {data.favoriteMuscleGroups.length > 0 ? (
+          data.favoriteMuscleGroups.map((item, index) => (
+            <View key={item.name} style={styles.muscleRow}>
+              <Text style={styles.muscleRank}>{index + 1}</Text>
+              <View style={styles.flex}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.muscleName}>{item.name}</Text>
+                  <Text style={styles.muscleCount}>{item.count}</Text>
+                </View>
+                <View style={styles.muscleTrack}>
+                  <View style={[styles.muscleFill, { width: `${Math.max(8, (item.count / favoriteMax) * 100)}%` }]} />
+                </View>
+              </View>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.emptyText}>{t("progress.emptyMuscles")}</Text>
+        )}
       </TouchableCard>
 
       <EmptySpacer />
     </AppLayout>
   );
+}
+
+function getWeekLabels(length: number, t: (key: string, options?: Record<string, unknown>) => string) {
+  return Array.from({ length }).map((_, index) => {
+    const remaining = length - index - 1;
+    if (remaining === 0) return t("progress.thisWeek");
+    if (remaining === 1) return t("progress.lastWeek");
+    return t("progress.weeksAgo", { count: remaining });
+  });
 }
 
 const styles = StyleSheet.create({
@@ -195,5 +230,11 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 14,
     fontWeight: "600"
-  }
+  },
+  muscleRow: { alignItems: "center", flexDirection: "row", gap: 12 },
+  muscleRank: { color: colors.accent, fontSize: 14, fontWeight: "900", width: 20 },
+  muscleName: { color: colors.textPrimary, fontSize: 13, fontWeight: "800" },
+  muscleCount: { color: colors.textTertiary, fontSize: 11, fontWeight: "800" },
+  muscleTrack: { backgroundColor: "rgba(255,255,255,0.08)", borderRadius: radii.round, height: 8, marginTop: 7, overflow: "hidden" },
+  muscleFill: { backgroundColor: colors.accent, borderRadius: radii.round, height: 8 }
 });
