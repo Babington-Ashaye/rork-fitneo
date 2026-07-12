@@ -689,6 +689,7 @@ const exerciseGifOverrides: Partial<Record<string, string>> = {
   wide_push_ups: "3294-A9qxk2F.gif",
   pike_push_ups: "1363-JbC2iaV.gif",
   romanian_deadlift: "1459-rR0LJzx.gif",
+  bear_crawl: "3360-0Yz8WdV.gif",
   bird_dogs: "1512-qBcKorM.gif"
 };
 
