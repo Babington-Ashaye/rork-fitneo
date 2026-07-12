@@ -24,6 +24,10 @@ const WEB_CHECKOUT_URLS = {
 const GENERIC_WEB_CHECKOUT_URL =
   process.env.EXPO_PUBLIC_STRIPE_CHECKOUT_URL?.trim() ??
   process.env.EXPO_PUBLIC_CHECKOUT_URL?.trim();
+const FALLBACK_SITE_URL =
+  process.env.EXPO_PUBLIC_SITE_URL?.trim() ??
+  process.env.EXPO_PUBLIC_APP_URL?.trim() ??
+  "https://o-phi.vercel.app";
 
 let isRevenueCatConfigured = false;
 let revenueCatConfigurePromise: Promise<void> | null = null;
@@ -168,11 +172,31 @@ function getLocalActiveTier(profile: ProfileRow | null): RevenueCatActiveTier {
   return "None";
 }
 
-function assertResolvableCheckoutUrl(rawUrl: string | undefined): URL {
+function getFallbackCheckoutUrl(tier: CheckoutTier, cadence?: BillingCadence): URL {
+  const origin =
+    Platform.OS === "web" && typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : FALLBACK_SITE_URL.replace(/\/+$/, "");
+  const url = new URL("/checkout", origin);
+  url.searchParams.set("plan", tier);
+  if (cadence) {
+    url.searchParams.set("billing", cadence);
+  }
+  url.searchParams.set("status", "setup_required");
+  return url;
+}
+
+function isFallbackCheckoutUrl(url: string) {
+  return url.includes("/checkout") && url.includes("status=setup_required");
+}
+
+function assertResolvableCheckoutUrl(
+  rawUrl: string | undefined,
+  tier: CheckoutTier,
+  cadence?: BillingCadence
+): URL {
   if (!rawUrl) {
-    throw new Error(
-      "Web checkout is not configured yet. Add a real Stripe Payment Link or Checkout URL to EXPO_PUBLIC_STRIPE_PRO_CHECKOUT_URL and EXPO_PUBLIC_STRIPE_ELITE_CHECKOUT_URL in Vercel, then redeploy."
-    );
+    return getFallbackCheckoutUrl(tier, cadence);
   }
 
   let url: URL;
@@ -187,9 +211,7 @@ function assertResolvableCheckoutUrl(rawUrl: string | undefined): URL {
   }
 
   if (url.hostname === "checkout.fitneo.app" || url.hostname === "fitneo.app") {
-    throw new Error(
-      "The checkout URL points to a FITNEO placeholder domain that is not deployed. Use a real Stripe hosted checkout/payment link instead."
-    );
+    return getFallbackCheckoutUrl(tier, cadence);
   }
 
   return url;
@@ -200,7 +222,7 @@ function getWebCheckoutUrl(tier: CheckoutTier, cadence?: BillingCadence): string
     (cadence ? WEB_CHECKOUT_URLS[tier][cadence] : undefined) ??
     WEB_CHECKOUT_URLS[tier].default ??
     GENERIC_WEB_CHECKOUT_URL;
-  const url = assertResolvableCheckoutUrl(configuredUrl);
+  const url = assertResolvableCheckoutUrl(configuredUrl, tier, cadence);
 
   if (configuredUrl === GENERIC_WEB_CHECKOUT_URL) {
     url.searchParams.set("plan", tier);
@@ -281,11 +303,18 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
   ): Promise<SubscriptionCheckoutResult> {
     if (Platform.OS === "web") {
       const checkoutUrl = getWebCheckoutUrl(requestedTier, cadence);
+      const usingFallbackCheckout = isFallbackCheckoutUrl(checkoutUrl);
 
       if (typeof window !== "undefined") {
-        const checkoutWindow = window.open(checkoutUrl, "_blank", "noopener,noreferrer");
-        if (!checkoutWindow && window.location) {
-          window.location.assign(checkoutUrl);
+        try {
+          const checkoutWindow = window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+          if (!checkoutWindow && window.location) {
+            window.location.assign(checkoutUrl);
+          }
+        } catch {
+          if (window.location) {
+            window.location.assign(checkoutUrl);
+          }
         }
       }
 
@@ -295,7 +324,9 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
         checkoutUrl,
         activeTier: getLocalActiveTier(profile),
         activeEntitlements: {},
-        message: `Redirecting to secure ${requestedTier.toUpperCase()} payment checkout.`
+        message: usingFallbackCheckout
+          ? "Opening FITNEO checkout setup. Add Stripe Payment Links in Vercel to activate live payments."
+          : `Redirecting to secure ${requestedTier.toUpperCase()} payment checkout.`
       };
     }
 

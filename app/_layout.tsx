@@ -39,9 +39,10 @@ function RootNavigator() {
     if (isLoading) return;
     const firstSegment = segments[0];
     const inAuth = firstSegment === "auth" || firstSegment === "login" || firstSegment === "signup";
+    const inCheckout = firstSegment === "checkout";
     const inLegalConsent = firstSegment === "legal-consent";
     const inOnboarding = firstSegment === "onboarding";
-    if (!session && !inAuth) {
+    if (!session && !inAuth && !inCheckout) {
       router.replace("/auth/sign-in");
       return;
     }
@@ -81,6 +82,7 @@ function RootNavigator() {
         <Stack.Screen name="legal-consent" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
+        <Stack.Screen name="checkout" options={{ headerShown: false }} />
         <Stack.Screen name="scanner" options={{ title: "AI Plate Scanner" }} />
         <Stack.Screen name="barcode-scanner" options={{ title: "Barcode Scanner" }} />
         <Stack.Screen name="custom-workout" options={{ headerShown: false }} />

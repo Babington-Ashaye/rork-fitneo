@@ -1,35 +1,49 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/context/AuthContext";
+import { getEquipmentTierLabel, workoutPrograms } from "@/lib/exercises";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { colors, radii } from "@/lib/theme";
+import { colors } from "@/lib/theme";
 
-const SPORT_ONBOARDING_KEY = "fitneo.sports.onboarding.v1";
+const SPORT_ONBOARDING_KEY = "fitneo.sports.onboarding.v2";
+const TOTAL_STEPS = 4;
 
 const sports = [
-  { name: "Football (Soccer)", programId: "sport-football", icon: "football" as const, tint: "#22C55E" },
-  { name: "Basketball", programId: "sport-basketball", icon: "basketball" as const, tint: "#F59E0B" },
-  { name: "Tennis", programId: "sport-tennis", icon: "tennisball" as const, tint: "#84CC16" },
-  { name: "Swimming", programId: "sport-swimming", icon: "water" as const, tint: "#06B6D4" },
-  { name: "Running", programId: "sport-running", icon: "walk" as const, tint: "#3B82F6" },
-  { name: "Rugby", programId: "sport-rugby", icon: "ellipse-outline" as const, tint: "#F43F5E" },
-  { name: "Boxing", programId: "sport-boxing", icon: "accessibility" as const, tint: "#F97316" },
-  { name: "Cricket", programId: "sport-cricket", icon: "baseball" as const, tint: "#38BDF8" },
-  { name: "Volleyball", programId: "sport-volleyball", icon: "radio-button-off" as const, tint: "#FB7185" },
-  { name: "Other", programId: "sport-football", icon: "sparkles" as const, tint: colors.accent }
+  { name: "Football (Soccer)", label: "Football", emoji: "⚽", programId: "sport-football", tint: "#22C55E" },
+  { name: "Basketball", label: "Basketball", emoji: "🏀", programId: "sport-basketball", tint: "#F59E0B" },
+  { name: "Tennis", label: "Tennis", emoji: "🎾", programId: "sport-tennis", tint: "#84CC16" },
+  { name: "Swimming", label: "Swimming", emoji: "🏊", programId: "sport-swimming", tint: "#06B6D4" },
+  { name: "Running", label: "Running", emoji: "🏃", programId: "sport-running", tint: "#3B82F6" },
+  { name: "Rugby", label: "Rugby", emoji: "🏉", programId: "sport-rugby", tint: "#F43F5E" },
+  { name: "Boxing", label: "Boxing", emoji: "🥊", programId: "sport-boxing", tint: "#F97316" },
+  { name: "Cricket", label: "Cricket", emoji: "🏏", programId: "sport-cricket", tint: "#38BDF8" },
+  { name: "Volleyball", label: "Volleyball", emoji: "🏐", programId: "sport-volleyball", tint: "#FB7185" },
+  { name: "Other", label: "Other", emoji: "🎯", programId: "sport-football", tint: colors.accent }
 ];
 
-const levels = ["Recreational", "Amateur", "Semi-Professional", "Professional"];
-const frequencies = ["1-2x per week", "3-4x per week", "5x per week", "Daily"];
+const levels = [
+  { title: "Recreational", description: "I play for fun and fitness" },
+  { title: "Amateur", description: "I train regularly and compete locally" },
+  { title: "Semi-Professional", description: "I train seriously and compete at high level" },
+  { title: "Professional", description: "This is my career" }
+];
+
+const frequencies = [
+  { title: "1-2x per week", description: "Light schedule" },
+  { title: "3-4x per week", description: "Moderate schedule" },
+  { title: "5x per week", description: "High commitment" },
+  { title: "Daily", description: "Elite training load" }
+];
+
 const calibrationSteps = [
-  "Reading sport profile",
   "Analyzing sport demands",
   "Evaluating position needs",
   "Building sport-specific drills",
+  "Calibrating intensity",
   "Finalizing your sports plan"
 ];
 
@@ -39,10 +53,10 @@ const positions: Record<string, string[]> = {
   Rugby: ["Prop", "Hooker", "Lock", "Flanker", "Number 8", "Scrum Half", "Fly Half", "Centre", "Wing", "Fullback"],
   Volleyball: ["Setter", "Outside Hitter", "Opposite Hitter", "Middle Blocker", "Libero"],
   Boxing: ["Orthodox", "Southpaw", "Switch"],
-  Tennis: ["Right", "Left", "Ambidextrous"],
-  Swimming: ["Right", "Left", "Ambidextrous"],
-  Running: ["Right", "Left", "Ambidextrous"],
-  Cricket: ["Right", "Left", "Ambidextrous"]
+  Tennis: ["Right Hand", "Left Hand", "Ambidextrous"],
+  Swimming: ["Right Hand", "Left Hand", "Ambidextrous"],
+  Running: ["Right Hand", "Left Hand", "Ambidextrous"],
+  Cricket: ["Right Hand", "Left Hand", "Ambidextrous"]
 };
 
 type SportAnswers = {
@@ -52,13 +66,29 @@ type SportAnswers = {
   sport_position: string;
 };
 
+type SportStats = {
+  workouts: number;
+  xp: number;
+  streak: number;
+};
+
+type ScreenMode = "onboarding" | "completion" | "dashboard";
+
 function getSportProgramId(sportName: string) {
   return sports.find((sport) => sport.name === sportName)?.programId ?? "sport-football";
 }
 
+function getSportMeta(sportName: string) {
+  return sports.find((sport) => sport.name === sportName) ?? sports[0];
+}
+
+function needsDominantHand(sportName: string) {
+  return ["Tennis", "Swimming", "Running", "Cricket"].includes(sportName);
+}
+
 function getPositionQuestion(sportName: string) {
-  if (["Tennis", "Swimming", "Running", "Cricket"].includes(sportName)) return "Dominant hand?";
-  if (sportName === "Other") return "Tell us your sport or position";
+  if (needsDominantHand(sportName)) return "What is your dominant hand?";
+  if (sportName === "Other") return "Tell us your sport";
   return "What position do you play?";
 }
 
@@ -70,18 +100,30 @@ export default function SportsModeScreen() {
   const [level, setLevel] = useState(typeof savedAnswers.sport_level === "string" ? savedAnswers.sport_level : "Recreational");
   const [frequency, setFrequency] = useState(typeof savedAnswers.sport_frequency === "string" ? savedAnswers.sport_frequency : "3-4x per week");
   const [position, setPosition] = useState(typeof savedAnswers.sport_position === "string" ? savedAnswers.sport_position : "");
-  const [customSport, setCustomSport] = useState("");
-  const [step, setStep] = useState(savedSport ? 4 : 0);
+  const [customSport, setCustomSport] = useState(savedSport === "Other" && typeof savedAnswers.sport_position === "string" ? savedAnswers.sport_position : "");
+  const [step, setStep] = useState(0);
+  const [mode, setMode] = useState<ScreenMode>(savedSport ? "dashboard" : "onboarding");
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [calibrationIndex, setCalibrationIndex] = useState(0);
-  const selectedSport = sports.find((sport) => sport.name === selected) ?? sports[0];
-  const positionOptions = positions[selected] ?? [];
-  const progress = isCalibrating ? (calibrationIndex + 1) / calibrationSteps.length : (step + 1) / 4;
+  const [stats, setStats] = useState<SportStats>({ workouts: 0, xp: 0, streak: 0 });
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
+  const selectedSport = getSportMeta(selected);
+  const programId = getSportProgramId(selected);
+  const program = workoutPrograms.find((item) => item.id === programId) ?? workoutPrograms.find((item) => item.id === "sports-no-equipment") ?? workoutPrograms[0];
+  const positionOptions = positions[selected] ?? [];
   const finalPosition = useMemo(() => {
-    if (selected === "Other") return customSport.trim() || position || "Custom sport";
-    return position || positionOptions[0] || "General";
+    if (selected === "Other") return customSport.trim() || "Custom sport";
+    return position || positionOptions[0] || "General athlete";
   }, [customSport, position, positionOptions, selected]);
+  const isContinueEnabled = step !== 3 || selected !== "Other" || customSport.trim().length > 1;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(slideAnim, { duration: 0, toValue: 18, useNativeDriver: true }),
+      Animated.timing(slideAnim, { duration: 220, toValue: 0, useNativeDriver: true })
+    ]).start();
+  }, [slideAnim, step]);
 
   useEffect(() => {
     if (savedSport) return;
@@ -94,7 +136,7 @@ export default function SportsModeScreen() {
           setLevel(local.sport_level ?? "Recreational");
           setFrequency(local.sport_frequency ?? "3-4x per week");
           setPosition(local.sport_position ?? "");
-          setStep(4);
+          setMode("dashboard");
         }
       } catch {
         // Ignore old or malformed local sports onboarding data.
@@ -110,24 +152,52 @@ export default function SportsModeScreen() {
         if (current >= calibrationSteps.length - 1) {
           clearInterval(timer);
           setTimeout(() => {
-            router.replace({
-              pathname: "/active-workout",
-              params: {
-                mode: selected,
-                programId: getSportProgramId(selected),
-                programName: `${selected} Athletic Session`
-              }
-            });
-          }, 450);
+            setIsCalibrating(false);
+            setMode("completion");
+          }, 500);
           return current;
         }
         return current + 1;
       });
-    }, 560);
+    }, 520);
     return () => clearInterval(timer);
-  }, [isCalibrating, selected]);
+  }, [isCalibrating]);
 
-  async function saveAndCalibrate() {
+  useEffect(() => {
+    if (mode !== "dashboard") return;
+    void loadSportStats();
+  }, [mode, selected, user?.id]);
+
+  async function loadSportStats() {
+    if (!isSupabaseConfigured || !user?.id) {
+      setStats({ workouts: 0, xp: 0, streak: 0 });
+      return;
+    }
+    try {
+      const [workoutRes, profileRes] = await Promise.all([
+        supabase
+          .from("workout_sessions")
+          .select("session_name,xp_earned")
+          .eq("user_id", user.id)
+          .ilike("session_name", `%${selected.split(" ")[0]}%`),
+        supabase
+          .from("user_profiles")
+          .select("current_streak,total_xp")
+          .eq("id", user.id)
+          .maybeSingle()
+      ]);
+      const workoutRows = (workoutRes.data ?? []) as Array<{ xp_earned?: number | null }>;
+      setStats({
+        workouts: workoutRows.length,
+        xp: workoutRows.reduce((sum, row) => sum + Number(row.xp_earned ?? 0), 0),
+        streak: Number((profileRes.data as { current_streak?: number | null } | null)?.current_streak ?? 0)
+      });
+    } catch {
+      setStats({ workouts: 0, xp: 0, streak: 0 });
+    }
+  }
+
+  async function saveAnswersAndCalibrate() {
     const answers: SportAnswers = {
       sport: selected,
       sport_level: level,
@@ -148,23 +218,34 @@ export default function SportsModeScreen() {
     setIsCalibrating(true);
   }
 
-  function nextStep() {
+  function advance() {
+    if (!isContinueEnabled) return;
     if (step === 0) {
       setPosition("");
+      setCustomSport("");
     }
-    if (step < 3) {
+    if (step < TOTAL_STEPS - 1) {
       setStep((current) => current + 1);
       return;
     }
-    void saveAndCalibrate();
+    void saveAnswersAndCalibrate();
+  }
+
+  function startWorkout() {
+    router.push({
+      pathname: "/active-workout",
+      params: {
+        mode: selected,
+        programId,
+        programName: `${selectedSport.label} Athletic Session`
+      }
+    });
   }
 
   if (isCalibrating) {
     return (
       <AppLayout contentContainerStyle={styles.calibrationScreen}>
-        <View style={[styles.calibrationOrb, { shadowColor: selectedSport.tint }]}>
-          <Ionicons name={selectedSport.icon} size={42} color={selectedSport.tint} />
-        </View>
+        <Text style={styles.calibrationEmoji}>{selectedSport.emoji}</Text>
         <Text style={styles.aiTitle}>FITNEO AI</Text>
         <Text style={styles.aiSubtitle}>Sports Mode</Text>
         <View style={styles.calibrationCard}>
@@ -173,7 +254,7 @@ export default function SportsModeScreen() {
             return (
               <View key={item} style={styles.calibrationRow}>
                 <View style={[styles.stepDot, active && styles.stepDotActive]}>
-                  {active ? <Ionicons name="checkmark" size={10} color={colors.textPrimary} /> : null}
+                  {active ? <Ionicons name="checkmark" size={10} color="#FFFFFF" /> : null}
                 </View>
                 <Text style={[styles.stepText, active && styles.stepTextActive]}>{item}</Text>
               </View>
@@ -181,180 +262,269 @@ export default function SportsModeScreen() {
           })}
         </View>
         <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+          <View style={[styles.progressFill, { width: `${((calibrationIndex + 1) / calibrationSteps.length) * 100}%` }]} />
+        </View>
+      </AppLayout>
+    );
+  }
+
+  if (mode === "completion") {
+    return (
+      <AppLayout contentContainerStyle={styles.completionScreen}>
+        <Text style={styles.completionEmoji}>{selectedSport.emoji}</Text>
+        <Text style={styles.completionTitle}>You're all set</Text>
+        <Text style={styles.completionSubtitle}>{level} {selectedSport.label} Player</Text>
+        <View style={styles.answerSummaryGrid}>
+          <SummaryTile label="Sport" value={selectedSport.label} />
+          <SummaryTile label="Level" value={level} />
+          <SummaryTile label={needsDominantHand(selected) ? "Hand" : "Position"} value={finalPosition} />
+        </View>
+        <TouchableOpacity activeOpacity={0.86} style={styles.primaryButton} onPress={() => setMode("dashboard")}>
+          <Text style={styles.primaryButtonText}>Start Training</Text>
+          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+        </TouchableOpacity>
+      </AppLayout>
+    );
+  }
+
+  if (mode === "dashboard") {
+    return (
+      <AppLayout scroll contentContainerStyle={styles.dashboardScreen}>
+        <View style={styles.dashboardHeader}>
+          <View>
+            <Text style={styles.dashboardKicker}>{selectedSport.emoji} {selectedSport.label} · {level}</Text>
+            <Text style={styles.dashboardTitle}>Sports Mode</Text>
+            <Text style={styles.dashboardSubtitle}>{finalPosition}</Text>
+          </View>
+          <TouchableOpacity activeOpacity={0.82} style={styles.editButton} onPress={() => { setStep(0); setMode("onboarding"); }}>
+            <Ionicons name="create-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.editText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.statsRow}>
+          <StatTile value={String(stats.workouts)} label="Sport workouts" />
+          <StatTile value={`${stats.xp}`} label="Sport XP" />
+          <StatTile value={`${stats.streak}`} label="Streak" />
+        </View>
+
+        <View style={styles.programCard}>
+          <Text style={styles.sectionLabel}>Your Training Program</Text>
+          <View style={styles.programTopRow}>
+            <View style={[styles.programIcon, { backgroundColor: `${selectedSport.tint}22` }]}>
+              <Text style={styles.programEmoji}>{selectedSport.emoji}</Text>
+            </View>
+            <View style={styles.programTextBlock}>
+              <Text style={styles.programTitle}>{program?.name ?? `${selectedSport.label} Athletic Session`}</Text>
+              <Text style={styles.programDescription}>{program?.description ?? "Sport-specific speed, power, stamina, and movement quality."}</Text>
+            </View>
+          </View>
+          {program ? (
+            <Text style={styles.equipmentBadge}>{getEquipmentTierLabel(program.equipmentTier)}</Text>
+          ) : null}
+          <TouchableOpacity activeOpacity={0.86} style={styles.primaryButton} onPress={startWorkout}>
+            <Ionicons name="play" size={17} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>Start Workout</Text>
+          </TouchableOpacity>
         </View>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout scroll>
-      <View style={styles.segment}>
-        <TouchableOpacity style={styles.segmentInactive} onPress={() => router.replace("/(tabs)/workouts")}>
-          <Text style={styles.segmentInactiveText}>Normal</Text>
-        </TouchableOpacity>
-        <View style={styles.segmentActive}>
-          <Text style={styles.segmentActiveText}>Sports</Text>
-        </View>
+    <AppLayout scroll contentContainerStyle={styles.onboardingScreen}>
+      <View style={styles.topProgressRow}>
+        <Text style={styles.progressText}>Step {step + 1} of {TOTAL_STEPS}</Text>
+        <Text style={styles.largeStep}>{String(step + 1).padStart(2, "0")}</Text>
       </View>
-
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+        <View style={[styles.progressFill, { width: `${((step + 1) / TOTAL_STEPS) * 100}%` }]} />
       </View>
 
-      <Text style={styles.heading}>{step === 4 ? "Your Sports Plan" : "Sports Calibration"}</Text>
-      <Text style={styles.subheading}>
-        {step === 4 ? `${selected} · ${level} · ${frequency}` : `Question ${step + 1} of 4`}
-      </Text>
+      <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
+        {step === 0 ? (
+          <QuestionScreen question="Which sport do you play?">
+            <View style={styles.sportGrid}>
+              {sports.map((sport) => (
+                <TouchableOpacity
+                  activeOpacity={0.84}
+                  key={sport.name}
+                  onPress={() => setSelected(sport.name)}
+                  style={[styles.sportCard, selected === sport.name && styles.optionSelected]}
+                >
+                  {selected === sport.name ? (
+                    <View style={styles.checkBadge}><Ionicons name="checkmark" size={13} color="#FFFFFF" /></View>
+                  ) : null}
+                  <Text style={styles.sportEmoji}>{sport.emoji}</Text>
+                  <Text style={styles.sportName}>{sport.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </QuestionScreen>
+        ) : null}
 
-      {step === 0 ? (
-        <QuestionBlock title="Which sport do you play?">
-          <View style={styles.grid}>
-            {sports.map((sport) => (
-              <OptionCard
-                key={sport.name}
-                active={selected === sport.name}
-                icon={sport.icon}
-                label={sport.name}
-                tint={sport.tint}
-                onPress={() => setSelected(sport.name)}
-              />
+        {step === 1 ? (
+          <QuestionScreen question="What is your level?">
+            {levels.map((item) => (
+              <OptionRow key={item.title} active={level === item.title} title={item.title} description={item.description} onPress={() => setLevel(item.title)} />
             ))}
-          </View>
-        </QuestionBlock>
-      ) : null}
+          </QuestionScreen>
+        ) : null}
 
-      {step === 1 ? (
-        <QuestionBlock title="What is your level?">
-          {levels.map((item) => <SelectRow key={item} active={level === item} label={item} onPress={() => setLevel(item)} />)}
-        </QuestionBlock>
-      ) : null}
+        {step === 2 ? (
+          <QuestionScreen question="How often do you train?">
+            {frequencies.map((item) => (
+              <OptionRow key={item.title} active={frequency === item.title} title={item.title} description={item.description} onPress={() => setFrequency(item.title)} />
+            ))}
+          </QuestionScreen>
+        ) : null}
 
-      {step === 2 ? (
-        <QuestionBlock title="How often do you train for your sport?">
-          {frequencies.map((item) => <SelectRow key={item} active={frequency === item} label={item} onPress={() => setFrequency(item)} />)}
-        </QuestionBlock>
-      ) : null}
+        {step === 3 ? (
+          <QuestionScreen question={getPositionQuestion(selected)}>
+            {selected === "Other" ? (
+              <TextInput
+                placeholder="Example: Badminton, Martial Arts, Cycling..."
+                placeholderTextColor="#6B7280"
+                style={styles.input}
+                value={customSport}
+                onChangeText={setCustomSport}
+                underlineColorAndroid="transparent"
+              />
+            ) : (
+              (positionOptions.length > 0 ? positionOptions : ["General athlete"]).map((item) => (
+                <OptionRow key={item} active={(position || positionOptions[0]) === item} title={item} onPress={() => setPosition(item)} />
+              ))
+            )}
+          </QuestionScreen>
+        ) : null}
+      </Animated.View>
 
       {step === 3 ? (
-        <QuestionBlock title={getPositionQuestion(selected)}>
-          {selected === "Other" ? (
-            <TextInput
-              placeholder="Example: Badminton winger, martial arts, goalkeeper..."
-              placeholderTextColor={colors.textTertiary}
-              style={styles.input}
-              value={customSport}
-              onChangeText={setCustomSport}
-              underlineColorAndroid="transparent"
-            />
-          ) : (
-            (positionOptions.length > 0 ? positionOptions : ["General"]).map((item) => (
-              <SelectRow key={item} active={(position || positionOptions[0]) === item} label={item} onPress={() => setPosition(item)} />
-            ))
-          )}
-        </QuestionBlock>
+        <TouchableOpacity onPress={() => { setPosition("General athlete"); void saveAnswersAndCalibrate(); }}>
+          <Text style={styles.skipText}>Skip this question</Text>
+        </TouchableOpacity>
       ) : null}
 
-      {step === 4 ? (
-        <View style={styles.summaryCard}>
-          <View style={[styles.summaryOrb, { backgroundColor: `${selectedSport.tint}22` }]}>
-            <Ionicons name={selectedSport.icon} size={30} color={selectedSport.tint} />
-          </View>
-          <Text style={styles.summaryTitle}>{selected} Athletic Session</Text>
-          <Text style={styles.summaryCopy}>FITNEO will load drills for your sport, level, training frequency, and position.</Text>
-          <View style={styles.summaryTags}>
-            {[level, frequency, finalPosition].map((tag) => <Text key={tag} style={styles.summaryTag}>{tag}</Text>)}
-          </View>
-        </View>
-      ) : null}
-
-      <View style={styles.footerRow}>
-        {step > 0 && step < 4 ? (
-          <TouchableOpacity activeOpacity={0.82} style={styles.secondaryCta} onPress={() => setStep((current) => Math.max(0, current - 1))}>
-            <Text style={styles.secondaryCtaText}>Back</Text>
+      <View style={styles.onboardingFooter}>
+        {step > 0 ? (
+          <TouchableOpacity activeOpacity={0.82} style={styles.backButton} onPress={() => setStep((current) => Math.max(0, current - 1))}>
+            <Ionicons name="chevron-back" size={18} color="#9CA3AF" />
           </TouchableOpacity>
         ) : null}
-        {step === 4 ? (
-          <TouchableOpacity activeOpacity={0.82} style={styles.secondaryCta} onPress={() => setStep(0)}>
-            <Text style={styles.secondaryCtaText}>Edit answers</Text>
-          </TouchableOpacity>
-        ) : null}
-        <TouchableOpacity activeOpacity={0.86} style={styles.cta} onPress={step === 4 ? () => setIsCalibrating(true) : nextStep}>
-          <Ionicons name={step >= 3 ? "sparkles" : "arrow-forward"} size={18} color={colors.textPrimary} />
-          <Text style={styles.ctaText}>{step >= 3 ? `Calibrate ${selected}` : "Continue"}</Text>
+        <TouchableOpacity activeOpacity={0.86} disabled={!isContinueEnabled} style={[styles.continueButton, !isContinueEnabled && styles.continueDisabled]} onPress={advance}>
+          <Text style={styles.continueText}>{step === TOTAL_STEPS - 1 ? "Calibrate Plan" : "Continue"}</Text>
         </TouchableOpacity>
       </View>
     </AppLayout>
   );
 }
 
-function QuestionBlock({ children, title }: { children: React.ReactNode; title: string }) {
+function QuestionScreen({ children, question }: { children: ReactNode; question: string }) {
   return (
-    <View style={styles.questionCard}>
-      <Text style={styles.questionTitle}>{title}</Text>
-      {children}
+    <View style={styles.questionScreen}>
+      <Text style={styles.questionText}>{question}</Text>
+      <View style={styles.optionsWrap}>{children}</View>
     </View>
   );
 }
 
-function OptionCard({ active, icon, label, onPress, tint }: { active: boolean; icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; tint: string }) {
+function OptionRow({ active, description, onPress, title }: { active: boolean; description?: string; onPress: () => void; title: string }) {
   return (
-    <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={[styles.card, active && styles.cardActive]}>
-      <Ionicons name={icon} size={30} color={tint} />
-      <Text style={styles.cardTitle}>{label}</Text>
+    <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={[styles.optionRow, active && styles.optionSelected]}>
+      <View style={styles.optionTextBlock}>
+        <Text style={[styles.optionTitle, active && styles.optionTitleActive]}>{title}</Text>
+        {description ? <Text style={[styles.optionDescription, active && styles.optionDescriptionActive]}>{description}</Text> : null}
+      </View>
+      {active ? <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" /> : null}
     </TouchableOpacity>
   );
 }
 
-function SelectRow({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
+function SummaryTile({ label, value }: { label: string; value: string }) {
   return (
-    <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={[styles.selectRow, active && styles.selectRowActive]}>
-      <Text style={[styles.selectText, active && styles.selectTextActive]}>{label}</Text>
-      {active ? <Ionicons name="checkmark-circle" size={18} color={colors.accent} /> : null}
-    </TouchableOpacity>
+    <View style={styles.summaryTile}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryValue}>{value}</Text>
+    </View>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.statTile}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  segment: { backgroundColor: "rgba(255,255,255,0.06)", borderRadius: radii.round, flexDirection: "row", gap: 4, padding: 4 },
-  segmentActive: { alignItems: "center", backgroundColor: colors.coral, borderRadius: radii.round, flex: 1, justifyContent: "center", minHeight: 38 },
-  segmentInactive: { alignItems: "center", borderRadius: radii.round, flex: 1, justifyContent: "center", minHeight: 38 },
-  segmentActiveText: { color: colors.textPrimary, fontSize: 13, fontWeight: "900" },
-  segmentInactiveText: { color: colors.textSecondary, fontSize: 13, fontWeight: "900" },
-  heading: { color: colors.textPrimary, fontSize: 31, fontWeight: "900", letterSpacing: -1.1, marginTop: 8 },
-  subheading: { color: colors.textSecondary, fontSize: 14, marginTop: -6 },
-  questionCard: { backgroundColor: "rgba(255,255,255,0.045)", borderColor: "rgba(255,255,255,0.08)", borderRadius: 20, borderWidth: 1, gap: 12, padding: 14 },
-  questionTitle: { color: colors.textPrimary, fontSize: 19, fontWeight: "900" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  card: { alignItems: "center", backgroundColor: "#171923", borderColor: "rgba(255,255,255,0.07)", borderRadius: 17, borderWidth: 1, gap: 11, justifyContent: "center", minHeight: 104, padding: 12, width: "48%" },
-  cardActive: { borderColor: "rgba(0,163,255,0.7)", shadowColor: colors.accent, shadowOpacity: 0.25, shadowRadius: 14 },
-  cardTitle: { color: colors.textPrimary, fontSize: 12, fontWeight: "900", textAlign: "center" },
-  selectRow: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.055)", borderColor: "rgba(255,255,255,0.08)", borderRadius: 15, borderWidth: 1, flexDirection: "row", justifyContent: "space-between", minHeight: 50, paddingHorizontal: 14 },
-  selectRowActive: { backgroundColor: "rgba(0,163,255,0.14)", borderColor: "rgba(0,163,255,0.55)" },
-  selectText: { color: colors.textSecondary, fontSize: 14, fontWeight: "800" },
-  selectTextActive: { color: colors.textPrimary },
-  input: { backgroundColor: "#121214", borderColor: "rgba(0,163,255,0.32)", borderRadius: 15, borderWidth: 1, color: colors.textPrimary, fontSize: 14, minHeight: 52, paddingHorizontal: 14 },
-  summaryCard: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderColor: "rgba(0,163,255,0.20)", borderRadius: 22, borderWidth: 1, gap: 12, padding: 18 },
-  summaryOrb: { alignItems: "center", borderRadius: 32, height: 64, justifyContent: "center", width: 64 },
-  summaryTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: "900", textAlign: "center" },
-  summaryCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
-  summaryTags: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
-  summaryTag: { backgroundColor: "rgba(255,255,255,0.07)", borderColor: "rgba(255,255,255,0.10)", borderRadius: 999, borderWidth: 1, color: colors.textSecondary, fontSize: 10, fontWeight: "900", paddingHorizontal: 9, paddingVertical: 5 },
-  footerRow: { alignItems: "center", flexDirection: "row", gap: 10 },
-  secondaryCta: { alignItems: "center", borderColor: "rgba(255,255,255,0.12)", borderRadius: 16, borderWidth: 1, justifyContent: "center", minHeight: 54, paddingHorizontal: 16 },
-  secondaryCtaText: { color: colors.textSecondary, fontSize: 13, fontWeight: "900" },
-  cta: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 16, flex: 1, flexDirection: "row", gap: 8, justifyContent: "center", minHeight: 56 },
-  ctaText: { color: colors.textPrimary, fontSize: 15, fontWeight: "900" },
-  calibrationScreen: { alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 26 },
-  calibrationOrb: { alignItems: "center", backgroundColor: "rgba(0,217,178,0.10)", borderRadius: 60, height: 120, justifyContent: "center", shadowOpacity: 0.5, shadowRadius: 34, width: 120 },
-  aiTitle: { color: colors.textPrimary, fontSize: 19, fontWeight: "900", letterSpacing: 4, marginTop: 10 },
-  aiSubtitle: { color: colors.textSecondary, fontSize: 12, marginTop: -10 },
-  calibrationCard: { backgroundColor: "#1B1D28", borderColor: "rgba(255,255,255,0.08)", borderRadius: 18, borderWidth: 1, gap: 11, marginTop: 10, padding: 18, width: "100%" },
+  onboardingScreen: { backgroundColor: "#080808", gap: 16 },
+  topProgressRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  progressText: { color: "#9CA3AF", fontSize: 12, fontWeight: "800" },
+  largeStep: { color: "#4B5563", fontSize: 34, fontWeight: "900" },
+  progressTrack: { backgroundColor: "#1A1A1F", borderRadius: 999, height: 5, overflow: "hidden", width: "100%" },
+  progressFill: { backgroundColor: "#3B82F6", borderRadius: 999, height: 5 },
+  questionScreen: { gap: 20 },
+  questionText: { color: "#FFFFFF", fontSize: 28, fontWeight: "800", lineHeight: 35, paddingHorizontal: 8, paddingVertical: 14, textAlign: "center" },
+  optionsWrap: { gap: 10 },
+  sportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  sportCard: { alignItems: "center", aspectRatio: 1, backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, justifyContent: "center", position: "relative", width: "48%" },
+  sportEmoji: { fontSize: 36, marginBottom: 8 },
+  sportName: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", textAlign: "center" },
+  checkBadge: { alignItems: "center", backgroundColor: "#2563EB", borderRadius: 11, height: 22, justifyContent: "center", position: "absolute", right: 10, top: 10, width: 22 },
+  optionRow: { alignItems: "center", backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, flexDirection: "row", minHeight: 56, paddingHorizontal: 14 },
+  optionSelected: { backgroundColor: "#3B82F6", borderColor: "#3B82F6" },
+  optionTextBlock: { flex: 1, gap: 3 },
+  optionTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  optionTitleActive: { fontWeight: "900" },
+  optionDescription: { color: "#9CA3AF", fontSize: 12, fontWeight: "500" },
+  optionDescriptionActive: { color: "rgba(255,255,255,0.86)" },
+  input: { backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, color: "#FFFFFF", fontSize: 15, minHeight: 56, paddingHorizontal: 14 },
+  skipText: { color: "#9CA3AF", fontSize: 13, fontWeight: "800", textAlign: "center" },
+  onboardingFooter: { alignItems: "center", flexDirection: "row", gap: 10, marginTop: "auto" },
+  backButton: { alignItems: "center", backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 16, borderWidth: 1, height: 56, justifyContent: "center", width: 56 },
+  continueButton: { alignItems: "center", backgroundColor: "#3B82F6", borderRadius: 16, flex: 1, height: 56, justifyContent: "center" },
+  continueDisabled: { opacity: 0.45 },
+  continueText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
+  calibrationScreen: { alignItems: "center", backgroundColor: "#080808", justifyContent: "center", gap: 16, paddingHorizontal: 26 },
+  calibrationEmoji: { fontSize: 80, textShadowColor: "rgba(59,130,246,0.45)", textShadowRadius: 28 },
+  aiTitle: { color: "#FFFFFF", fontSize: 19, fontWeight: "900", letterSpacing: 4, marginTop: 8 },
+  aiSubtitle: { color: "#9CA3AF", fontSize: 12, marginTop: -10 },
+  calibrationCard: { backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 18, borderWidth: 1, gap: 11, marginTop: 10, padding: 18, width: "100%" },
   calibrationRow: { alignItems: "center", flexDirection: "row", gap: 10 },
-  stepDot: { alignItems: "center", borderColor: "rgba(255,255,255,0.35)", borderRadius: 8, borderWidth: 1, height: 16, justifyContent: "center", width: 16 },
-  stepDotActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  stepText: { color: colors.textTertiary, fontSize: 13, fontWeight: "700" },
-  stepTextActive: { color: colors.accent },
-  progressTrack: { backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, height: 5, marginTop: 8, overflow: "hidden", width: "100%" },
-  progressFill: { backgroundColor: colors.coral, borderRadius: 999, height: 5 }
+  stepDot: { alignItems: "center", borderColor: "#4B5563", borderRadius: 8, borderWidth: 1, height: 16, justifyContent: "center", width: 16 },
+  stepDotActive: { backgroundColor: "#3B82F6", borderColor: "#3B82F6" },
+  stepText: { color: "#9CA3AF", fontSize: 13, fontWeight: "700" },
+  stepTextActive: { color: "#3B82F6" },
+  completionScreen: { alignItems: "center", backgroundColor: "#080808", justifyContent: "center", gap: 18, paddingHorizontal: 22 },
+  completionEmoji: { fontSize: 80 },
+  completionTitle: { color: "#FFFFFF", fontSize: 36, fontWeight: "900", textAlign: "center" },
+  completionSubtitle: { color: "#3B82F6", fontSize: 16, fontWeight: "900", textAlign: "center" },
+  answerSummaryGrid: { gap: 10, width: "100%" },
+  summaryTile: { backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, padding: 14 },
+  summaryLabel: { color: "#9CA3AF", fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
+  summaryValue: { color: "#FFFFFF", fontSize: 16, fontWeight: "900", marginTop: 4 },
+  primaryButton: { alignItems: "center", backgroundColor: "#3B82F6", borderRadius: 16, flexDirection: "row", gap: 8, justifyContent: "center", minHeight: 56, paddingHorizontal: 18, width: "100%" },
+  primaryButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
+  dashboardScreen: { backgroundColor: "#080808", gap: 16 },
+  dashboardHeader: { alignItems: "flex-start", flexDirection: "row", justifyContent: "space-between", gap: 12 },
+  dashboardKicker: { color: "#3B82F6", fontSize: 12, fontWeight: "900" },
+  dashboardTitle: { color: "#FFFFFF", fontSize: 33, fontWeight: "900", letterSpacing: -1.2, marginTop: 4 },
+  dashboardSubtitle: { color: "#9CA3AF", fontSize: 14, marginTop: 2 },
+  editButton: { alignItems: "center", backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 15, borderWidth: 1, flexDirection: "row", gap: 6, paddingHorizontal: 12, paddingVertical: 10 },
+  editText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
+  statsRow: { flexDirection: "row", gap: 8 },
+  statTile: { alignItems: "center", backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, flex: 1, padding: 12 },
+  statValue: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
+  statLabel: { color: "#9CA3AF", fontSize: 10, fontWeight: "800", marginTop: 4, textAlign: "center" },
+  programCard: { backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 20, borderWidth: 1, gap: 14, padding: 16 },
+  sectionLabel: { color: "#3B82F6", fontSize: 11, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase" },
+  programTopRow: { alignItems: "center", flexDirection: "row", gap: 12 },
+  programIcon: { alignItems: "center", borderRadius: 22, height: 58, justifyContent: "center", width: 58 },
+  programEmoji: { fontSize: 30 },
+  programTextBlock: { flex: 1, gap: 4 },
+  programTitle: { color: "#FFFFFF", fontSize: 19, fontWeight: "900" },
+  programDescription: { color: "#9CA3AF", fontSize: 12, lineHeight: 18 },
+  equipmentBadge: { alignSelf: "flex-start", backgroundColor: "rgba(59,130,246,0.16)", borderColor: "rgba(59,130,246,0.35)", borderRadius: 999, borderWidth: 1, color: "#3B82F6", fontSize: 11, fontWeight: "900", overflow: "hidden", paddingHorizontal: 10, paddingVertical: 6 }
 });

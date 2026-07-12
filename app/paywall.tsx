@@ -62,7 +62,7 @@ export default function PaywallScreen() {
       const response = await startSubscriptionCheckout(tier, yearly ? "yearly" : "monthly");
       setStatus(
         response.platform === "web"
-          ? `Redirecting to secure ${tier.toUpperCase()} web checkout.`
+          ? response.message
           : `Native checkout completed. Active tier: ${response.activeTier}.`
       );
     } catch (err) {
