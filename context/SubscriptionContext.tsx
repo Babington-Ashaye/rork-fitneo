@@ -1,5 +1,5 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
-import { Linking, Platform } from "react-native";
+import { Platform } from "react-native";
 import type {
   CustomerInfo,
   PurchasesOfferings,
@@ -9,7 +9,21 @@ import type { ExerciseAccessPlan } from "@/lib/exercises";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 const REVENUECAT_API_KEY = "test_ZzlVNfzMbUjBXRMknqDjIEOaWQe";
-const PRODUCTION_CHECKOUT_URL = "https://checkout.fitneo.app";
+const WEB_CHECKOUT_URLS = {
+  pro: {
+    monthly: process.env.EXPO_PUBLIC_STRIPE_PRO_MONTHLY_CHECKOUT_URL?.trim(),
+    yearly: process.env.EXPO_PUBLIC_STRIPE_PRO_YEARLY_CHECKOUT_URL?.trim(),
+    default: process.env.EXPO_PUBLIC_STRIPE_PRO_CHECKOUT_URL?.trim()
+  },
+  elite: {
+    monthly: process.env.EXPO_PUBLIC_STRIPE_ELITE_MONTHLY_CHECKOUT_URL?.trim(),
+    yearly: process.env.EXPO_PUBLIC_STRIPE_ELITE_YEARLY_CHECKOUT_URL?.trim(),
+    default: process.env.EXPO_PUBLIC_STRIPE_ELITE_CHECKOUT_URL?.trim()
+  }
+} as const;
+const GENERIC_WEB_CHECKOUT_URL =
+  process.env.EXPO_PUBLIC_STRIPE_CHECKOUT_URL?.trim() ??
+  process.env.EXPO_PUBLIC_CHECKOUT_URL?.trim();
 
 let isRevenueCatConfigured = false;
 let revenueCatConfigurePromise: Promise<void> | null = null;
@@ -154,10 +168,44 @@ function getLocalActiveTier(profile: ProfileRow | null): RevenueCatActiveTier {
   return "None";
 }
 
+function assertResolvableCheckoutUrl(rawUrl: string | undefined): URL {
+  if (!rawUrl) {
+    throw new Error(
+      "Web checkout is not configured yet. Add a real Stripe Payment Link or Checkout URL to EXPO_PUBLIC_STRIPE_PRO_CHECKOUT_URL and EXPO_PUBLIC_STRIPE_ELITE_CHECKOUT_URL in Vercel, then redeploy."
+    );
+  }
+
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error("The configured checkout URL is invalid. It must be a full https:// URL.");
+  }
+
+  if (url.protocol !== "https:") {
+    throw new Error("The configured checkout URL must use https:// for secure payment.");
+  }
+
+  if (url.hostname === "checkout.fitneo.app" || url.hostname === "fitneo.app") {
+    throw new Error(
+      "The checkout URL points to a FITNEO placeholder domain that is not deployed. Use a real Stripe hosted checkout/payment link instead."
+    );
+  }
+
+  return url;
+}
+
 function getWebCheckoutUrl(tier: CheckoutTier, cadence?: BillingCadence): string {
-  const url = new URL(PRODUCTION_CHECKOUT_URL);
-  url.searchParams.set("plan", tier);
-  if (cadence) {
+  const configuredUrl =
+    (cadence ? WEB_CHECKOUT_URLS[tier][cadence] : undefined) ??
+    WEB_CHECKOUT_URLS[tier].default ??
+    GENERIC_WEB_CHECKOUT_URL;
+  const url = assertResolvableCheckoutUrl(configuredUrl);
+
+  if (configuredUrl === GENERIC_WEB_CHECKOUT_URL) {
+    url.searchParams.set("plan", tier);
+  }
+  if (cadence && !url.searchParams.has("billing")) {
     url.searchParams.set("billing", cadence);
   }
   return url.toString();
@@ -251,32 +299,19 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
       };
     }
 
-    try {
-      await configureRevenueCat();
-      const Purchases = await getNativePurchases();
-      const offerings = await Purchases.getOfferings();
-      const selectedPackage = findTierPackage(offerings, requestedTier, cadence);
-      const { customerInfo } = await Purchases.purchasePackage(selectedPackage);
+    await configureRevenueCat();
+    const Purchases = await getNativePurchases();
+    const offerings = await Purchases.getOfferings();
+    const selectedPackage = findTierPackage(offerings, requestedTier, cadence);
+    const { customerInfo } = await Purchases.purchasePackage(selectedPackage);
 
-      return {
-        platform: "native",
-        requestedTier,
-        activeTier: getRevenueCatTier(customerInfo),
-        activeEntitlements: customerInfo.entitlements.active as Record<string, unknown>,
-        message: `Completed ${requestedTier.toUpperCase()} native checkout.`
-      };
-    } catch (error) {
-      const checkoutUrl = getWebCheckoutUrl(requestedTier, cadence);
-      await Linking.openURL(checkoutUrl);
-      return {
-        platform: "web",
-        requestedTier,
-        checkoutUrl,
-        activeTier: getLocalActiveTier(profile),
-        activeEntitlements: {},
-        message: `Opened secure ${requestedTier.toUpperCase()} web checkout.`
-      };
-    }
+    return {
+      platform: "native",
+      requestedTier,
+      activeTier: getRevenueCatTier(customerInfo),
+      activeEntitlements: customerInfo.entitlements.active as Record<string, unknown>,
+      message: `Completed ${requestedTier.toUpperCase()} native checkout.`
+    };
   }
 
   useEffect(() => {
