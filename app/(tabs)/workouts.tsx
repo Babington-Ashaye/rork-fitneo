@@ -1,47 +1,53 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
-import { Chip, EmptySpacer, ErrorState, IconBubble, MetaItem, ScreenTitle, SkeletonBlock, TouchableCard } from "@/components/ScreenKit";
-import { fetchWorkoutPrograms, WorkoutProgram } from "@/lib/api";
-import { getEquipmentTierShortLabel, getWorkoutProgramExercises } from "@/lib/exercises";
+import { Chip, EmptySpacer, IconBubble, MetaItem, ScreenTitle, TouchableCard } from "@/components/ScreenKit";
+import {
+  getEquipmentTierBadgeColor,
+  getEquipmentTierLabel,
+  getWorkoutProgramExercises,
+  workoutPrograms
+} from "@/lib/exercises";
+import type { WorkoutProgram } from "@/lib/exercises";
 import { colors, radii } from "@/lib/theme";
-import { useSubscription } from "@/context/SubscriptionContext";
 
 const filters = ["All", "Strength", "Conditioning", "Mobility", "Core"];
+const equipmentOrder: Record<WorkoutProgram["equipmentTier"], number> = { none: 0, few: 1, full: 2 };
+const difficultyDots: Record<WorkoutProgram["difficulty"], number> = { Beginner: 1, Intermediate: 2, Advanced: 3 };
 
 export default function WorkoutsScreen() {
-  const { isPremium } = useSubscription();
-  const [programs, setPrograms] = useState<WorkoutProgram[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  async function loadPrograms() {
-    setError(null);
-    setIsLoading(true);
-    try {
-      setPrograms(await fetchWorkoutPrograms());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load workout programs.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void loadPrograms();
-  }, []);
 
   const visiblePrograms = useMemo(() => {
-    return programs.filter((program) => {
+    return workoutPrograms.filter((program) => {
       const matchesFilter = filter === "All" || program.category.toLowerCase().includes(filter.toLowerCase());
-      const matchesQuery = program.name.toLowerCase().includes(query.toLowerCase()) || program.category.toLowerCase().includes(query.toLowerCase());
+      const cleanQuery = query.toLowerCase();
+      const matchesQuery =
+        program.name.toLowerCase().includes(cleanQuery) ||
+        program.category.toLowerCase().includes(cleanQuery) ||
+        program.description.toLowerCase().includes(cleanQuery);
       return matchesFilter && matchesQuery;
     });
-  }, [filter, programs, query]);
+  }, [filter, query]);
+
+  const groupedPrograms = useMemo(() => {
+    const groups = visiblePrograms.reduce<Array<{ name: string; programs: WorkoutProgram[] }>>((acc, program) => {
+      const existing = acc.find((group) => group.name === program.name);
+      if (existing) {
+        existing.programs.push(program);
+      } else {
+        acc.push({ name: program.name, programs: [program] });
+      }
+      return acc;
+    }, []);
+    return groups.map((group) => ({
+      ...group,
+      programs: [...group.programs].sort((a, b) => equipmentOrder[a.equipmentTier] - equipmentOrder[b.equipmentTier])
+    }));
+  }, [visiblePrograms]);
 
   return (
     <AppLayout scroll>
@@ -78,64 +84,56 @@ export default function WorkoutsScreen() {
         ))}
       </ScrollView>
 
-      {isLoading ? (
-        <View style={styles.list}>
-          <SkeletonBlock height={132} radius={16} />
-          <SkeletonBlock height={132} radius={16} />
-          <SkeletonBlock height={132} radius={16} />
-        </View>
-      ) : null}
-      {error ? <ErrorState message={error} onRetry={loadPrograms} /> : null}
-
-      {!isLoading && !error ? (
-        <View style={styles.list}>
-          {visiblePrograms.map((program) => (
-            <WorkoutCard key={program.id} program={program} canAccess={isPremium || !program.isPremium} />
-          ))}
-          {visiblePrograms.length === 0 ? <Text style={styles.emptyText}>No programs match that filter.</Text> : null}
-        </View>
-      ) : null}
+      <View style={styles.list}>
+        {groupedPrograms.map((group) => (
+          <View key={group.name} style={group.programs.length > 1 ? styles.programPair : undefined}>
+            {group.programs.length > 1 ? <Text style={styles.pairLabel}>{group.name} options</Text> : null}
+            {group.programs.map((program) => (
+              <WorkoutCard key={program.id} program={program} isPaired={group.programs.length > 1} />
+            ))}
+          </View>
+        ))}
+        {visiblePrograms.length === 0 ? <Text style={styles.emptyText}>No programs match that filter.</Text> : null}
+      </View>
 
       <EmptySpacer />
     </AppLayout>
   );
 }
 
-function WorkoutCard({ canAccess, program }: { canAccess: boolean; program: WorkoutProgram }) {
+function WorkoutCard({ isPaired, program }: { isPaired: boolean; program: WorkoutProgram }) {
   const tint = program.category.toLowerCase().includes("conditioning") ? colors.coral : program.category.toLowerCase().includes("mobility") ? colors.teal : colors.accent;
   const icon: keyof typeof Ionicons.glyphMap = program.category.toLowerCase().includes("mobility") ? "body" : program.category.toLowerCase().includes("conditioning") ? "flash" : "barbell";
-  const equipmentLabels = Array.from(new Set(
-    getWorkoutProgramExercises(program.id, "free").map((exercise) => getEquipmentTierShortLabel(exercise.equipmentTier))
-  ));
+  const exercises = getWorkoutProgramExercises(program.id);
+  const badgeColor = getEquipmentTierBadgeColor(program.equipmentTier);
+  const tierVariant = program.equipmentTier === "none" ? "Home version" : program.equipmentTier === "few" ? "Home gear version" : "Gym version";
 
   return (
     <TouchableCard
       radius={radii.xl}
-      style={styles.workoutCard}
-      onPress={() => router.push(canAccess
-        ? { pathname: "/active-workout", params: { programId: program.id, programName: program.name } }
-        : "/paywall")}
+      style={[styles.workoutCard, isPaired && styles.pairedCard]}
+      onPress={() => router.push({ pathname: "/active-workout", params: { programId: program.id, programName: program.name } })}
     >
       <View style={styles.row}>
         <IconBubble icon={icon} tint={tint} shape="rounded" size={48} />
         <View style={styles.workoutTitleBlock}>
           <Text style={styles.workoutName}>{program.name}</Text>
-          <Text style={[styles.category, { color: tint }]}>{program.category}</Text>
+          <Text style={[styles.category, { color: tint }]}>{program.category} · {tierVariant}</Text>
         </View>
-        <Ionicons name={canAccess ? "chevron-forward" : "lock-closed"} size={16} color={canAccess ? colors.textTertiary : colors.gold} />
+        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
       </View>
-      <Text style={styles.description} numberOfLines={2}>Balanced programming with progressions, rest timing, and FITNEO XP rewards.</Text>
+      <Text style={styles.description} numberOfLines={3}>{program.description}</Text>
       <View style={styles.equipmentRow}>
-        {equipmentLabels.map((label) => (
-          <Text key={label} style={[styles.equipmentPill, label === "0 EQ" && styles.noEquipmentPill]}>{label}</Text>
-        ))}
+        <Text style={[styles.equipmentPill, { backgroundColor: `${badgeColor}22`, borderColor: `${badgeColor}66`, color: badgeColor }]}>
+          {getEquipmentTierLabel(program.equipmentTier)}
+        </Text>
       </View>
       <View style={styles.metaFooter}>
         <MetaItem icon="time" text={`${program.durationMinutes}m`} />
-        <MetaItem icon="flame" text={String(program.calories)} />
-        <MetaItem icon="layers" text={`${program.exercises} ex`} />
+        <MetaItem icon="layers" text={`${exercises.length || program.exerciseIds.length} ex`} />
+        <MetaItem icon="bar-chart" text={program.difficulty} />
         <View style={styles.dots}>
-          {[1, 2, 3].map((dot) => <View key={dot} style={[styles.dot, { backgroundColor: dot <= program.difficulty ? colors.accent : "rgba(255,255,255,0.15)" }]} />)}
+          {[1, 2, 3].map((dot) => <View key={dot} style={[styles.dot, { backgroundColor: dot <= difficultyDots[program.difficulty] ? colors.accent : "rgba(255,255,255,0.15)" }]} />)}
         </View>
       </View>
     </TouchableCard>
@@ -209,9 +207,28 @@ const styles = StyleSheet.create({
   list: {
     gap: 16
   },
+  programPair: {
+    backgroundColor: "rgba(255,255,255,0.025)",
+    borderColor: "rgba(255,255,255,0.07)",
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 10,
+    padding: 8
+  },
+  pairLabel: {
+    color: colors.textTertiary,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+    paddingHorizontal: 8,
+    textTransform: "uppercase"
+  },
   workoutCard: {
     gap: 14,
     padding: 18
+  },
+  pairedCard: {
+    backgroundColor: "rgba(255,255,255,0.04)"
   },
   row: {
     alignItems: "center",
