@@ -6,8 +6,9 @@ import { AppLayout } from "@/components/AppLayout";
 import { Chip, EmptySpacer, IconBubble, MetaItem, ScreenTitle, TouchableCard } from "@/components/ScreenKit";
 import {
   getEquipmentTierBadgeColor,
-  getEquipmentTierLabel,
+  getCleanEquipmentTierLabel,
   getWorkoutProgramExercises,
+  getWorkoutTrainingFrequency,
   workoutPrograms
 } from "@/lib/exercises";
 import type { WorkoutProgram } from "@/lib/exercises";
@@ -107,6 +108,7 @@ function WorkoutCard({ isPaired, program }: { isPaired: boolean; program: Workou
   const exercises = getWorkoutProgramExercises(program.id);
   const badgeColor = getEquipmentTierBadgeColor(program.equipmentTier);
   const tierVariant = program.equipmentTier === "none" ? "Home version" : program.equipmentTier === "few" ? "Home gear version" : "Gym version";
+  const frequency = getWorkoutTrainingFrequency(program.id);
 
   return (
     <TouchableCard
@@ -123,9 +125,13 @@ function WorkoutCard({ isPaired, program }: { isPaired: boolean; program: Workou
         <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
       </View>
       <Text style={styles.description} numberOfLines={3}>{program.description}</Text>
+      <View style={styles.frequencyPill}>
+        <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
+        <Text style={styles.frequencyText}>{frequency}</Text>
+      </View>
       <View style={styles.equipmentRow}>
         <Text style={[styles.equipmentPill, { backgroundColor: `${badgeColor}22`, borderColor: `${badgeColor}66`, color: badgeColor }]}>
-          {getEquipmentTierLabel(program.equipmentTier)}
+          {getCleanEquipmentTierLabel(program.equipmentTier)}
         </Text>
       </View>
       <View style={styles.metaFooter}>
@@ -257,6 +263,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 7
+  },
+  frequencyPill: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(148,163,184,0.10)",
+    borderColor: "rgba(148,163,184,0.18)",
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5
+  },
+  frequencyText: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: "800"
   },
   equipmentPill: {
     backgroundColor: "rgba(255,199,51,0.12)",

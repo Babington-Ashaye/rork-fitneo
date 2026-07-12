@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ErrorState, GlassCard, LoadingState } from "@/components/ScreenKit";
 import { useSubscription } from "@/context/SubscriptionContext";
 import { completeWorkoutSession } from "@/lib/api";
-import { getEquipmentTierLabel, getWorkoutProgramExercises } from "@/lib/exercises";
+import { getCleanEquipmentTierLabel, getWorkoutProgramExercises, getWorkoutTrainingFrequency } from "@/lib/exercises";
 import { colors } from "@/lib/theme";
 
 type WorkoutPhase = "exercise" | "rest";
@@ -32,6 +32,7 @@ export default function ActiveWorkoutScreen() {
   const programName = typeof params.programName === "string" ? params.programName : "Workout Session";
   const programId = typeof params.programId === "string" ? params.programId : undefined;
   const exercises = useMemo(() => getWorkoutProgramExercises(programId, userPlan), [programId, userPlan]);
+  const trainingFrequency = useMemo(() => getWorkoutTrainingFrequency(programId), [programId]);
   const currentExerciseIndex = exercises.length > 0 ? Math.min(exerciseIndex, exercises.length - 1) : 0;
   const exercise = exercises[currentExerciseIndex];
   const timedSeconds = useMemo(() => exercise ? parseTimedDuration(exercise.reps) : null, [exercise]);
@@ -248,12 +249,17 @@ export default function ActiveWorkoutScreen() {
                 <View style={styles.pillRow}>
                   <Text style={styles.muscle}>{exercise.muscleGroup.toUpperCase()}</Text>
                   <Text style={[styles.equipmentPill, exercise.equipmentTier === "none" && styles.noEquipmentPill]}>
-                    {getEquipmentTierLabel(exercise.equipmentTier)}
+                    {getCleanEquipmentTierLabel(exercise.equipmentTier)}
                   </Text>
                 </View>
                 <Text style={styles.exercise}>{exercise.name}</Text>
               </View>
               <Text style={styles.exerciseCount}>{currentExerciseIndex + 1}/{exercises.length}</Text>
+            </View>
+
+            <View style={styles.frequencyPill}>
+              <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
+              <Text style={styles.frequencyText}>{trainingFrequency}</Text>
             </View>
 
             <View style={styles.setMetrics}>
@@ -359,6 +365,8 @@ const styles = StyleSheet.create({
   muscle: { color: colors.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1.4 },
   equipmentPill: { backgroundColor: "rgba(255,199,51,0.12)", borderColor: "rgba(255,199,51,0.28)", borderRadius: 999, borderWidth: 1, color: colors.gold, fontSize: 8, fontWeight: "900", letterSpacing: 0.7, paddingHorizontal: 7, paddingVertical: 3, textTransform: "uppercase" },
   noEquipmentPill: { backgroundColor: "rgba(0,217,178,0.12)", borderColor: "rgba(0,217,178,0.30)", color: colors.teal },
+  frequencyPill: { alignItems: "center", alignSelf: "flex-start", backgroundColor: "rgba(148,163,184,0.10)", borderColor: "rgba(148,163,184,0.18)", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 5, paddingHorizontal: 9, paddingVertical: 5 },
+  frequencyText: { color: colors.textSecondary, fontSize: 10, fontWeight: "800" },
   exercise: { color: colors.textPrimary, fontSize: 30, fontWeight: "900", marginTop: 2 },
   setMetrics: { flexDirection: "row", gap: 12, justifyContent: "center" },
   metric: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 18, flex: 1, justifyContent: "center", minHeight: 82, padding: 10 },

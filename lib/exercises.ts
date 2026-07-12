@@ -675,6 +675,27 @@ const equipmentTierOverrides: Partial<Record<string, ExerciseEquipmentTier>> = {
   arnold_press: "few",
 };
 
+const exerciseGifOverrides: Partial<Record<string, string>> = {
+  dead_bug: "0276-iny3m5y.gif",
+  mountain_climbers: "0630-RJgzwny.gif",
+  russian_twists: "0687-XVDdcoj.gif",
+  bicycle_crunches: "0003-1ZFqTDN.gif",
+  leg_raises: "0865-9IxJdtC.gif",
+  tricep_dips: "0814-X6C6i5Y.gif",
+  sprint_intervals: "0685-oLrKqDH.gif",
+  push_ups: "0662-I4hDWkc.gif",
+  diamond_push_ups: "0283-soIB2rj.gif",
+  decline_push_ups: "0279-i5cEhka.gif",
+  wide_push_ups: "3294-A9qxk2F.gif",
+  pike_push_ups: "1363-JbC2iaV.gif",
+  romanian_deadlift: "1459-rR0LJzx.gif",
+  bird_dogs: "1512-qBcKorM.gif"
+};
+
+function getExerciseGif(id: string, fallbackGif: string) {
+  return exerciseGifOverrides[id] ?? fallbackGif;
+}
+
 function inferEquipmentTier(id: string): ExerciseEquipmentTier {
   const override = equipmentTierOverrides[id];
   if (override) return override;
@@ -697,7 +718,7 @@ export const exerciseCatalog: Exercise[] = exerciseRows.map(
     restSeconds,
     instructions,
     tip,
-    animationUrl: `${videoBase}/${gif}`,
+    animationUrl: `${videoBase}/${getExerciseGif(id, gif)}`,
   })
 );
 
@@ -982,6 +1003,132 @@ export const workoutPrograms: WorkoutProgram[] = [
       "pigeon_pose", "hamstring_stretch", "hip_flexor_stretch", "dead_bug"
     ],
   },
+  {
+    id: "sport-football",
+    name: "Football Athletic Session",
+    category: "Sports",
+    description: "Explosive sprinting, agility, lower-body power, core stability, and endurance for football and soccer performance.",
+    equipmentTier: "none",
+    difficulty: "Advanced",
+    durationMinutes: 45,
+    exerciseIds: [
+      "sprint_intervals", "shuttle_runs", "jump_lunges", "high_knees",
+      "bear_crawl", "bulgarian_split_squat", "single_leg_glute_bridge", "plank",
+      "russian_twists", "calf_raises", "agility_ladder", "tuck_jumps"
+    ],
+  },
+  {
+    id: "sport-basketball",
+    name: "Basketball Athletic Session",
+    category: "Sports",
+    description: "Vertical jump, lateral movement, upper body strength, core control, and court endurance for basketball.",
+    equipmentTier: "few",
+    difficulty: "Advanced",
+    durationMinutes: 45,
+    exerciseIds: [
+      "box_jumps", "tuck_jumps", "lateral_raises", "sprint_intervals",
+      "jump_lunges", "plank", "mountain_climbers", "dumbbell_shoulder_press",
+      "pull_ups", "calf_raises", "agility_ladder", "jump_rope"
+    ],
+  },
+  {
+    id: "sport-rugby",
+    name: "Rugby Athletic Session",
+    category: "Sports",
+    description: "Full-body strength, power, collision resistance, and repeat-effort endurance for rugby.",
+    equipmentTier: "full",
+    difficulty: "Advanced",
+    durationMinutes: 55,
+    exerciseIds: [
+      "barbell_squat", "deadlift", "bench_press", "bent_over_rows",
+      "farmer_carries", "sled_push", "burpees", "sprint_intervals",
+      "plank", "medicine_ball_slams", "pull_ups", "overhead_press"
+    ],
+  },
+  {
+    id: "sport-boxing",
+    name: "Boxing Athletic Session",
+    category: "Sports",
+    description: "Upper-body power, core rotation, footwork, and conditioning for boxing.",
+    equipmentTier: "none",
+    difficulty: "Intermediate",
+    durationMinutes: 42,
+    exerciseIds: [
+      "shadow_boxing", "burpees", "jump_rope", "mountain_climbers",
+      "russian_twists", "plank", "push_ups", "tricep_dips",
+      "high_knees", "bear_crawl", "medicine_ball_slams", "bicycle_crunches"
+    ],
+  },
+  {
+    id: "sport-tennis",
+    name: "Tennis Athletic Session",
+    category: "Sports",
+    description: "Rotational power, lateral movement, shoulder stability, and endurance for tennis.",
+    equipmentTier: "few",
+    difficulty: "Intermediate",
+    durationMinutes: 42,
+    exerciseIds: [
+      "lateral_raises", "russian_twists", "agility_ladder", "sprint_intervals",
+      "dumbbell_shoulder_press", "plank", "side_plank", "jump_lunges",
+      "band_pull_aparts", "shuttle_runs", "high_knees", "face_pulls"
+    ],
+  },
+  {
+    id: "sport-running",
+    name: "Running Athletic Session",
+    category: "Sports",
+    description: "Leg strength, hip stability, core control, and injury prevention for runners.",
+    equipmentTier: "none",
+    difficulty: "Intermediate",
+    durationMinutes: 40,
+    exerciseIds: [
+      "romanian_deadlift", "single_leg_glute_bridge", "calf_raises", "hip_flexor_stretch",
+      "hamstring_stretch", "dead_bug", "plank", "step_ups",
+      "lunges", "mountain_climbers", "bird_dogs", "glute_bridges"
+    ],
+  },
+  {
+    id: "sport-swimming",
+    name: "Swimming Athletic Session",
+    category: "Sports",
+    description: "Shoulder strength, lat development, core stiffness, and mobility for swimming.",
+    equipmentTier: "few",
+    difficulty: "Intermediate",
+    durationMinutes: 42,
+    exerciseIds: [
+      "pull_ups", "lat_pulldown", "seated_cable_row", "face_pulls",
+      "band_pull_aparts", "cobra_stretch", "downward_dog", "plank",
+      "dead_bug", "overhead_press", "resistance_band_row", "cat_cow"
+    ],
+  },
+  {
+    id: "sport-cricket",
+    name: "Cricket Athletic Session",
+    category: "Sports",
+    description: "Rotational power, shoulder strength, leg endurance, and core control for cricket.",
+    equipmentTier: "few",
+    difficulty: "Intermediate",
+    durationMinutes: 45,
+    exerciseIds: [
+      "russian_twists", "medicine_ball_slams", "overhead_press", "lunges",
+      "romanian_deadlift", "plank", "side_plank", "dumbbell_row",
+      "sprint_intervals", "calf_raises", "bent_over_rows", "hip_flexor_stretch"
+    ],
+  },
+  {
+    id: "sport-volleyball",
+    name: "Volleyball Athletic Session",
+    category: "Sports",
+    description: "Vertical jump, shoulder stability, core control, and lateral speed for volleyball.",
+    equipmentTier: "few",
+    difficulty: "Intermediate",
+    durationMinutes: 44,
+    exerciseIds: [
+      "box_jumps", "tuck_jumps", "dumbbell_shoulder_press", "lateral_raises",
+      "plank", "side_plank", "agility_ladder", "calf_raises",
+      "jump_lunges", "band_pull_aparts", "face_pulls", "jump_rope"
+    ],
+  },
 ];
 
 // ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
@@ -1002,10 +1149,44 @@ export function getEquipmentTierShortLabel(tier: ExerciseEquipmentTier) {
   return "GYM";
 }
 
+export function getCleanEquipmentTierLabel(tier: ExerciseEquipmentTier) {
+  if (tier === "none") return "Home · No Equipment";
+  if (tier === "few") return "Home · Some Gear";
+  return "Gym · Equipment Required";
+}
+
 export function getEquipmentTierBadgeColor(tier: ExerciseEquipmentTier) {
   if (tier === "none") return "#16A34A"; // green
   if (tier === "few") return "#D97706"; // amber
   return "#2563EB";                     // blue
+}
+
+const workoutTrainingFrequency: Record<string, string> = {
+  "full-body-beginner-home": "3x per week",
+  "full-body-beginner-gym": "3x per week",
+  "upper-lower-split-home": "4x per week",
+  "upper-lower-split-gym": "4x per week",
+  "push-pull-legs-home": "5-6x per week",
+  "push-pull-legs-gym": "5-6x per week",
+  "hiit-burn-home": "2-3x per week",
+  "core-control-home": "3x per week",
+  "core-control-gym": "3x per week",
+  "home-no-equipment": "3x per week",
+  "mobility-reset": "Daily or on rest days",
+  "athletic-conditioning-home": "3x per week",
+  "athletic-conditioning-gym": "3x per week",
+  "leg-power-home": "2x per week",
+  "leg-power-gym": "2x per week",
+  "upper-body-pump-home": "3x per week",
+  "upper-body-pump-gym": "3x per week",
+  "fat-loss-circuit": "3-4x per week",
+  "recovery-flow": "Daily or on rest days"
+};
+
+export function getWorkoutTrainingFrequency(programId: string | undefined) {
+  if (!programId) return "3x per week";
+  if (programId.startsWith("sport-")) return "Match your sport schedule";
+  return workoutTrainingFrequency[programId] ?? "3x per week";
 }
 
 export function getWorkoutProgramExercises(

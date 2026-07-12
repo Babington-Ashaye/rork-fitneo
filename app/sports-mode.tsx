@@ -8,14 +8,15 @@ import { colors, radii } from "@/lib/theme";
 type EquipmentChoice = "none" | "home";
 
 const sports = [
-  { name: "Soccer", icon: "football" as const, tint: "#22C55E" },
-  { name: "Basketball", icon: "basketball" as const, tint: "#F59E0B" },
-  { name: "American Football", icon: "american-football" as const, tint: "#A855F7" },
-  { name: "Rugby", icon: "ellipse-outline" as const, tint: "#F43F5E" },
-  { name: "Tennis", icon: "tennisball" as const, tint: "#84CC16" },
-  { name: "Boxing", icon: "accessibility" as const, tint: "#F97316" },
-  { name: "Swimming", icon: "water" as const, tint: "#06B6D4" },
-  { name: "Athletics & Track", icon: "walk" as const, tint: "#3B82F6" }
+  { name: "Football (Soccer)", programId: "sport-football", icon: "football" as const, tint: "#22C55E" },
+  { name: "Basketball", programId: "sport-basketball", icon: "basketball" as const, tint: "#F59E0B" },
+  { name: "Rugby", programId: "sport-rugby", icon: "ellipse-outline" as const, tint: "#F43F5E" },
+  { name: "Boxing", programId: "sport-boxing", icon: "accessibility" as const, tint: "#F97316" },
+  { name: "Tennis", programId: "sport-tennis", icon: "tennisball" as const, tint: "#84CC16" },
+  { name: "Running", programId: "sport-running", icon: "walk" as const, tint: "#3B82F6" },
+  { name: "Swimming", programId: "sport-swimming", icon: "water" as const, tint: "#06B6D4" },
+  { name: "Cricket", programId: "sport-cricket", icon: "baseball" as const, tint: "#38BDF8" },
+  { name: "Volleyball", programId: "sport-volleyball", icon: "radio-button-off" as const, tint: "#FB7185" }
 ];
 
 const calibrationSteps = [
@@ -45,7 +46,7 @@ export default function SportsModeScreen() {
               pathname: "/active-workout",
               params: {
                 mode: selected,
-                programId: equipment === "none" ? "sports-no-equipment" : "sports-home-gear",
+                programId: selectedSport.programId,
                 programName: `${selected} Athletic Session`
               }
             });
