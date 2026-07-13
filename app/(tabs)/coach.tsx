@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { SkeletonBlock } from "@/components/ScreenKit";
+import { useAuth } from "@/context/AuthContext";
 import {
   ChatMessageRecord,
   ChatSessionSummary,
@@ -15,6 +16,7 @@ import {
   updateChatSessionTitle
 } from "@/lib/api";
 import { askFitneoCoachWithRetry } from "@/lib/edgeFunctions";
+import { generatePersonalizedPlan } from "@/lib/generateAiPlan";
 import { colors, radii } from "@/lib/theme";
 
 const suggestions = ["Build my weekly plan", "Generate a HIIT workout", "Review my recovery", "Tune my calories"];
@@ -57,6 +59,7 @@ async function saveLocalCoachSnapshot(snapshot: LocalCoachSnapshot): Promise<voi
 }
 
 export default function CoachScreen() {
+  const { user } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [sessions, setSessions] = useState<ChatSessionSummary[]>(coachMemory.sessions);
   const [activeSession, setActiveSession] = useState<ChatSessionSummary | null>(coachMemory.activeSession);
@@ -128,6 +131,7 @@ export default function CoachScreen() {
       if (firstAi) return formatCoachMessage(firstAi).slice(0, 58);
       if (messages.length === 0) return "New conversation";
     }
+    if (session.preview) return session.preview;
     return session.title && session.title !== "New Chat" ? "Saved coaching thread" : "New conversation";
   }
 
@@ -300,6 +304,11 @@ export default function CoachScreen() {
         await saveChatMessage(session.id, "assistant", response.data.message);
       } catch {
         // The answer remains available in-memory when history sync is unavailable.
+      }
+      if (user?.id && shouldGenerateAppPlan(cleanPrompt)) {
+        void generatePersonalizedPlan(user.id)
+          .then(() => setSaveStatus("Your AI training plan has been generated and saved to My Plan."))
+          .catch(() => setSaveStatus("FITNEO answered, but could not save a new app plan yet."));
       }
       setStreamingText("");
     } catch (err) {
@@ -527,6 +536,15 @@ function formatCoachMessage(value: string) {
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function shouldGenerateAppPlan(value: string) {
+  const normalized = value.toLowerCase();
+  return (
+    /(generate|build|create|make|calibrate).{0,28}(training|workout|weekly|4-week|sport)?.{0,18}plan/.test(normalized) ||
+    /plan.{0,24}(generate|build|create|make|calibrate)/.test(normalized) ||
+    normalized.includes("build my weekly plan")
+  );
 }
 
 const styles = StyleSheet.create({

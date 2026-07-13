@@ -86,6 +86,7 @@ export type ChatSessionSummary = {
   id: string;
   title: string;
   createdAt: string;
+  preview?: string;
 };
 
 export type ChatMessageRecord = {
@@ -660,11 +661,82 @@ export async function fetchChatSessions(): Promise<ChatSessionSummary[]> {
   if (error) {
     throw error;
   }
-  return (data ?? []).map((row) => ({
+  const sessions = (data ?? []).map((row) => ({
     id: String(row.id),
     title: String(row.title ?? "FITNEO Chat"),
     createdAt: String(row.created_at)
   }));
+
+  if (sessions.length === 0) return [];
+
+  const sessionIds = sessions.map((session) => session.id);
+  const { data: messages } = await supabase
+    .from("chat_messages")
+    .select("session_id,role,content,created_at")
+    .eq("user_id", userId)
+    .in("session_id", sessionIds)
+    .order("created_at", { ascending: true })
+    .limit(300);
+
+  const messagesBySession = new Map<string, Array<{ role: string; content: string; created_at: string }>>();
+  for (const row of messages ?? []) {
+    const sessionId = String(row.session_id);
+    const current = messagesBySession.get(sessionId) ?? [];
+    current.push({
+      role: String(row.role ?? ""),
+      content: String(row.content ?? ""),
+      created_at: String(row.created_at ?? "")
+    });
+    messagesBySession.set(sessionId, current);
+  }
+
+  const hydrated = sessions.map((session) => {
+    const sessionMessages = messagesBySession.get(session.id) ?? [];
+    const firstUser = sessionMessages.find((message) => message.role === "user")?.content.trim();
+    const firstAssistant = sessionMessages.find((message) => message.role === "assistant")?.content.trim();
+    const title = session.title && session.title !== "New Chat"
+      ? session.title
+      : firstUser
+        ? makeChatTitle(firstUser)
+        : "New Chat";
+    return {
+      ...session,
+      title,
+      preview: firstAssistant ? makeChatPreview(firstAssistant) : firstUser ? makeChatPreview(firstUser) : undefined
+    };
+  });
+
+  for (const session of hydrated) {
+    if (session.title !== "New Chat") {
+      const original = sessions.find((item) => item.id === session.id);
+      if (original?.title === "New Chat") {
+        void supabase
+          .from("chat_sessions")
+          .update({ title: session.title })
+          .eq("id", session.id)
+          .eq("user_id", userId);
+      }
+    }
+  }
+
+  return hydrated;
+}
+
+function makeChatTitle(value: string) {
+  const clean = value.replace(/\s+/g, " ").trim();
+  if (!clean) return "New Chat";
+  return clean.length > 34 ? `${clean.slice(0, 34)}…` : clean;
+}
+
+function makeChatPreview(value: string) {
+  return value
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 72);
 }
 
 export async function updateChatSessionTitle(sessionId: string, title: string): Promise<void> {
