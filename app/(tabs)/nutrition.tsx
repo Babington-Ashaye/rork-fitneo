@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, ImageBackground, Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, IconBubble, LoadingState, ScreenTitle, TouchableCard } from "@/components/ScreenKit";
@@ -112,7 +113,13 @@ export default function NutritionScreen() {
 
   return (
     <AppLayout scroll>
-      <ScreenTitle title={t("nutrition.title")} subtitle={data.dateLabel} />
+      <ImageBackground source={{ uri: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80" }} resizeMode="cover" style={styles.nutritionHero} imageStyle={styles.nutritionHeroImage}>
+        <LinearGradient colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.78)"]} style={styles.nutritionHeroOverlay}>
+          <Text style={styles.nutritionHeroKicker}>{data.dateLabel}</Text>
+          <Text style={styles.nutritionHeroTitle}>{t("nutrition.title")}</Text>
+          <Text style={styles.nutritionHeroCopy}>Fuel smarter. Scan meals, track macros, and stay locked in.</Text>
+        </LinearGradient>
+      </ImageBackground>
       <TouchableCard radius={radii.hero} style={styles.summaryCard} onPress={loadNutrition}>
         <View style={styles.macroRing}>
           <View style={styles.ringOuter}>
@@ -271,6 +278,38 @@ function MacroLegend({ name, grams, color }: { name: string; grams: string; colo
 }
 
 const styles = StyleSheet.create({
+  nutritionHero: {
+    borderRadius: radii.hero,
+    minHeight: 178,
+    overflow: "hidden"
+  },
+  nutritionHeroImage: {
+    borderRadius: radii.hero
+  },
+  nutritionHeroOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    gap: 6,
+    padding: 20
+  },
+  nutritionHeroKicker: {
+    color: colors.teal,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.4,
+    textTransform: "uppercase"
+  },
+  nutritionHeroTitle: {
+    color: colors.textPrimary,
+    fontSize: 30,
+    fontWeight: "900"
+  },
+  nutritionHeroCopy: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    maxWidth: 280
+  },
   summaryCard: {
     alignItems: "center",
     flexDirection: "row",

@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, IconBubble, MetaItem, PillButton, SectionHeader, SkeletonBlock, StatCard, TouchableCard, XPBar, withAlpha } from "@/components/ScreenKit";
@@ -171,6 +172,9 @@ export default function DashboardScreen() {
       ) : null}
 
       <TouchableCard radius={radii.hero} style={styles.heroCard} onPress={openTodayWorkout}>
+        <ImageBackground source={{ uri: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80" }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.heroImage}>
+          <LinearGradient colors={["rgba(0,0,0,0.10)", "rgba(0,0,0,0.84)"]} style={StyleSheet.absoluteFillObject} />
+        </ImageBackground>
         <View style={styles.heroTop}>
           <View style={styles.inline}>
             <Ionicons name="sparkles" size={13} color={colors.accent} />
@@ -371,6 +375,9 @@ const styles = StyleSheet.create({
     gap: 16,
     overflow: "hidden",
     padding: 22
+  },
+  heroImage: {
+    borderRadius: radii.hero
   },
   heroTop: {
     alignItems: "center",

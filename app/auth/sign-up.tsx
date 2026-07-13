@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthNotice } from "@/components/AuthNotice";
 import { useAuth } from "@/context/AuthContext";
@@ -58,6 +58,9 @@ export default function SignUpScreen() {
   return (
     <AppLayout style={styles.authViewport} contentContainerStyle={styles.screen}>
       <KeyboardAvoidingView behavior={Platform.OS === "web" ? undefined : Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboard}>
+        <ImageBackground source={{ uri: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80" }} resizeMode="cover" style={StyleSheet.absoluteFillObject}>
+          <View style={styles.authOverlay} />
+        </ImageBackground>
         <ScrollView
           bounces={false}
           keyboardShouldPersistTaps="handled"
@@ -215,6 +218,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     paddingHorizontal: 0
   },
+  authOverlay: {
+    backgroundColor: "rgba(0,0,0,0.75)",
+    flex: 1
+  },
   keyboard: {
     alignItems: "center",
     flex: 1,
@@ -228,13 +235,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignItems: "center",
     flexGrow: 1,
-    justifyContent: "center",
+    justifyContent: "flex-end",
     paddingHorizontal: 24,
-    paddingVertical: 8
+    paddingVertical: 18
   },
   logoBlock: {
     alignItems: "center",
     gap: 12,
+    marginBottom: 18,
     paddingTop: 0
   },
   logoGlow: {
@@ -264,9 +272,15 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   form: {
+    backgroundColor: "rgba(13,13,18,0.92)",
+    borderColor: "rgba(255,255,255,0.10)",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
     gap: 11,
     marginTop: 18,
     maxWidth: 400,
+    padding: 24,
     width: "100%"
   },
   title: {
@@ -281,7 +295,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: colors.textPrimary,
     fontSize: 16,
-    minHeight: 46,
+    minHeight: 52,
     paddingHorizontal: 16
   },
   inputFocused: {

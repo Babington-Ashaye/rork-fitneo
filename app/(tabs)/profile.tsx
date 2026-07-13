@@ -2,9 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { LegalSettingsMenu } from "@/components/LegalSettingsMenu";
@@ -182,6 +183,9 @@ export default function ProfileScreen() {
   return (
     <AppLayout scroll>
       <TouchableCard radius={radii.hero} style={styles.profileHeader} onPress={() => router.push({ pathname: "/onboarding", params: { mode: "edit" } })}>
+        <ImageBackground source={{ uri: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80" }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.profileHeroImage}>
+          <LinearGradient colors={["rgba(0,0,0,0.18)", "rgba(0,0,0,0.84)"]} style={StyleSheet.absoluteFillObject} />
+        </ImageBackground>
         <View style={styles.avatarGlow}>
           <TouchableOpacity activeOpacity={0.82} style={styles.avatar} onPress={pickProfilePhoto}>
             {avatarUri ? (
@@ -325,8 +329,13 @@ const styles = StyleSheet.create({
   profileHeader: {
     alignItems: "center",
     gap: 14,
+    minHeight: 250,
+    overflow: "hidden",
     paddingHorizontal: 20,
     paddingVertical: 24
+  },
+  profileHeroImage: {
+    borderRadius: radii.hero
   },
   avatarGlow: {
     alignItems: "center",

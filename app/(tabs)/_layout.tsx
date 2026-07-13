@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { Redirect, Tabs } from "expo-router";
 import { useEffect, useReducer } from "react";
@@ -16,7 +17,6 @@ const navIcons: Record<string, IconName> = {
   index: "home",
   workouts: "barbell",
   nutrition: "leaf",
-  daily: "calendar",
   progress: "bar-chart",
   profile: "person"
 };
@@ -25,7 +25,6 @@ const navLabelKeys: Record<string, string> = {
   index: "nav.home",
   workouts: "nav.workouts",
   nutrition: "nav.nutrition",
-  daily: "Daily",
   progress: "nav.progress",
   profile: "nav.profile"
 };
@@ -51,7 +50,7 @@ function FloatingTabBar({ state, navigation }: any) {
 
   return (
     <View pointerEvents="box-none" style={[styles.tabHost, { bottom: Math.max(8, insets.bottom + 2) }]}>
-      <View key={language} style={styles.floatingNav}>
+      <BlurView key={language} intensity={34} tint="dark" style={styles.floatingNav}>
         {visibleRoutes.map((route: any) => {
           const routeIndex = state.routes.findIndex((item: any) => item.key === route.key);
           const isActive = state.index === routeIndex;
@@ -75,7 +74,7 @@ function FloatingTabBar({ state, navigation }: any) {
             </Pressable>
           );
         })}
-      </View>
+      </BlurView>
     </View>
   );
 }
@@ -96,7 +95,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="workouts" options={{ title: "Workouts" }} />
       <Tabs.Screen name="nutrition" options={{ title: "Nutrition" }} />
-      <Tabs.Screen name="daily" options={{ title: "Daily" }} />
       <Tabs.Screen name="progress" options={{ title: "Progress" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
       <Tabs.Screen name="coach" options={{ href: null }} />
@@ -116,8 +114,8 @@ const styles = StyleSheet.create({
   },
   floatingNav: {
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.75)",
-    borderColor: "rgba(0,163,255,0.20)",
+    backgroundColor: "rgba(8,8,12,0.92)",
+    borderColor: "rgba(255,255,255,0.08)",
     borderRadius: 24,
     maxWidth: 420,
     width: "88%",
@@ -131,6 +129,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.52,
     shadowRadius: 22,
+    overflow: "hidden",
     ...(Platform.OS === "web"
       ? ({
           backdropFilter: "blur(12px)",
@@ -150,7 +149,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6
   },
   navItemActive: {
-    backgroundColor: "rgba(10,132,255,0.18)"
+    backgroundColor: "rgba(10,132,255,0.16)",
+    shadowColor: colors.accent,
+    shadowOpacity: 0.38,
+    shadowRadius: 10
   },
   navItemInactive: {
     backgroundColor: "transparent"

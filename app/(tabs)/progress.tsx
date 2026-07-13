@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -55,6 +56,33 @@ export default function ProgressScreen() {
   return (
     <AppLayout scroll>
       <ScreenTitle title={t("progress.title")} subtitle={t("progress.subtitle")} />
+      <TouchableCard radius={radii.xxl} style={styles.todayCard} onPress={loadProgress}>
+        <LinearGradient colors={["rgba(255,107,53,0.25)", "rgba(10,132,255,0.12)"]} style={styles.todayGradient}>
+          <View style={styles.todayHeader}>
+            <View>
+              <Text style={styles.todayKicker}>TODAY'S ACTIVITY</Text>
+              <Text style={styles.todayTitle}>{Math.max(1, data.streak)} Day Streak</Text>
+            </View>
+            <Ionicons name="flame" size={34} color={colors.coral} />
+          </View>
+          <View style={styles.weekMedals}>
+            {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
+              <View key={`${day}-${index}`} style={styles.weekMedalItem}>
+                <View style={[styles.weekMedal, index === ((new Date().getDay() + 6) % 7) && styles.weekMedalActive]}>
+                  <Ionicons name={index <= Math.min(6, data.streak - 1) ? "star" : "ellipse"} size={index <= Math.min(6, data.streak - 1) ? 16 : 10} color={index <= Math.min(6, data.streak - 1) ? colors.textPrimary : "rgba(255,255,255,0.25)"} />
+                </View>
+                <Text style={styles.weekMedalText}>{day}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={styles.minutesGoal}>
+            <Text style={styles.minutesGoalText}>{Math.min(7, data.totalWorkouts || 1)} / 7 min active today</Text>
+            <View style={styles.minutesTrack}>
+              <View style={[styles.minutesFill, { width: `${Math.min(100, ((data.totalWorkouts || 1) / 7) * 100)}%` }]} />
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableCard>
       <TouchableCard radius={radii.xxl} style={styles.streakCard} onPress={loadProgress}>
         <Ionicons name="flame" size={34} color={colors.coral} />
         <View style={styles.flex}>
@@ -148,6 +176,20 @@ const styles = StyleSheet.create({
     gap: 20,
     padding: 20
   },
+  todayCard: { overflow: "hidden" },
+  todayGradient: { gap: 18, padding: 20 },
+  todayHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  todayKicker: { color: colors.accent, fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
+  todayTitle: { color: colors.textPrimary, fontSize: 24, fontWeight: "900", marginTop: 4 },
+  weekMedals: { flexDirection: "row", justifyContent: "space-between" },
+  weekMedalItem: { alignItems: "center", gap: 7 },
+  weekMedal: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 17, height: 34, justifyContent: "center", width: 34 },
+  weekMedalActive: { backgroundColor: colors.accent },
+  weekMedalText: { color: colors.textTertiary, fontSize: 10, fontWeight: "900" },
+  minutesGoal: { gap: 8 },
+  minutesGoalText: { color: colors.textSecondary, fontSize: 13, fontWeight: "800" },
+  minutesTrack: { backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 999, height: 8, overflow: "hidden" },
+  minutesFill: { backgroundColor: colors.accent, borderRadius: 999, height: 8 },
   flex: {
     flex: 1
   },
