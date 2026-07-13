@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { AdaptiveBanner } from "@/components/AdaptiveBanner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useSubscription } from "@/context/SubscriptionContext";
@@ -101,7 +102,7 @@ function getPlanSessionName(plan: GeneratedPlan | null, selectedSport: string, d
 
 export default function SportsModeScreen() {
   const { profile, refreshProfile, user } = useAuth();
-  const { isFreeExpired } = useSubscription();
+  const { isFreeExpired, isPremium } = useSubscription();
   const savedAnswers = profile?.onboarding_answers ?? {};
   const savedSport = typeof savedAnswers.sport === "string" ? savedAnswers.sport : "";
   const [selected, setSelected] = useState(savedSport || "Football (Soccer)");
@@ -323,6 +324,9 @@ export default function SportsModeScreen() {
   if (mode === "empty") {
     return (
       <AppLayout contentContainerStyle={styles.emptyScreen}>
+        <View style={styles.emptyHalo}>
+          <Ionicons name="trophy" size={34} color={colors.gold} />
+        </View>
         <View style={styles.emptySportGrid}>
           {sports.slice(0, 9).map((sport) => (
             <View key={sport.name} style={[styles.emptySportTile, { borderColor: `${sport.accent}44` }]}>
@@ -332,6 +336,10 @@ export default function SportsModeScreen() {
         </View>
         <Text style={styles.emptyTitle}>Choose Your Sport</Text>
         <Text style={styles.emptySubtitle}>FITNEO AI builds a 4-week plan around your sport, position, level, schedule, and equipment.</Text>
+        <View style={styles.emptyFeatureRow}>
+          <Text style={styles.emptyFeature}>Position-based drills</Text>
+          <Text style={styles.emptyFeature}>AI weekly plan</Text>
+        </View>
         <TouchableOpacity activeOpacity={0.86} style={styles.primaryButton} onPress={() => setMode("onboarding")}>
           <Text style={styles.primaryButtonText}>Set Up My Sport Profile</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
@@ -397,6 +405,8 @@ export default function SportsModeScreen() {
             <HeroStat value={String(stats.xp)} label="Sport XP" />
           </View>
         </LinearGradient>
+
+        <AdaptiveBanner enabled={!isPremium} label="Sponsored sports recovery" />
 
         {isPlanLoading ? (
           <View style={styles.loadingPlanCard}>
@@ -591,10 +601,13 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   emptyScreen: { alignItems: "center", backgroundColor: "#080808", gap: 18, justifyContent: "center", paddingHorizontal: 24 },
+  emptyHalo: { alignItems: "center", backgroundColor: "rgba(255,199,51,0.12)", borderColor: "rgba(255,199,51,0.28)", borderRadius: 34, borderWidth: 1, height: 68, justifyContent: "center", shadowColor: colors.gold, shadowOpacity: 0.28, shadowRadius: 18, width: 68 },
   emptySportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 260 },
   emptySportTile: { alignItems: "center", backgroundColor: "#111114", borderRadius: 18, borderWidth: 1, height: 70, justifyContent: "center", width: 70 },
   emptyTitle: { color: "#FFFFFF", fontSize: 34, fontWeight: "900", letterSpacing: -1, textAlign: "center" },
   emptySubtitle: { color: "#9CA3AF", fontSize: 14, lineHeight: 21, maxWidth: 340, textAlign: "center" },
+  emptyFeatureRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  emptyFeature: { backgroundColor: "rgba(10,132,255,0.12)", borderColor: "rgba(10,132,255,0.28)", borderRadius: 999, borderWidth: 1, color: colors.accent, fontSize: 11, fontWeight: "900", overflow: "hidden", paddingHorizontal: 10, paddingVertical: 6 },
   onboardingScreen: { backgroundColor: "#080808", gap: 16 },
   topProgressRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   progressText: { color: "#9CA3AF", fontSize: 12, fontWeight: "800" },

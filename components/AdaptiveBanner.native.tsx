@@ -1,13 +1,28 @@
-import { StyleSheet, View } from "react-native";
-import { AD_SLOT_HEIGHT } from "@/lib/theme";
+import { StyleSheet, Text, View } from "react-native";
+import { AD_SLOT_HEIGHT, colors } from "@/lib/theme";
 
 type AdaptiveBannerProps = {
   enabled: boolean;
+  label?: string;
 };
 
 const productionBannerUnitId = process.env.EXPO_PUBLIC_ADMOB_BANNER_ID;
 
-export function AdaptiveBanner({ enabled }: AdaptiveBannerProps) {
+function FallbackBanner({ label = "Sponsored training boost" }: { label?: string }) {
+  return (
+    <View style={styles.fallbackHost}>
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>AD</Text>
+      </View>
+      <View style={styles.copyBlock}>
+        <Text style={styles.title}>{label}</Text>
+        <Text style={styles.copy}>Add EXPO_PUBLIC_ADMOB_BANNER_ID to show live AdMob ads here.</Text>
+      </View>
+    </View>
+  );
+}
+
+export function AdaptiveBanner({ enabled, label }: AdaptiveBannerProps) {
   if (!enabled) {
     return null;
   }
@@ -19,7 +34,7 @@ export function AdaptiveBanner({ enabled }: AdaptiveBannerProps) {
     const TestIds = ads.TestIds;
     const unitId = __DEV__ ? TestIds.ADAPTIVE_BANNER : productionBannerUnitId;
     if (!unitId) {
-      return null;
+      return <FallbackBanner label={label} />;
     }
 
     return (
@@ -28,7 +43,7 @@ export function AdaptiveBanner({ enabled }: AdaptiveBannerProps) {
       </View>
     );
   } catch {
-    return null;
+    return <FallbackBanner label={label} />;
   }
 }
 
@@ -39,5 +54,45 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
     width: "100%"
+  },
+  fallbackHost: {
+    alignItems: "center",
+    backgroundColor: "rgba(10,132,255,0.10)",
+    borderColor: "rgba(10,132,255,0.26)",
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    minHeight: AD_SLOT_HEIGHT,
+    overflow: "hidden",
+    paddingHorizontal: 14,
+    width: "100%"
+  },
+  badge: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    height: 24,
+    justifyContent: "center",
+    width: 34
+  },
+  badgeText: {
+    color: colors.textPrimary,
+    fontSize: 10,
+    fontWeight: "900"
+  },
+  copyBlock: {
+    flex: 1
+  },
+  title: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: "900"
+  },
+  copy: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 2
   }
 });

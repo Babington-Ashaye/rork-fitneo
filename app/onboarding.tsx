@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -563,14 +563,46 @@ function Interstitial({ copy, icon, image, title }: { copy: string; icon: keyof 
 }
 
 function YearDrum({ onChange, value }: { onChange: (value: number) => void; value: number }) {
-  const years = [value - 2, value - 1, value, value + 1, value + 2];
+  const scrollRef = useRef<ScrollView>(null);
+  const currentYear = new Date().getFullYear();
+  const years = useMemo(
+    () => Array.from({ length: 73 }, (_, index) => currentYear - 13 - index),
+    [currentYear]
+  );
+  const selectedIndex = Math.max(0, years.findIndex((year) => year === value));
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollTo({ animated: false, y: Math.max(0, selectedIndex * 74 - 148) });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [selectedIndex]);
+
+  function snapToNearest(offsetY: number) {
+    const nextIndex = Math.max(0, Math.min(years.length - 1, Math.round(offsetY / 74)));
+    onChange(years[nextIndex]);
+  }
+
   return (
     <View style={styles.yearWrap}>
-      {years.map((year) => (
-        <TouchableOpacity key={year} activeOpacity={0.78} onPress={() => onChange(year)} style={[styles.yearRow, year === value && styles.yearRowActive]}>
-          <Text style={[styles.yearText, year === value && styles.yearTextActive]}>{year}</Text>
-        </TouchableOpacity>
-      ))}
+      <View pointerEvents="none" style={styles.yearCenterRail} />
+      <ScrollView
+        ref={scrollRef}
+        decelerationRate="fast"
+        nestedScrollEnabled
+        onMomentumScrollEnd={(event) => snapToNearest(event.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={(event) => snapToNearest(event.nativeEvent.contentOffset.y)}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={74}
+        style={styles.yearScroller}
+        contentContainerStyle={styles.yearScrollContent}
+      >
+        {years.map((year) => (
+          <TouchableOpacity key={year} activeOpacity={0.78} onPress={() => onChange(year)} style={[styles.yearRow, year === value && styles.yearRowActive]}>
+            <Text style={[styles.yearText, year === value && styles.yearTextActive]}>{year}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -770,9 +802,12 @@ const styles = StyleSheet.create({
   interstitialIcon: { alignItems: "center", backgroundColor: "#EAF4FF", borderRadius: 24, height: 48, justifyContent: "center", marginBottom: 16, width: 48 },
   interstitialTitle: { color: "#050505", fontSize: 34, fontWeight: "900", letterSpacing: -1, lineHeight: 40, textAlign: "center" },
   interstitialCopy: { color: "#475569", fontSize: 18, lineHeight: 27, marginTop: 16, textAlign: "center" },
-  yearWrap: { alignItems: "center", gap: 3, marginTop: 26 },
-  yearRow: { alignItems: "center", borderRadius: 999, minHeight: 66, justifyContent: "center", width: "100%" },
-  yearRowActive: { backgroundColor: "#D7E9FF", borderColor: "#0A84FF", borderWidth: 2 },
+  yearWrap: { alignItems: "center", height: 370, justifyContent: "center", marginTop: 18, overflow: "hidden", position: "relative" },
+  yearScroller: { width: "100%" },
+  yearScrollContent: { alignItems: "center", paddingVertical: 148 },
+  yearCenterRail: { backgroundColor: "#D7E9FF", borderColor: "#0A84FF", borderRadius: 999, borderWidth: 2, height: 66, position: "absolute", width: "92%", zIndex: 0 },
+  yearRow: { alignItems: "center", borderRadius: 999, minHeight: 74, justifyContent: "center", width: "92%", zIndex: 1 },
+  yearRowActive: { backgroundColor: "transparent" },
   yearText: { color: "#CBD5E1", fontSize: 38, fontWeight: "900" },
   yearTextActive: { color: "#0A84FF", fontSize: 42 },
   scoreScreen: { alignItems: "center", flex: 1, justifyContent: "center", minHeight: 540 },
