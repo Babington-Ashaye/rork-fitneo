@@ -36,48 +36,11 @@ export default function SignInScreen() {
   const [hintMessage, setHintMessage] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const authErrorMessage = getAuthErrorMessage(localError ?? error);
-  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    redirectUri: makeRedirectUri({ scheme: "fitneo", path: "auth/callback" }),
-    scopes: ["openid", "profile", "email"]
-  });
 
   useEffect(() => {
     const timer = setTimeout(() => setIsScreenReady(true), 180);
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (googleResponse?.type !== "success") {
-      if (googleResponse?.type === "error") {
-        setLocalError(googleResponse.error?.message ?? "Google sign-in failed.");
-      }
-      return;
-    }
-
-    void (async () => {
-      setIsGoogleLoading(true);
-      setLocalError(null);
-      try {
-        const idToken = googleResponse.params.id_token;
-        if (!idToken) {
-          throw new Error("Google did not return an ID token. Check your Google Client ID configuration.");
-        }
-        const { error: tokenError } = await supabase.auth.signInWithIdToken({
-          provider: "google",
-          token: idToken
-        });
-        if (tokenError) throw tokenError;
-        router.replace("/");
-      } catch (err) {
-        setLocalError(err instanceof Error ? err.message : "Google sign-in failed.");
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    })();
-  }, [googleResponse]);
 
   async function submit() {
     setLocalError(null);
@@ -103,17 +66,9 @@ export default function SignInScreen() {
     setLocalError(null);
     setStatusMessage(null);
     setHintMessage(null);
-    if (googleRequest) {
-      setIsGoogleLoading(true);
-      try {
-        await promptGoogleAsync();
-      } finally {
-        setIsGoogleLoading(false);
-      }
-      return;
-    }
-
+    setIsGoogleLoading(true);
     const ok = await signInWithGoogle();
+    setIsGoogleLoading(false);
     if (ok) {
       router.replace("/");
     }
@@ -232,10 +187,18 @@ export default function SignInScreen() {
 
           {/* Google Client IDs must be configured in .env */}
           {/* Get them from console.cloud.google.com */}
-          <TouchableCard radius={radii.md} style={styles.googleButton} onPress={continueWithGoogle}>
-            <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
-            {isGoogleLoading || isLoading ? <ActivityIndicator color="#333333" /> : <Text style={styles.googleText}>Continue with Google</Text>}
-          </TouchableCard>
+          {hasConfiguredGoogleClientId() ? (
+            <GoogleAuthSessionButton
+              disabled={isLoading}
+              onError={setLocalError}
+              onLoadingChange={setIsGoogleLoading}
+            />
+          ) : (
+            <TouchableCard radius={radii.md} style={styles.googleButton} onPress={continueWithGoogle}>
+              <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
+              {isGoogleLoading || isLoading ? <ActivityIndicator color="#333333" /> : <Text style={styles.googleText}>Continue with Google</Text>}
+            </TouchableCard>
+          )}
 
           <View style={styles.footerBlock}>
             <Link href="/auth/sign-up" asChild>
@@ -268,6 +231,87 @@ function getAuthErrorMessage(error: unknown): string | null {
     return message || code || null;
   }
   return "Please check your details and try again.";
+}
+
+function isConfiguredClientId(value: string | undefined) {
+  const clean = value?.trim() ?? "";
+  return clean.length > 0 && !clean.startsWith("your_");
+}
+
+function hasConfiguredGoogleClientId() {
+  if (Platform.OS === "ios") return isConfiguredClientId(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+  if (Platform.OS === "android") return isConfiguredClientId(process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
+  return isConfiguredClientId(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
+}
+
+function GoogleAuthSessionButton({
+  disabled,
+  onError,
+  onLoadingChange
+}: {
+  disabled: boolean;
+  onError: (message: string | null) => void;
+  onLoadingChange: (loading: boolean) => void;
+}) {
+  const [localLoading, setLocalLoading] = useState(false);
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri: makeRedirectUri({ scheme: "fitneo", path: "auth/callback" }),
+    scopes: ["openid", "profile", "email"]
+  });
+
+  useEffect(() => {
+    if (response?.type !== "success") {
+      if (response?.type === "error") {
+        onError(response.error?.message ?? "Google sign-in failed.");
+      }
+      return;
+    }
+
+    void (async () => {
+      setLocalLoading(true);
+      onLoadingChange(true);
+      onError(null);
+      try {
+        const idToken = response.params.id_token;
+        if (!idToken) {
+          throw new Error("Google did not return an ID token. Check your Google Client ID configuration.");
+        }
+        const { error: tokenError } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: idToken
+        });
+        if (tokenError) throw tokenError;
+        router.replace("/");
+      } catch (err) {
+        onError(err instanceof Error ? err.message : "Google sign-in failed.");
+      } finally {
+        setLocalLoading(false);
+        onLoadingChange(false);
+      }
+    })();
+  }, [onError, onLoadingChange, response]);
+
+  async function launchGoogle() {
+    setLocalLoading(true);
+    onLoadingChange(true);
+    onError(null);
+    try {
+      await promptAsync();
+    } finally {
+      setLocalLoading(false);
+      onLoadingChange(false);
+    }
+  }
+
+  return (
+    <TouchableCard radius={radii.md} style={styles.googleButton} onPress={launchGoogle}>
+      <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
+      {localLoading || disabled || !request ? <ActivityIndicator color="#333333" /> : <Text style={styles.googleText}>Continue with Google</Text>}
+    </TouchableCard>
+  );
 }
 
 function Field({
