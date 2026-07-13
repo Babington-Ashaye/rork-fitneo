@@ -11,6 +11,12 @@ module.exports = ({ config }) => {
     );
   }
 
+  if (isReleaseProfile && !iosAdMobAppId) {
+    throw new Error(
+      "EXPO_PUBLIC_ADMOB_IOS_APP_ID is required for EAS preview/production iOS builds."
+    );
+  }
+
   const resolvedAndroidAdMobAppId =
     androidAdMobAppId ||
     (!isReleaseProfile ? "ca-app-pub-3940256099942544~3347511713" : undefined);
@@ -25,7 +31,9 @@ module.exports = ({ config }) => {
       "react-native-google-mobile-ads",
       {
         androidAppId: resolvedAndroidAdMobAppId,
-        iosAppId: resolvedIosAdMobAppId
+        iosAppId: resolvedIosAdMobAppId,
+        optimizeAdLoading: true,
+        optimizeInitialization: true
       }
     ]);
   }
@@ -44,6 +52,13 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
+    ios: {
+      ...(config.ios ?? {}),
+      infoPlist: {
+        ...(config.ios?.infoPlist ?? {}),
+        ...(resolvedIosAdMobAppId ? { GADApplicationIdentifier: resolvedIosAdMobAppId } : {})
+      }
+    },
     plugins,
     extra
   };
