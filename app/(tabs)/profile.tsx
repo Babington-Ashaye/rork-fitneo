@@ -32,6 +32,7 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [activePreference, setActivePreference] = useState<NotificationPreference | null>(null);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
@@ -116,6 +117,7 @@ export default function ProfileScreen() {
   }
 
   function confirmReset() {
+    if (isResetting) return;
     Alert.alert(
       t("profileScreen.resetConfirmTitle"),
       t("profileScreen.resetConfirmCopy"),
@@ -127,6 +129,7 @@ export default function ProfileScreen() {
           onPress: () => {
             void (async () => {
               const userId = user?.id ?? null;
+              setIsResetting(true);
               try {
                 await signOut();
               } finally {
@@ -134,6 +137,7 @@ export default function ProfileScreen() {
               }
               router.replace("/auth/sign-in");
             })().catch((err) => {
+              setIsResetting(false);
               Alert.alert(t("profileScreen.resetFailed"), err instanceof Error ? err.message : t("profileScreen.resetFailedCopy"));
             });
           }
@@ -243,7 +247,9 @@ export default function ProfileScreen() {
         <SettingsRow icon="bulb" title={t("profileScreen.aiCheckIn")} enabled={notificationPreferences.coach} loading={activePreference === "coach"} onPress={() => void toggleNotification("coach")} />
       </TouchableCard>
 
-      <RowCard icon="share-outline" title={isExporting ? t("profileScreen.preparingExport") : t("profileScreen.exportData")} subtitle={t("profileScreen.exportSubtitle")} onPress={isExporting ? undefined : () => void exportData()} />
+      <View style={styles.actionZone}>
+        <RowCard icon="share-outline" title={isExporting ? t("profileScreen.preparingExport") : t("profileScreen.exportData")} subtitle={t("profileScreen.exportSubtitle")} onPress={isExporting || isResetting ? undefined : () => void exportData()} />
+      </View>
       {__DEV__ ? (
         <RowCard
           icon="card"
@@ -252,8 +258,8 @@ export default function ProfileScreen() {
           onPress={() => router.push("/subscription-test")}
         />
       ) : null}
-      <TouchableCard radius={radii.xl} style={styles.resetCard} onPress={confirmReset}>
-        {isExporting ? <ActivityIndicator size="small" color={colors.danger} /> : <Ionicons name="trash" size={16} color={colors.danger} />}
+      <TouchableCard radius={radii.xl} style={[styles.resetCard, isResetting && styles.resetCardDisabled]} onPress={isResetting || isExporting ? undefined : confirmReset}>
+        {isResetting ? <ActivityIndicator size="small" color={colors.danger} /> : <Ionicons name="trash" size={16} color={colors.danger} />}
         <Text style={styles.resetText}>{t("profileScreen.resetAllData")}</Text>
       </TouchableCard>
       <TouchableOpacity activeOpacity={0.78} style={styles.logoutButton} onPress={logout}>
@@ -500,11 +506,20 @@ const styles = StyleSheet.create({
     height: 1,
     marginVertical: 8
   },
+  actionZone: {
+    gap: 10
+  },
   resetCard: {
     alignItems: "center",
+    backgroundColor: "rgba(255,69,58,0.06)",
+    borderColor: "rgba(255,69,58,0.20)",
     flexDirection: "row",
     gap: 10,
+    marginTop: 4,
     padding: 18
+  },
+  resetCardDisabled: {
+    opacity: 0.55
   },
   resetText: {
     color: colors.danger,

@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ImageBackground, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { AppLayout } from "@/components/AppLayout";
 import { Chip, EmptySpacer, IconBubble, MetaItem, ScreenTitle, TouchableCard } from "@/components/ScreenKit";
 import {
@@ -17,6 +18,13 @@ import { colors, radii } from "@/lib/theme";
 const filters = ["All", "Strength", "Conditioning", "Mobility", "Core"];
 const equipmentOrder: Record<WorkoutProgram["equipmentTier"], number> = { none: 0, few: 1, full: 2 };
 const difficultyDots: Record<WorkoutProgram["difficulty"], number> = { Beginner: 1, Intermediate: 2, Advanced: 3 };
+const workoutHeroImage = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=80";
+const programImages = {
+  strength: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=900&q=80",
+  conditioning: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=900&q=80",
+  mobility: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&q=80",
+  core: "https://images.unsplash.com/photo-1549576490-b0b4831ef60a?w=900&q=80"
+};
 
 export default function WorkoutsScreen() {
   const [query, setQuery] = useState("");
@@ -59,6 +67,15 @@ export default function WorkoutsScreen() {
         <TouchableOpacity activeOpacity={0.78} style={styles.segmentInactive} onPress={() => router.push("/sports-mode")}>
           <Text style={styles.segmentInactiveText}>Sports</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.hero}>
+        <ImageBackground source={{ uri: workoutHeroImage }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.heroImage}>
+          <LinearGradient colors={["rgba(0,0,0,0.38)", "rgba(0,0,0,0.88)"]} style={StyleSheet.absoluteFillObject} />
+        </ImageBackground>
+        <Text style={styles.heroKicker}>TRAINING LIBRARY</Text>
+        <Text style={styles.heroTitle}>Choose your next win</Text>
+        <Text style={styles.heroCopy}>Home, gym, strength, conditioning, mobility — every plan now opens with a full preview before you start.</Text>
       </View>
 
       <ScreenTitle title="Workouts" subtitle="Programs tuned to your level" />
@@ -106,6 +123,13 @@ function WorkoutCard({ isPaired, program }: { isPaired: boolean; program: Workou
   const badgeColor = getEquipmentTierBadgeColor(program.equipmentTier);
   const tierVariant = program.equipmentTier === "none" ? "Home version" : program.equipmentTier === "few" ? "Home gear version" : "Gym version";
   const frequency = getWorkoutTrainingFrequency(program.id);
+  const image = program.category.toLowerCase().includes("conditioning")
+    ? programImages.conditioning
+    : program.category.toLowerCase().includes("mobility")
+      ? programImages.mobility
+      : program.category.toLowerCase().includes("core")
+        ? programImages.core
+        : programImages.strength;
 
   return (
     <TouchableCard
@@ -113,6 +137,9 @@ function WorkoutCard({ isPaired, program }: { isPaired: boolean; program: Workou
       style={[styles.workoutCard, isPaired && styles.pairedCard]}
       onPress={() => router.push({ pathname: "/workout-preview", params: { programId: program.id, programName: program.name } })}
     >
+      <ImageBackground source={{ uri: image }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.cardImage}>
+        <LinearGradient colors={["rgba(0,0,0,0.18)", "rgba(0,0,0,0.78)", "rgba(0,0,0,0.94)"]} style={StyleSheet.absoluteFillObject} />
+      </ImageBackground>
       <View style={styles.row}>
         <IconBubble icon={icon} tint={tint} shape="rounded" size={48} />
         <View style={styles.workoutTitleBlock}>
@@ -174,6 +201,38 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center"
   },
+  hero: {
+    borderColor: "rgba(10,132,255,0.24)",
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 8,
+    minHeight: 190,
+    overflow: "hidden",
+    padding: 22,
+    justifyContent: "flex-end"
+  },
+  heroImage: {
+    borderRadius: 28
+  },
+  heroKicker: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.7
+  },
+  heroTitle: {
+    color: colors.textPrimary,
+    fontSize: 30,
+    fontWeight: "900",
+    letterSpacing: -0.7
+  },
+  heroCopy: {
+    color: "rgba(255,255,255,0.84)",
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 19,
+    maxWidth: 330
+  },
   createCard: {
     alignItems: "center",
     flexDirection: "row",
@@ -227,8 +286,16 @@ const styles = StyleSheet.create({
     textTransform: "uppercase"
   },
   workoutCard: {
+    borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
     gap: 14,
-    padding: 18
+    minHeight: 236,
+    overflow: "hidden",
+    padding: 18,
+    justifyContent: "flex-end"
+  },
+  cardImage: {
+    borderRadius: radii.xl
   },
   pairedCard: {
     backgroundColor: "rgba(255,255,255,0.04)"

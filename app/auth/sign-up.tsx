@@ -49,6 +49,7 @@ export default function SignUpScreen() {
   async function continueWithGoogle() {
     setLocalError(null);
     setStatusMessage(null);
+    if (isLoading) return;
     const ok = await signInWithGoogle();
     if (ok) {
       router.replace("/");
@@ -131,7 +132,7 @@ export default function SignUpScreen() {
           <Text style={styles.dividerText}>OR</Text>
           <View style={styles.divider} />
         </View>
-        <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={continueWithGoogle} style={styles.googleButton}>
+        <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={continueWithGoogle} style={[styles.googleButton, isLoading && styles.googleButtonDisabled]}>
           <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
           <Text style={styles.googleText}>Continue with Google</Text>
         </TouchableOpacity>
@@ -237,24 +238,24 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "flex-end",
     paddingHorizontal: 24,
-    paddingVertical: 18
+    paddingVertical: 12
   },
   logoBlock: {
     alignItems: "center",
-    gap: 12,
-    marginBottom: 18,
+    gap: 8,
+    marginBottom: 10,
     paddingTop: 0
   },
   logoGlow: {
     alignItems: "center",
     backgroundColor: "rgba(10,132,255,0.18)",
     borderRadius: 50,
-    height: 66,
+    height: 58,
     justifyContent: "center",
     shadowColor: colors.accent,
     shadowOpacity: 0.55,
     shadowRadius: 18,
-    width: 66
+    width: 58
   },
   logo: {
     color: colors.textPrimary,
@@ -277,10 +278,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
-    gap: 11,
-    marginTop: 18,
+    gap: 9,
+    marginTop: 10,
     maxWidth: 400,
-    padding: 24,
+    padding: 20,
     width: "100%"
   },
   title: {
@@ -295,7 +296,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: colors.textPrimary,
     fontSize: 16,
-    minHeight: 52,
+    minHeight: 48,
     paddingHorizontal: 16
   },
   inputFocused: {
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: "row",
-    minHeight: 46
+    minHeight: 48
   },
   passwordInput: {
     color: colors.textPrimary,
@@ -345,7 +346,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     borderRadius: radii.md,
     justifyContent: "center",
-    minHeight: 46
+    minHeight: 48
   },
   disabled: {
     opacity: 0.65
@@ -377,8 +378,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     justifyContent: "center",
-    minHeight: 46,
-    padding: 14
+    minHeight: 48,
+    padding: 12
   },
   googleLogo: {
     height: 20,
@@ -389,6 +390,9 @@ const styles = StyleSheet.create({
     color: "#333333",
     fontSize: 16,
     fontWeight: "700"
+  },
+  googleButtonDisabled: {
+    opacity: 0.72
   },
   legal: {
     color: colors.textTertiary,
@@ -403,8 +407,8 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   footerBlock: {
-    gap: 8,
-    paddingBottom: 8
+    gap: 6,
+    paddingBottom: 0
   },
   loginRow: {
     alignItems: "center",

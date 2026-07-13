@@ -173,7 +173,7 @@ export default function DashboardScreen() {
 
       <TouchableCard radius={radii.hero} style={styles.heroCard} onPress={openTodayWorkout}>
         <ImageBackground source={{ uri: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80" }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.heroImage}>
-          <LinearGradient colors={["rgba(0,0,0,0.10)", "rgba(0,0,0,0.84)"]} style={StyleSheet.absoluteFillObject} />
+          <LinearGradient colors={["rgba(0,0,0,0.58)", "rgba(0,0,0,0.76)", "rgba(0,0,0,0.94)"]} style={StyleSheet.absoluteFillObject} />
         </ImageBackground>
         <View style={styles.heroTop}>
           <View style={styles.inline}>
@@ -404,14 +404,20 @@ const styles = StyleSheet.create({
   heroTitle: {
     color: colors.textPrimary,
     fontSize: 26,
-    fontWeight: "700"
+    fontWeight: "900",
+    textShadowColor: "rgba(0,0,0,0.72)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8
   },
   heroFocus: {
-    color: colors.textSecondary,
+    color: "rgba(255,255,255,0.88)",
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
     lineHeight: 19,
-    marginTop: -6
+    marginTop: -6,
+    textShadowColor: "rgba(0,0,0,0.72)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6
   },
   metaRow: {
     flexDirection: "row",
