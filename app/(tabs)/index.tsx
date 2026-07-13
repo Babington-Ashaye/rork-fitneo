@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, IconBubble, MetaItem, PillButton, SectionHeader, SkeletonBlock, StatCard, TouchableCard, XPBar, withAlpha } from "@/components/ScreenKit";
 import { calculateXpProgress, DashboardData, fetchActiveWorkoutPlan, fetchDashboardData, WorkoutProgram } from "@/lib/api";
+import { GeneratedPlanRecord, getPlanDayForDate, loadExistingPlanWithMetadata } from "@/lib/generateAiPlan";
 import { colors, radii } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
 import { loadWaterIntake, saveWaterIntake } from "@/lib/water";
@@ -17,19 +18,22 @@ export default function DashboardScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [plan, setPlan] = useState<WorkoutProgram | null>(null);
+  const [aiPlanRecord, setAiPlanRecord] = useState<GeneratedPlanRecord | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
 
   async function loadDashboard() {
     setError(null);
     setIsLoading(true);
     try {
-      const [dashboard, activePlan] = await Promise.all([
+      const [dashboard, activePlan, generatedPlan] = await Promise.all([
         fetchDashboardData(),
-        fetchActiveWorkoutPlan()
+        fetchActiveWorkoutPlan(),
+        user?.id ? loadExistingPlanWithMetadata(user.id) : Promise.resolve(null)
       ]);
       const waterCurrent = await loadWaterIntake(user?.id ?? null, dashboard.waterGoal);
       setData((current) => ({ ...dashboard, waterCurrent: current?.waterCurrent ?? waterCurrent }));
       setPlan(activePlan);
+      setAiPlanRecord(generatedPlan);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("dashboard.loadFailed"));
     } finally {
@@ -104,6 +108,29 @@ export default function DashboardScreen() {
 
   const xpInto = calculateXpProgress(data.xp).xpInto;
   const insight = getDashboardInsight(data, t);
+  const todayAiDay = aiPlanRecord ? getPlanDayForDate(aiPlanRecord.plan, aiPlanRecord.generatedAt) : null;
+  const hasAiWorkout = Boolean(todayAiDay && !todayAiDay.isRest && todayAiDay.exerciseIds.length > 0);
+  const heroCategory = todayAiDay ? "AI PLAN" : data.todayWorkout.category;
+  const heroTitle = todayAiDay
+    ? `Day ${todayAiDay.dayNumber} · ${todayAiDay.title}`
+    : aiPlanRecord
+      ? aiPlanRecord.plan.planTitle
+      : "Set up your training plan";
+
+  function openTodayWorkout() {
+    if (todayAiDay && hasAiWorkout && aiPlanRecord) {
+      router.push({
+        pathname: "/active-workout",
+        params: {
+          programId: "ai-dashboard",
+          programName: `${aiPlanRecord.plan.planTitle} · Day ${todayAiDay.dayNumber}`,
+          exerciseIds: JSON.stringify(todayAiDay.exerciseIds)
+        }
+      });
+      return;
+    }
+    router.push("/sports-mode");
+  }
 
   return (
     <AppLayout scroll>
@@ -124,7 +151,7 @@ export default function DashboardScreen() {
         <View style={styles.inline}>
           <Ionicons name="sparkles" size={14} color={colors.accent} />
           <SectionHeader title={t("dashboard.myPlan")} accent />
-          <Text numberOfLines={1} style={styles.planName}>{plan?.name ?? data.todayWorkout.name}</Text>
+          <Text numberOfLines={1} style={styles.planName}>{aiPlanRecord?.plan.planTitle ?? plan?.name ?? data.todayWorkout.name}</Text>
         </View>
         <Ionicons name={planOpen ? "chevron-up" : "chevron-down"} size={14} color={colors.textSecondary} />
       </TouchableCard>
@@ -132,36 +159,37 @@ export default function DashboardScreen() {
         <View style={styles.planDetails}>
           <View style={styles.planMeta}>
             <MetaItem icon="time" text={`${plan?.durationMinutes ?? data.todayWorkout.durationMinutes} min`} />
-            <MetaItem icon="layers" text={`${plan?.exercises ?? 6} exercises`} />
-            <MetaItem icon="bar-chart" text={plan?.category ?? data.todayWorkout.category} />
+            <MetaItem icon="layers" text={`${todayAiDay?.exerciseIds.length ?? plan?.exercises ?? 6} exercises`} />
+            <MetaItem icon="bar-chart" text={aiPlanRecord ? "AI calibrated" : plan?.category ?? data.todayWorkout.category} />
           </View>
-          <Text style={styles.planCopy}>{t("dashboard.planCopy")}</Text>
-          <TouchableOpacity style={styles.planStart} onPress={() => router.push("/active-workout")}>
-            <Text style={styles.planStartText}>{t("dashboard.startActivePlan")}</Text>
+          <Text style={styles.planCopy}>{aiPlanRecord?.plan.planDescription ?? t("dashboard.planCopy")}</Text>
+          <TouchableOpacity style={styles.planStart} onPress={openTodayWorkout}>
+            <Text style={styles.planStartText}>{aiPlanRecord ? t("dashboard.startActivePlan") : "Set up AI plan"}</Text>
             <Ionicons name="play" size={14} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       ) : null}
 
-      <TouchableCard radius={radii.hero} style={styles.heroCard} onPress={() => router.push("/active-workout")}>
+      <TouchableCard radius={radii.hero} style={styles.heroCard} onPress={openTodayWorkout}>
         <View style={styles.heroTop}>
           <View style={styles.inline}>
             <Ionicons name="sparkles" size={13} color={colors.accent} />
             <Text style={styles.heroKicker}>{t("dashboard.todaysWorkout")}</Text>
           </View>
           <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{data.todayWorkout.category}</Text>
+            <Text style={styles.categoryText}>{heroCategory}</Text>
           </View>
         </View>
-        <Text style={styles.heroTitle}>{data.todayWorkout.name}</Text>
+        <Text style={styles.heroTitle}>{heroTitle}</Text>
+        {todayAiDay ? <Text style={styles.heroFocus}>{todayAiDay.focus}</Text> : <Text style={styles.heroFocus}>Answer your sport profile once and FITNEO AI will build your 4-week training plan.</Text>}
         <View style={styles.metaRow}>
           <MetaItem icon="time" text={`${data.todayWorkout.durationMinutes} min`} />
-          <MetaItem icon="flame" text={`${data.todayWorkout.calories} kcal`} />
-          <MetaItem icon="bar-chart" text={data.todayWorkout.difficulty} />
+          <MetaItem icon="flame" text={todayAiDay?.isRest ? "Recovery" : `${data.todayWorkout.calories} kcal`} />
+          <MetaItem icon="bar-chart" text={todayAiDay ? aiPlanRecord?.plan.tagline ?? "AI calibrated" : data.todayWorkout.difficulty} />
         </View>
         <View style={styles.heroActions}>
-          <TouchableOpacity activeOpacity={0.78} style={styles.quickStart} onPress={() => router.push("/active-workout")}>
-            <PillButton title={t("dashboard.quickStart")} icon="play" />
+          <TouchableOpacity activeOpacity={0.78} style={styles.quickStart} onPress={openTodayWorkout}>
+            <PillButton title={hasAiWorkout ? t("dashboard.quickStart") : "Set Up Plan"} icon={hasAiWorkout ? "play" : "sparkles"} />
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.78} style={styles.aiButton} onPress={() => router.push("/(tabs)/coach")}>
             <Ionicons name="sparkles" size={21} color={colors.accent} />
@@ -370,6 +398,13 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 26,
     fontWeight: "700"
+  },
+  heroFocus: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 19,
+    marginTop: -6
   },
   metaRow: {
     flexDirection: "row",

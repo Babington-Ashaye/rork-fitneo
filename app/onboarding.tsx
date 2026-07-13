@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { GlassCard, TouchableCard } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
 import { saveOnboardingProfile } from "@/lib/api";
+import { generatePersonalizedPlan } from "@/lib/generateAiPlan";
 import { colors, radii } from "@/lib/theme";
 
 const goals = ["Lose Weight", "Build Muscle", "Improve Endurance", "Athletic Performance", "Stay Active"];
@@ -152,9 +153,17 @@ export default function OnboardingScreen() {
     setError(null);
     setIsSaving(true);
     try {
+      const userId = session?.user?.id;
       await saveOnboardingProfile(buildOnboardingPayload());
       await markLocalOnboardingComplete();
       await refreshProfile();
+      try {
+        if (userId) {
+          await generatePersonalizedPlan(userId);
+        }
+      } catch {
+        // Plan generation should never block onboarding completion.
+      }
       router.replace("/(tabs)");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save onboarding. Please try again.");

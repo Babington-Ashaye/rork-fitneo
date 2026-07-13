@@ -3,28 +3,28 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/context/AuthContext";
-import { exerciseCatalog } from "@/lib/exercises";
+import { useSubscription } from "@/context/SubscriptionContext";
+import { GeneratedDay, GeneratedPlan, generatePersonalizedPlan, loadExistingPlan } from "@/lib/generateAiPlan";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 
 const SPORT_ONBOARDING_KEY = "fitneo.sports.onboarding.v2";
 const TOTAL_STEPS = 4;
-const existingExerciseIds = new Set(exerciseCatalog.map((exercise) => exercise.id));
 
 const sports = [
-  { name: "Football (Soccer)", label: "Football", emoji: "⚽", programId: "sport-football", accent: "#3B82F6" },
-  { name: "Basketball", label: "Basketball", emoji: "🏀", programId: "sport-basketball", accent: "#F97316" },
-  { name: "Tennis", label: "Tennis", emoji: "🎾", programId: "sport-tennis", accent: "#22C55E" },
-  { name: "Swimming", label: "Swimming", emoji: "🏊", programId: "sport-swimming", accent: "#06B6D4" },
-  { name: "Running", label: "Running", emoji: "🏃", programId: "sport-running", accent: "#A855F7" },
-  { name: "Rugby", label: "Rugby", emoji: "🏉", programId: "sport-rugby", accent: "#EF4444" },
-  { name: "Boxing", label: "Boxing", emoji: "🥊", programId: "sport-boxing", accent: "#DC2626" },
-  { name: "Cricket", label: "Cricket", emoji: "🏏", programId: "sport-cricket", accent: "#EAB308" },
-  { name: "Volleyball", label: "Volleyball", emoji: "🏐", programId: "sport-volleyball", accent: "#EC4899" },
-  { name: "Other", label: "Other", emoji: "🎯", programId: "sport-football", accent: "#3B82F6" }
+  { name: "Football (Soccer)", label: "Football", icon: "football" as const, accent: "#22C55E" },
+  { name: "Basketball", label: "Basketball", icon: "basketball" as const, accent: "#F97316" },
+  { name: "Tennis", label: "Tennis", icon: "tennisball" as const, accent: "#A3E635" },
+  { name: "Swimming", label: "Swimming", icon: "water" as const, accent: "#06B6D4" },
+  { name: "Running", label: "Running", icon: "walk" as const, accent: "#A855F7" },
+  { name: "Rugby", label: "Rugby", icon: "american-football" as const, accent: "#EF4444" },
+  { name: "Boxing", label: "Boxing", icon: "fitness" as const, accent: "#DC2626" },
+  { name: "Cricket", label: "Cricket", icon: "baseball" as const, accent: "#EAB308" },
+  { name: "Volleyball", label: "Volleyball", icon: "ellipse" as const, accent: "#EC4899" },
+  { name: "Other", label: "Other", icon: "sparkles" as const, accent: "#0A84FF" }
 ];
 
 const levels = [
@@ -56,8 +56,8 @@ const positions: Record<string, string[]> = {
 const calibrationSteps = [
   "Analyzing sport demands",
   "Evaluating position needs",
-  "Building sport-specific drills",
-  "Calibrating intensity",
+  "Building your AI training plan",
+  "Calibrating weekly intensity",
   "Finalizing your sports plan"
 ];
 
@@ -76,41 +76,8 @@ type SportStats = {
 
 type ScreenMode = "empty" | "onboarding" | "completion" | "dashboard";
 
-type TrainingGroup = {
-  title: string;
-  subtitle: string;
-  exerciseIds: string[];
-};
-
-type DayPlan = {
-  id: string;
-  day: number;
-  title: string;
-  subtitle: string;
-  exerciseIds: string[];
-  rest?: boolean;
-};
-
-type WeekPlan = {
-  week: number;
-  theme: string;
-  days: DayPlan[];
-};
-
-function ids(values: string[]) {
-  return values.filter((value) => existingExerciseIds.has(value));
-}
-
 function getSportMeta(sportName: string) {
   return sports.find((sport) => sport.name === sportName) ?? sports[0];
-}
-
-function getSportProgramId(sportName: string) {
-  return getSportMeta(sportName).programId;
-}
-
-function normalized(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function needsDominantHand(sportName: string) {
@@ -128,225 +95,13 @@ function getShortLevel(level: string) {
   return level;
 }
 
-function getTagline(sport: string, position: string) {
-  const key = `${sport}|${position}`;
-  const exact: Record<string, string> = {
-    "Football (Soccer)|Left Winger": "Speed, crossing, and 1v1 dominance",
-    "Football (Soccer)|Right Winger": "Pace, cutting inside, and clinical finishing",
-    "Football (Soccer)|Striker": "Movement, finishing, and explosive bursts",
-    "Football (Soccer)|Goalkeeper": "Reflexes, positioning, and distribution",
-    "Football (Soccer)|Centre Back": "Aerial dominance, tackling, and reading the game",
-    "Football (Soccer)|Attacking Midfielder": "Creativity, quick feet, and goal contribution",
-    "Football (Soccer)|Defensive Midfielder": "Interceptions, press resistance, and distribution",
-    "Football (Soccer)|Full Back": "Overlapping runs, defending, and crossing",
-    "Basketball|Point Guard": "Court vision, handles, and leadership",
-    "Basketball|Shooting Guard": "Scoring, off-ball movement, and shooting",
-    "Basketball|Small Forward": "Versatility, athleticism, and scoring",
-    "Basketball|Power Forward": "Post strength, rebounding, and mid-range",
-    "Basketball|Center": "Paint dominance, rim protection, and scoring",
-    "Rugby|Prop": "Scrum power, carries, and physicality",
-    "Rugby|Flanker": "Breakdown work, tackling, and fitness",
-    "Rugby|Fly Half": "Kicking, decision making, and distribution",
-    "Boxing|Orthodox": "Jab, cross, footwork, and defense",
-    "Boxing|Southpaw": "Left hand power, angles, and pressure",
-    "Volleyball|Setter": "Court awareness, setting accuracy, and leadership"
-  };
-  if (exact[key]) return exact[key];
-  if (sport === "Football (Soccer)" && normalized(position).includes("midfielder")) return "Box to box engine, vision, and endurance";
-  if (sport === "Running") return "Pace, endurance, and race strategy";
-  if (sport === "Swimming") return "Stroke technique, turns, and conditioning";
-  if (sport === "Tennis") return "Serve power, court coverage, and consistency";
-  if (sport === "Cricket") return "Technique, fitness, and mental toughness";
-  return "Sport-specific power, speed, and conditioning";
-}
-
-function group(title: string, subtitle: string, exerciseIds: string[]): TrainingGroup {
-  return { title, subtitle, exerciseIds: ids(exerciseIds) };
-}
-
-function getTrainingGroups(sport: string, position: string): TrainingGroup[] {
-  const pos = normalized(position);
-  if (sport === "Football (Soccer)") {
-    if (pos.includes("winger")) {
-      return [
-        group("Speed & Agility", "Beat the first defender", ["sprint_intervals", "shuttle_runs", "high_knees", "agility_ladder", "jump_lunges"]),
-        group("Lower Body", "Explode through every stride", ["single_leg_glute_bridge", "bulgarian_split_squat", "calf_raises", "lunges", "step_ups"]),
-        group("Core & Stability", "Stay balanced under pressure", ["plank", "russian_twists", "side_plank", "dead_bug", "bicycle_crunches"]),
-        group("HIIT & Cardio", "Recover fast after each run", ["burpees", "tuck_jumps", "jump_lunges", "mountain_climbers", "bear_crawl"])
-      ];
-    }
-    if (pos.includes("striker")) {
-      return [
-        group("Explosive Power", "Create separation in the box", ["box_jumps", "tuck_jumps", "sprint_intervals", "jump_lunges", "high_knees"]),
-        group("Lower Body Strength", "Build shot power and contact balance", ["barbell_squat", "romanian_deadlift", "leg_press", "calf_raises", "hip_thrust"]),
-        group("Core", "Rotate, finish, and absorb contact", ["plank", "dead_bug", "russian_twists", "v_ups", "bicycle_crunches"]),
-        group("Conditioning", "Repeat sprints late in games", ["burpees", "shuttle_runs", "agility_ladder", "bear_crawl", "jump_rope"])
-      ];
-    }
-    if (pos.includes("goalkeeper")) {
-      return [
-        group("Reflexes & Agility", "React faster across the goal", ["agility_ladder", "shuttle_runs", "lateral_raises", "jump_lunges", "high_knees"]),
-        group("Upper Body", "Build save strength and shoulder control", ["push_ups", "pike_push_ups", "dumbbell_shoulder_press", "band_pull_aparts", "face_pulls"]),
-        group("Core", "Stay rigid through dives", ["plank", "side_plank", "dead_bug", "bird_dogs", "russian_twists"]),
-        group("Lower Body", "Launch harder from the ground", ["glute_bridges", "single_leg_glute_bridge", "calf_raises", "squats", "step_ups"])
-      ];
-    }
-    if (pos.includes("centre back")) {
-      return [
-        group("Strength", "Win duels and hold your line", ["deadlift", "barbell_squat", "bent_over_rows", "overhead_press", "romanian_deadlift"]),
-        group("Aerial & Power", "Attack every header", ["box_jumps", "pull_ups", "jump_lunges", "hip_thrust", "tuck_jumps"]),
-        group("Core", "Brace through contact", ["plank", "dead_bug", "side_plank", "bird_dogs", "bicycle_crunches"]),
-        group("Conditioning", "Recover between defensive actions", ["sprint_intervals", "shuttle_runs", "burpees", "mountain_climbers", "bear_crawl"])
-      ];
-    }
-    if (pos.includes("midfielder")) {
-      return [
-        group("Endurance", "Own the middle for 90 minutes", ["sprint_intervals", "shuttle_runs", "high_knees", "bear_crawl", "jump_rope"]),
-        group("Strength", "Ride tackles and keep possession", ["barbell_squat", "deadlift", "romanian_deadlift", "overhead_press", "bent_over_rows"]),
-        group("Core", "Turn under pressure", ["plank", "russian_twists", "dead_bug", "bicycle_crunches", "v_ups"]),
-        group("Athletic", "Accelerate into pockets", ["agility_ladder", "jump_lunges", "tuck_jumps", "burpees", "mountain_climbers"])
-      ];
-    }
-    return [
-      group("Endurance + Speed", "Overlap and recover quickly", ["sprint_intervals", "shuttle_runs", "high_knees", "agility_ladder", "bear_crawl"]),
-      group("Lower Body", "Drive down the touchline", ["single_leg_glute_bridge", "bulgarian_split_squat", "lunges", "calf_raises", "step_ups"]),
-      group("Upper Body", "Shield, cross, and defend", ["push_ups", "lateral_raises", "dumbbell_shoulder_press", "band_pull_aparts", "face_pulls"]),
-      group("Core", "Stay stable in transitions", ["plank", "dead_bug", "side_plank", "russian_twists", "bird_dogs"])
-    ];
-  }
-  if (sport === "Basketball") {
-    if (pos.includes("point guard")) {
-      return [
-        group("Handles & Agility", "Change pace and control space", ["agility_ladder", "shuttle_runs", "high_knees", "jump_rope", "lateral_raises"]),
-        group("Lower Body", "Create burst and landing control", ["squats", "lunges", "calf_raises", "box_jumps", "single_leg_glute_bridge"]),
-        group("Upper Body", "Contact strength for drives", ["push_ups", "dumbbell_shoulder_press", "bicep_curls", "tricep_dips", "pull_ups"]),
-        group("Conditioning", "Push tempo without fading", ["burpees", "jump_lunges", "mountain_climbers", "sprint_intervals", "tuck_jumps"])
-      ];
-    }
-    if (pos.includes("shooting guard")) {
-      return [
-        group("Shooting Prep", "Build stable shoulders", ["lateral_raises", "dumbbell_shoulder_press", "push_ups", "band_pull_aparts", "face_pulls"]),
-        group("Lower Body", "Rise into every jumper", ["box_jumps", "tuck_jumps", "calf_raises", "squats", "lunges"]),
-        group("Conditioning", "Move sharp off the ball", ["sprint_intervals", "agility_ladder", "shuttle_runs", "jump_rope", "high_knees"]),
-        group("Core", "Stay square through contact", ["plank", "russian_twists", "dead_bug", "bicycle_crunches", "side_plank"])
-      ];
-    }
-    return [
-      group("Post Strength", "Own the paint", ["deadlift", "barbell_squat", "leg_press", "hip_thrust", "romanian_deadlift"]),
-      group("Upper Body", "Finish through contact", ["bench_press", "bent_over_rows", "overhead_press", "pull_ups", "dumbbell_press"]),
-      group("Core", "Brace and rebound", ["plank", "dead_bug", "russian_twists", "v_ups", "bicycle_crunches"]),
-      group("Athletic", "Jump, land, repeat", ["box_jumps", "tuck_jumps", "shuttle_runs", "sprint_intervals", "jump_lunges"])
-    ];
-  }
-  if (sport === "Rugby") {
-    if (pos.includes("prop")) {
-      return [
-        group("Raw Strength", "Scrum power and contact base", ["barbell_squat", "deadlift", "bench_press", "bent_over_rows", "overhead_press"]),
-        group("Power", "Carry through tackles", ["box_jumps", "medicine_ball_slams", "farmer_carries", "sled_push", "hip_thrust"]),
-        group("Core", "Brace under collision", ["plank", "dead_bug", "bird_dogs", "side_plank", "russian_twists"]),
-        group("Conditioning", "Repeat heavy efforts", ["burpees", "sprint_intervals", "shuttle_runs", "bear_crawl", "mountain_climbers"])
-      ];
-    }
-    return [
-      group("Fitness & Power", "Win breakdowns repeatedly", ["sprint_intervals", "burpees", "box_jumps", "jump_lunges", "bear_crawl"]),
-      group("Strength", "Tackle and jackal harder", ["deadlift", "barbell_squat", "bench_press", "pull_ups", "bent_over_rows"]),
-      group("Core", "Stay locked in contact", ["plank", "russian_twists", "dead_bug", "bicycle_crunches", "side_plank"]),
-      group("Conditioning", "Cover ground fast", ["shuttle_runs", "agility_ladder", "high_knees", "mountain_climbers", "tuck_jumps"])
-    ];
-  }
-  if (sport === "Boxing") {
-    return [
-      group("Footwork", "Angles, rhythm, and pressure", ["agility_ladder", "shuttle_runs", "jump_rope", "high_knees", "bear_crawl"]),
-      group("Upper Body Power", "Punch harder without losing guard", ["push_ups", "diamond_push_ups", "pike_push_ups", "shadow_boxing", "medicine_ball_slams"]),
-      group("Core", "Rotate and resist", ["russian_twists", "bicycle_crunches", "plank", "side_plank", "v_ups"]),
-      group("Conditioning", "Stay dangerous every round", ["burpees", "mountain_climbers", "jump_lunges", "tuck_jumps", "sprint_intervals"])
-    ];
-  }
-  if (sport === "Running") {
-    return [
-      group("Speed Work", "Pace changes and turnover", ["sprint_intervals", "shuttle_runs", "high_knees", "jump_lunges", "agility_ladder"]),
-      group("Strength", "Resilient legs and hips", ["romanian_deadlift", "single_leg_glute_bridge", "calf_raises", "step_ups", "lunges"]),
-      group("Core", "Hold form when tired", ["dead_bug", "bird_dogs", "plank", "side_plank", "bicycle_crunches"]),
-      group("Mobility", "Open hips and restore stride", ["hip_flexor_stretch", "hamstring_stretch", "cat_cow", "downward_dog", "cobra_stretch"])
-    ];
-  }
-  if (sport === "Swimming") {
-    return [
-      group("Shoulder Strength", "Pull stronger through water", ["pull_ups", "lat_pulldown", "seated_cable_row", "face_pulls", "band_pull_aparts"]),
-      group("Core", "Hold streamline under fatigue", ["dead_bug", "plank", "v_ups", "russian_twists", "bicycle_crunches"]),
-      group("Flexibility", "Better reach and rotation", ["cobra_stretch", "downward_dog", "cat_cow", "childs_pose", "pigeon_pose"]),
-      group("Conditioning", "Build engine without impact", ["burpees", "mountain_climbers", "jump_rope", "sprint_intervals", "bear_crawl"])
-    ];
-  }
-  if (sport === "Tennis") {
-    return [
-      group("Rotational Power", "Serve and swing explosively", ["russian_twists", "medicine_ball_slams", "side_plank", "bicycle_crunches", "v_ups"]),
-      group("Shoulder & Arm", "Protect the shoulder under volume", ["dumbbell_shoulder_press", "lateral_raises", "band_pull_aparts", "face_pulls", "overhead_press"]),
-      group("Footwork", "Cover court with sharp stops", ["agility_ladder", "shuttle_runs", "high_knees", "sprint_intervals", "jump_rope"]),
-      group("Core & Balance", "Control rotation on the move", ["plank", "dead_bug", "bird_dogs", "side_plank", "single_leg_glute_bridge"])
-    ];
-  }
-  if (sport === "Cricket") {
-    return [
-      group("Batting Power", "Rotate through the ball", ["russian_twists", "medicine_ball_slams", "overhead_press", "dumbbell_row", "bent_over_rows"]),
-      group("Bowling Strength", "Build repeatable lower-body drive", ["romanian_deadlift", "lunges", "calf_raises", "hip_flexor_stretch", "dumbbell_shoulder_press"]),
-      group("Core", "Brace through batting and bowling", ["plank", "dead_bug", "side_plank", "bicycle_crunches", "bird_dogs"]),
-      group("Conditioning", "Stay sharp in long spells", ["sprint_intervals", "shuttle_runs", "high_knees", "burpees", "jump_rope"])
-    ];
-  }
-  if (sport === "Volleyball") {
-    return [
-      group("Jump Training", "Rise higher and land cleaner", ["box_jumps", "tuck_jumps", "calf_raises", "jump_lunges", "jump_rope"]),
-      group("Shoulder", "Hit hard and protect your shoulder", ["dumbbell_shoulder_press", "lateral_raises", "band_pull_aparts", "face_pulls", "overhead_press"]),
-      group("Core", "Stay stable in the air", ["plank", "russian_twists", "dead_bug", "v_ups", "bicycle_crunches"]),
-      group("Conditioning", "Repeat jumps and transitions", ["agility_ladder", "shuttle_runs", "high_knees", "burpees", "mountain_climbers"])
-    ];
-  }
-  return getTrainingGroups("Football (Soccer)", "Left Winger");
-}
-
-function buildWeeklyPlan(groups: TrainingGroup[]): WeekPlan[] {
-  const safe = groups.length >= 4 ? groups : getTrainingGroups("Football (Soccer)", "Left Winger");
-  const rest5 = { day: 5, title: "Rest", subtitle: "Active recovery today", exerciseIds: [], rest: true };
-  const rest6 = { day: 6, title: "Rest", subtitle: "Recovery is essential for growth", exerciseIds: [], rest: true };
-  return [
-    { week: 1, theme: "Sport Foundation", days: [
-      { id: "w1d1", day: 1, title: "Speed & Agility", subtitle: safe[0].subtitle, exerciseIds: safe[0].exerciseIds },
-      { id: "w1d2", day: 2, title: safe[1].title, subtitle: safe[1].subtitle, exerciseIds: safe[1].exerciseIds },
-      { id: "w1d3", day: 3, title: "Conditioning", subtitle: safe[3].subtitle, exerciseIds: safe[3].exerciseIds },
-      { id: "w1d4", day: 4, title: safe[2].title, subtitle: safe[2].subtitle, exerciseIds: safe[2].exerciseIds },
-      { ...rest5, id: "w1d5" },
-      { ...rest6, id: "w1d6" }
-    ] },
-    { week: 2, theme: "Position-Specific Power", days: [
-      { id: "w2d1", day: 1, title: "Power", subtitle: "Explode with position intent", exerciseIds: [...safe[0].exerciseIds.slice(0, 3), ...safe[1].exerciseIds.slice(0, 2)] },
-      { id: "w2d2", day: 2, title: "Strength", subtitle: safe[1].subtitle, exerciseIds: safe[1].exerciseIds },
-      { id: "w2d3", day: 3, title: "HIIT & Cardio", subtitle: safe[3].subtitle, exerciseIds: safe[3].exerciseIds },
-      { id: "w2d4", day: 4, title: "Core & Stability", subtitle: safe[2].subtitle, exerciseIds: safe[2].exerciseIds },
-      { ...rest5, id: "w2d5" },
-      { ...rest6, id: "w2d6" }
-    ] },
-    { week: 3, theme: "Peak Conditioning", days: [
-      { id: "w3d1", day: 1, title: "Full Body HIIT", subtitle: "Raise the engine", exerciseIds: [...safe[3].exerciseIds, ...safe[0].exerciseIds].slice(0, 6) },
-      { id: "w3d2", day: 2, title: "Skill Conditioning", subtitle: safe[0].subtitle, exerciseIds: safe[0].exerciseIds },
-      { id: "w3d3", day: 3, title: "Strength", subtitle: safe[1].subtitle, exerciseIds: safe[1].exerciseIds },
-      { id: "w3d4", day: 4, title: "Recovery & Mobility", subtitle: "Move well and reset", exerciseIds: ids(["cat_cow", "downward_dog", "hip_flexor_stretch", "hamstring_stretch", "cobra_stretch"]) },
-      { ...rest5, id: "w3d5" },
-      { ...rest6, id: "w3d6" }
-    ] },
-    { week: 4, theme: "Competition Ready", days: [
-      { id: "w4d1", day: 1, title: "Power & Speed", subtitle: "Sharp, fast, explosive", exerciseIds: [...safe[0].exerciseIds.slice(0, 3), ...safe[3].exerciseIds.slice(0, 2)] },
-      { id: "w4d2", day: 2, title: "Upper Body & Core", subtitle: "Stable and powerful", exerciseIds: [...safe[2].exerciseIds, ...safe[1].exerciseIds].slice(0, 6) },
-      { id: "w4d3", day: 3, title: "Full Body Circuit", subtitle: "Final competitive push", exerciseIds: [...safe[0].exerciseIds, ...safe[1].exerciseIds, ...safe[3].exerciseIds].slice(0, 7) },
-      { id: "w4d4", day: 4, title: "Taper & Mobility", subtitle: "Fresh legs for performance", exerciseIds: ids(["downward_dog", "cat_cow", "childs_pose", "cobra_stretch", "pigeon_pose"]) },
-      { ...rest5, id: "w4d5" },
-      { ...rest6, id: "w4d6" }
-    ] }
-  ];
+function getPlanSessionName(plan: GeneratedPlan | null, selectedSport: string, day: GeneratedDay) {
+  return `${plan?.planTitle ?? selectedSport} · Day ${day.dayNumber} · ${day.title}`;
 }
 
 export default function SportsModeScreen() {
   const { profile, refreshProfile, user } = useAuth();
+  const { isFreeExpired } = useSubscription();
   const savedAnswers = profile?.onboarding_answers ?? {};
   const savedSport = typeof savedAnswers.sport === "string" ? savedAnswers.sport : "";
   const [selected, setSelected] = useState(savedSport || "Football (Soccer)");
@@ -359,19 +114,20 @@ export default function SportsModeScreen() {
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [calibrationIndex, setCalibrationIndex] = useState(0);
   const [stats, setStats] = useState<SportStats>({ workouts: 0, xp: 0, streak: 0 });
+  const [plan, setPlan] = useState<GeneratedPlan | null>(null);
+  const [isPlanLoading, setIsPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const selectedSport = getSportMeta(selected);
-  const programId = getSportProgramId(selected);
   const positionOptions = positions[selected] ?? [];
   const finalPosition = useMemo(() => {
     if (selected === "Other") return customSport.trim() || "Custom sport";
     return position || positionOptions[0] || "General athlete";
   }, [customSport, position, positionOptions, selected]);
-  const trainingGroups = useMemo(() => getTrainingGroups(selected, finalPosition), [finalPosition, selected]);
-  const weeklyPlan = useMemo(() => buildWeeklyPlan(trainingGroups), [trainingGroups]);
-  const tagline = getTagline(selected, finalPosition);
   const isContinueEnabled = step !== 3 || selected !== "Other" || customSport.trim().length > 1;
+  const displayColor = plan?.sportColor ?? selectedSport.accent;
 
   useEffect(() => {
     Animated.sequence([
@@ -379,6 +135,17 @@ export default function SportsModeScreen() {
       Animated.timing(slideAnim, { duration: 220, toValue: 0, useNativeDriver: true })
     ]).start();
   }, [slideAnim, step]);
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { duration: 850, toValue: 1.12, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { duration: 850, toValue: 1, useNativeDriver: true })
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
 
   useEffect(() => {
     if (savedSport) return;
@@ -409,19 +176,35 @@ export default function SportsModeScreen() {
           setTimeout(() => {
             setIsCalibrating(false);
             setMode("completion");
-          }, 500);
+          }, 520);
           return current;
         }
         return current + 1;
       });
-    }, 520);
+    }, 560);
     return () => clearInterval(timer);
   }, [isCalibrating]);
 
   useEffect(() => {
     if (mode !== "dashboard") return;
     void loadSportStats();
+    void loadAiPlan(false);
   }, [mode, selected, user?.id]);
+
+  async function loadAiPlan(forceRegenerate: boolean) {
+    if (!user?.id || isPlanLoading) return;
+    setPlanError(null);
+    setIsPlanLoading(true);
+    try {
+      const existing = forceRegenerate ? null : await loadExistingPlan(user.id);
+      const nextPlan = existing ?? await generatePersonalizedPlan(user.id);
+      setPlan(nextPlan);
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Could not load your AI plan.");
+    } finally {
+      setIsPlanLoading(false);
+    }
+  }
 
   async function loadSportStats() {
     if (!isSupabaseConfigured || !user?.id) {
@@ -434,7 +217,7 @@ export default function SportsModeScreen() {
           .from("workout_sessions")
           .select("session_name,xp_earned")
           .eq("user_id", user.id)
-          .ilike("session_name", `%${programId}%`),
+          .ilike("session_name", `%${selected}%`),
         supabase
           .from("user_profiles")
           .select("current_streak,total_xp")
@@ -467,6 +250,7 @@ export default function SportsModeScreen() {
         .update({ onboarding_answers: mergedAnswers })
         .eq("id", user.id);
       if (!error) void refreshProfile();
+      void generatePersonalizedPlan(user.id).then(setPlan).catch(() => undefined);
     }
     setIsCalibrating(true);
   }
@@ -484,14 +268,25 @@ export default function SportsModeScreen() {
     void saveAnswersAndCalibrate();
   }
 
-  function startDay(day: DayPlan, week: WeekPlan) {
-    if (day.rest) return;
+  function confirmRegeneratePlan() {
+    Alert.alert(
+      "Regenerate AI plan?",
+      "FITNEO will rebuild your 4-week plan from your latest sport profile.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Regenerate", onPress: () => void loadAiPlan(true) }
+      ]
+    );
+  }
+
+  function startDay(day: GeneratedDay, weekNumber: number) {
+    if (day.isRest || day.exerciseIds.length === 0) return;
     router.push({
       pathname: "/active-workout",
       params: {
         mode: selected,
-        programId,
-        programName: `${selectedSport.label} ${finalPosition} · Week ${week.week} Day ${day.day}`,
+        programId: `ai-${selected.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        programName: `${getPlanSessionName(plan, selectedSport.label, day)} · Week ${weekNumber}`,
         exerciseIds: JSON.stringify(day.exerciseIds)
       }
     });
@@ -500,7 +295,9 @@ export default function SportsModeScreen() {
   if (isCalibrating) {
     return (
       <AppLayout contentContainerStyle={styles.calibrationScreen}>
-        <Text style={styles.calibrationEmoji}>{selectedSport.emoji}</Text>
+        <Animated.View style={[styles.aiOrb, { borderColor: displayColor, transform: [{ scale: pulseAnim }] }]}>
+          <Ionicons name={selectedSport.icon} size={42} color={displayColor} />
+        </Animated.View>
         <Text style={styles.aiTitle}>FITNEO AI</Text>
         <Text style={styles.aiSubtitle}>Sports Mode</Text>
         <View style={styles.calibrationCard}>
@@ -508,16 +305,16 @@ export default function SportsModeScreen() {
             const active = index <= calibrationIndex;
             return (
               <View key={item} style={styles.calibrationRow}>
-                <View style={[styles.stepDot, active && { backgroundColor: selectedSport.accent, borderColor: selectedSport.accent }]}>
+                <View style={[styles.stepDot, active && { backgroundColor: displayColor, borderColor: displayColor }]}>
                   {active ? <Ionicons name="checkmark" size={10} color="#FFFFFF" /> : null}
                 </View>
-                <Text style={[styles.stepText, active && { color: selectedSport.accent }]}>{item}</Text>
+                <Text style={[styles.stepText, active && { color: displayColor }]}>{item}</Text>
               </View>
             );
           })}
         </View>
         <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { backgroundColor: selectedSport.accent, width: `${((calibrationIndex + 1) / calibrationSteps.length) * 100}%` }]} />
+          <View style={[styles.progressFill, { backgroundColor: displayColor, width: `${((calibrationIndex + 1) / calibrationSteps.length) * 100}%` }]} />
         </View>
       </AppLayout>
     );
@@ -526,15 +323,15 @@ export default function SportsModeScreen() {
   if (mode === "empty") {
     return (
       <AppLayout contentContainerStyle={styles.emptyScreen}>
-        <View style={styles.emojiGrid}>
+        <View style={styles.emptySportGrid}>
           {sports.slice(0, 9).map((sport) => (
             <View key={sport.name} style={[styles.emptySportTile, { borderColor: `${sport.accent}44` }]}>
-              <Text style={styles.emptySportEmoji}>{sport.emoji}</Text>
+              <Ionicons name={sport.icon} size={28} color={sport.accent} />
             </View>
           ))}
         </View>
         <Text style={styles.emptyTitle}>Choose Your Sport</Text>
-        <Text style={styles.emptySubtitle}>Get a personalized training plan built around your position and level.</Text>
+        <Text style={styles.emptySubtitle}>FITNEO AI builds a 4-week plan around your sport, position, level, schedule, and equipment.</Text>
         <TouchableOpacity activeOpacity={0.86} style={styles.primaryButton} onPress={() => setMode("onboarding")}>
           <Text style={styles.primaryButtonText}>Set Up My Sport Profile</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
@@ -546,15 +343,17 @@ export default function SportsModeScreen() {
   if (mode === "completion") {
     return (
       <AppLayout contentContainerStyle={styles.completionScreen}>
-        <Text style={styles.completionEmoji}>{selectedSport.emoji}</Text>
+        <View style={[styles.completionIcon, { borderColor: displayColor }]}>
+          <Ionicons name={selectedSport.icon} size={48} color={displayColor} />
+        </View>
         <Text style={styles.completionTitle}>You're all set</Text>
-        <Text style={[styles.completionSubtitle, { color: selectedSport.accent }]}>{level} {selectedSport.label} Player</Text>
+        <Text style={[styles.completionSubtitle, { color: displayColor }]}>{level} {selectedSport.label} Player</Text>
         <View style={styles.answerSummaryGrid}>
           <SummaryTile label="Sport" value={selectedSport.label} />
           <SummaryTile label="Level" value={level} />
           <SummaryTile label={needsDominantHand(selected) ? "Hand" : "Position"} value={finalPosition} />
         </View>
-        <TouchableOpacity activeOpacity={0.86} style={[styles.primaryButton, { backgroundColor: selectedSport.accent }]} onPress={() => setMode("dashboard")}>
+        <TouchableOpacity activeOpacity={0.86} style={[styles.primaryButton, { backgroundColor: displayColor }]} onPress={() => setMode("dashboard")}>
           <Text style={styles.primaryButtonText}>Open Sports Plan</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
         </TouchableOpacity>
@@ -563,15 +362,19 @@ export default function SportsModeScreen() {
   }
 
   if (mode === "dashboard") {
+    const visibleWeeks = plan?.weeks ?? [];
+    const previewWeeks = isFreeExpired ? visibleWeeks.slice(0, 1) : visibleWeeks;
     return (
       <AppLayout scroll contentContainerStyle={styles.dashboardScreen}>
-        <LinearGradient colors={["#151821", "#0D0D11"]} style={[styles.heroCard, { borderLeftColor: selectedSport.accent }]}>
+        <LinearGradient colors={["#151821", "#0D0D11"]} style={[styles.heroCard, { borderLeftColor: displayColor }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroIdentity}>
-              <Text style={styles.heroEmoji}>{selectedSport.emoji}</Text>
+              <View style={[styles.heroIcon, { backgroundColor: `${displayColor}22` }]}>
+                <Ionicons name={selectedSport.icon} size={24} color={displayColor} />
+              </View>
               <View style={styles.heroTextBlock}>
-                <Text style={styles.heroSport}>{selectedSport.label}</Text>
-                <Text style={[styles.heroPosition, { color: selectedSport.accent }]}>{finalPosition}</Text>
+                <Text style={styles.heroSport}>{plan?.planTitle ?? `${selectedSport.label} Training Plan`}</Text>
+                <Text style={[styles.heroPosition, { color: displayColor }]}>{finalPosition}</Text>
               </View>
             </View>
             <View style={styles.heroActions}>
@@ -579,9 +382,13 @@ export default function SportsModeScreen() {
               <TouchableOpacity activeOpacity={0.82} style={styles.editButton} onPress={() => { setStep(0); setMode("onboarding"); }}>
                 <Ionicons name="create-outline" size={15} color="#FFFFFF" />
               </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.82} style={styles.editButton} onPress={confirmRegeneratePlan}>
+                <Ionicons name="refresh" size={15} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
           </View>
-          <Text style={styles.tagline}>{tagline}</Text>
+          <Text style={styles.tagline}>{plan?.tagline ?? "Your AI plan is calibrating around your sport profile."}</Text>
+          <Text style={styles.description}>{plan?.planDescription ?? "FITNEO is preparing a personalized training block for you."}</Text>
           <View style={styles.heroStatRow}>
             <HeroStat value={String(stats.workouts)} label="This week" />
             <View style={styles.statDivider} />
@@ -591,32 +398,46 @@ export default function SportsModeScreen() {
           </View>
         </LinearGradient>
 
-        {weeklyPlan.map((week) => (
-          <View key={week.week} style={styles.weekBlock}>
+        {isPlanLoading ? (
+          <View style={styles.loadingPlanCard}>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <Ionicons name="hardware-chip" size={34} color={displayColor} />
+            </Animated.View>
+            <ActivityIndicator color={displayColor} />
+            <Text style={styles.loadingPlanTitle}>Building your AI training plan</Text>
+            <Text style={styles.loadingPlanCopy}>Reading your sport profile and matching valid exercises from the FITNEO catalog.</Text>
+          </View>
+        ) : null}
+
+        {planError ? <Text style={styles.planError}>{planError}</Text> : null}
+
+        {previewWeeks.map((week) => (
+          <View key={week.weekNumber} style={[styles.weekBlock, isFreeExpired && styles.lockedPreview]}>
             <View style={styles.weekHeader}>
-              <Text style={styles.weekTitle}>Week {week.week}</Text>
-              <Text style={[styles.weekBadge, { backgroundColor: `${selectedSport.accent}24`, color: selectedSport.accent }]}>{week.theme}</Text>
+              <Text style={styles.weekTitle}>Week {week.weekNumber}</Text>
+              <Text style={[styles.weekBadge, { backgroundColor: `${displayColor}24`, color: displayColor }]}>{week.theme}</Text>
             </View>
             <View style={styles.dayList}>
               {week.days.map((day) => (
                 <TouchableOpacity
-                  activeOpacity={day.rest ? 1 : 0.84}
-                  key={day.id}
-                  onPress={() => startDay(day, week)}
+                  activeOpacity={day.isRest ? 1 : 0.84}
+                  key={`${week.weekNumber}-${day.dayNumber}`}
+                  onPress={() => startDay(day, week.weekNumber)}
                   style={[
                     styles.dayCard,
-                    day.rest ? styles.restDayCard : { borderLeftColor: selectedSport.accent }
+                    day.isRest ? styles.restDayCard : { borderLeftColor: displayColor }
                   ]}
                 >
-                  <View style={[styles.dayIcon, day.rest ? styles.restIcon : { backgroundColor: `${selectedSport.accent}22` }]}>
-                    <Ionicons name={day.rest ? "moon" : "walk"} size={18} color={day.rest ? "#6B7280" : selectedSport.accent} />
+                  <View style={[styles.dayIcon, day.isRest ? styles.restIcon : { backgroundColor: `${displayColor}22` }]}>
+                    <Ionicons name={day.isRest ? "moon" : "walk"} size={18} color={day.isRest ? "#6B7280" : displayColor} />
                   </View>
                   <View style={styles.dayCopy}>
-                    <Text style={[styles.dayTitle, day.rest && styles.restText]}>Day {day.day} · {day.title}</Text>
-                    <Text style={styles.daySubtitle}>{day.subtitle}</Text>
+                    <Text style={[styles.dayTitle, day.isRest && styles.restText]}>Day {day.dayNumber} · {day.title}</Text>
+                    <Text style={styles.daySubtitle}>{day.focus}</Text>
+                    <Text style={styles.dayNote}>{day.motivationalNote}</Text>
                   </View>
-                  {!day.rest ? (
-                    <View style={[styles.playCircle, { backgroundColor: selectedSport.accent }]}>
+                  {!day.isRest ? (
+                    <View style={[styles.playCircle, { backgroundColor: displayColor }]}>
                       <Ionicons name="play" size={14} color="#FFFFFF" />
                     </View>
                   ) : null}
@@ -625,6 +446,18 @@ export default function SportsModeScreen() {
             </View>
           </View>
         ))}
+
+        {isFreeExpired ? (
+          <View style={styles.unlockOverlay}>
+            <Ionicons name="lock-closed" size={28} color={colors.gold} />
+            <Text style={styles.unlockTitle}>Your AI Training Plan is ready</Text>
+            <Text style={styles.unlockCopy}>Upgrade to Pro to unlock all 4 weeks, every AI-calibrated day, and full sports programming.</Text>
+            <TouchableOpacity activeOpacity={0.86} style={styles.unlockButton} onPress={() => router.push("/paywall")}>
+              <Text style={styles.unlockButtonText}>Unlock My Plan</Text>
+              <Ionicons name="arrow-forward" size={16} color="#050506" />
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </AppLayout>
     );
   }
@@ -636,7 +469,7 @@ export default function SportsModeScreen() {
         <Text style={styles.largeStep}>{String(step + 1).padStart(2, "0")}</Text>
       </View>
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { backgroundColor: selectedSport.accent, width: `${((step + 1) / TOTAL_STEPS) * 100}%` }]} />
+        <View style={[styles.progressFill, { backgroundColor: displayColor, width: `${((step + 1) / TOTAL_STEPS) * 100}%` }]} />
       </View>
 
       <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
@@ -653,7 +486,7 @@ export default function SportsModeScreen() {
                   {selected === sport.name ? (
                     <View style={styles.checkBadge}><Ionicons name="checkmark" size={13} color="#FFFFFF" /></View>
                   ) : null}
-                  <Text style={styles.sportEmoji}>{sport.emoji}</Text>
+                  <Ionicons name={sport.icon} size={32} color={selected === sport.name ? "#FFFFFF" : sport.accent} />
                   <Text style={styles.sportName}>{sport.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -664,7 +497,7 @@ export default function SportsModeScreen() {
         {step === 1 ? (
           <QuestionScreen question="What is your level?">
             {levels.map((item) => (
-              <OptionRow key={item.title} active={level === item.title} accent={selectedSport.accent} title={item.title} description={item.description} onPress={() => setLevel(item.title)} />
+              <OptionRow key={item.title} active={level === item.title} accent={displayColor} title={item.title} description={item.description} onPress={() => setLevel(item.title)} />
             ))}
           </QuestionScreen>
         ) : null}
@@ -672,7 +505,7 @@ export default function SportsModeScreen() {
         {step === 2 ? (
           <QuestionScreen question="How often do you train?">
             {frequencies.map((item) => (
-              <OptionRow key={item.title} active={frequency === item.title} accent={selectedSport.accent} title={item.title} description={item.description} onPress={() => setFrequency(item.title)} />
+              <OptionRow key={item.title} active={frequency === item.title} accent={displayColor} title={item.title} description={item.description} onPress={() => setFrequency(item.title)} />
             ))}
           </QuestionScreen>
         ) : null}
@@ -690,7 +523,7 @@ export default function SportsModeScreen() {
               />
             ) : (
               (positionOptions.length > 0 ? positionOptions : ["General athlete"]).map((item) => (
-                <OptionRow key={item} active={(position || positionOptions[0]) === item} accent={selectedSport.accent} title={item} onPress={() => setPosition(item)} />
+                <OptionRow key={item} active={(position || positionOptions[0]) === item} accent={displayColor} title={item} onPress={() => setPosition(item)} />
               ))
             )}
           </QuestionScreen>
@@ -709,7 +542,7 @@ export default function SportsModeScreen() {
             <Ionicons name="chevron-back" size={18} color="#9CA3AF" />
           </TouchableOpacity>
         ) : null}
-        <TouchableOpacity activeOpacity={0.86} disabled={!isContinueEnabled} style={[styles.continueButton, { backgroundColor: selectedSport.accent }, !isContinueEnabled && styles.continueDisabled]} onPress={advance}>
+        <TouchableOpacity activeOpacity={0.86} disabled={!isContinueEnabled} style={[styles.continueButton, { backgroundColor: displayColor }, !isContinueEnabled && styles.continueDisabled]} onPress={advance}>
           <Text style={styles.continueText}>{step === TOTAL_STEPS - 1 ? "Calibrate Plan" : "Continue"}</Text>
         </TouchableOpacity>
       </View>
@@ -758,9 +591,8 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   emptyScreen: { alignItems: "center", backgroundColor: "#080808", gap: 18, justifyContent: "center", paddingHorizontal: 24 },
-  emojiGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 260 },
+  emptySportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 260 },
   emptySportTile: { alignItems: "center", backgroundColor: "#111114", borderRadius: 18, borderWidth: 1, height: 70, justifyContent: "center", width: 70 },
-  emptySportEmoji: { fontSize: 32 },
   emptyTitle: { color: "#FFFFFF", fontSize: 34, fontWeight: "900", letterSpacing: -1, textAlign: "center" },
   emptySubtitle: { color: "#9CA3AF", fontSize: 14, lineHeight: 21, maxWidth: 340, textAlign: "center" },
   onboardingScreen: { backgroundColor: "#080808", gap: 16 },
@@ -773,8 +605,7 @@ const styles = StyleSheet.create({
   questionText: { color: "#FFFFFF", fontSize: 28, fontWeight: "800", lineHeight: 35, paddingHorizontal: 8, paddingVertical: 14, textAlign: "center" },
   optionsWrap: { gap: 10 },
   sportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  sportCard: { alignItems: "center", aspectRatio: 1, backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, justifyContent: "center", position: "relative", width: "48%" },
-  sportEmoji: { fontSize: 36, marginBottom: 8 },
+  sportCard: { alignItems: "center", aspectRatio: 1, backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, gap: 8, justifyContent: "center", position: "relative", width: "48%" },
   sportName: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", textAlign: "center" },
   checkBadge: { alignItems: "center", backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 11, height: 22, justifyContent: "center", position: "absolute", right: 10, top: 10, width: 22 },
   optionRow: { alignItems: "center", backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, flexDirection: "row", minHeight: 56, paddingHorizontal: 14 },
@@ -791,7 +622,7 @@ const styles = StyleSheet.create({
   continueDisabled: { opacity: 0.45 },
   continueText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
   calibrationScreen: { alignItems: "center", backgroundColor: "#080808", gap: 16, justifyContent: "center", paddingHorizontal: 26 },
-  calibrationEmoji: { fontSize: 80, textShadowColor: "rgba(59,130,246,0.45)", textShadowRadius: 28 },
+  aiOrb: { alignItems: "center", backgroundColor: "#101015", borderRadius: 48, borderWidth: 1, height: 96, justifyContent: "center", shadowColor: colors.accent, shadowOpacity: 0.42, shadowRadius: 22, width: 96 },
   aiTitle: { color: "#FFFFFF", fontSize: 19, fontWeight: "900", letterSpacing: 4, marginTop: 8 },
   aiSubtitle: { color: "#9CA3AF", fontSize: 12, marginTop: -10 },
   calibrationCard: { backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 18, borderWidth: 1, gap: 11, marginTop: 10, padding: 18, width: "100%" },
@@ -799,7 +630,7 @@ const styles = StyleSheet.create({
   stepDot: { alignItems: "center", borderColor: "#4B5563", borderRadius: 8, borderWidth: 1, height: 16, justifyContent: "center", width: 16 },
   stepText: { color: "#9CA3AF", fontSize: 13, fontWeight: "700" },
   completionScreen: { alignItems: "center", backgroundColor: "#080808", gap: 18, justifyContent: "center", paddingHorizontal: 22 },
-  completionEmoji: { fontSize: 80 },
+  completionIcon: { alignItems: "center", backgroundColor: "#101015", borderRadius: 42, borderWidth: 1, height: 84, justifyContent: "center", width: 84 },
   completionTitle: { color: "#FFFFFF", fontSize: 36, fontWeight: "900", textAlign: "center" },
   completionSubtitle: { fontSize: 16, fontWeight: "900", textAlign: "center" },
   answerSummaryGrid: { gap: 10, width: "100%" },
@@ -812,31 +643,43 @@ const styles = StyleSheet.create({
   heroCard: { borderColor: "rgba(255,255,255,0.08)", borderLeftWidth: 4, borderRadius: 22, borderTopColor: "rgba(59,130,246,0.35)", borderTopWidth: 1, gap: 14, overflow: "hidden", padding: 16 },
   heroTop: { alignItems: "flex-start", flexDirection: "row", justifyContent: "space-between", gap: 10 },
   heroIdentity: { alignItems: "center", flexDirection: "row", flex: 1, gap: 12 },
-  heroEmoji: { fontSize: 52 },
+  heroIcon: { alignItems: "center", borderRadius: 18, height: 46, justifyContent: "center", width: 46 },
   heroTextBlock: { flex: 1 },
-  heroSport: { color: "#FFFFFF", fontSize: 24, fontWeight: "900" },
+  heroSport: { color: "#FFFFFF", fontSize: 22, fontWeight: "900" },
   heroPosition: { fontSize: 14, fontWeight: "900", marginTop: 2 },
   heroActions: { alignItems: "flex-end", gap: 8 },
   levelBadge: { backgroundColor: "rgba(234,179,8,0.16)", borderColor: "rgba(234,179,8,0.38)", borderRadius: 999, borderWidth: 1, color: "#FACC15", fontSize: 11, fontWeight: "900", overflow: "hidden", paddingHorizontal: 10, paddingVertical: 6 },
   editButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.14)", borderRadius: 16, borderWidth: 1, height: 36, justifyContent: "center", width: 36 },
-  tagline: { color: "#A1A1AA", fontSize: 13, fontWeight: "700", lineHeight: 19 },
+  tagline: { color: "#FFFFFF", fontSize: 14, fontWeight: "900", lineHeight: 20 },
+  description: { color: "#A1A1AA", fontSize: 12, fontWeight: "600", lineHeight: 18 },
   heroStatRow: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 16, flexDirection: "row", paddingVertical: 12 },
   heroStat: { alignItems: "center", flex: 1, gap: 3 },
   heroStatValue: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
   heroStatLabel: { color: "#9CA3AF", fontSize: 10, fontWeight: "800" },
   statDivider: { backgroundColor: "rgba(255,255,255,0.10)", height: 28, width: 1 },
+  loadingPlanCard: { alignItems: "center", backgroundColor: "#111114", borderColor: "rgba(255,255,255,0.10)", borderRadius: 20, borderWidth: 1, gap: 10, padding: 22 },
+  loadingPlanTitle: { color: "#FFFFFF", fontSize: 17, fontWeight: "900", textAlign: "center" },
+  loadingPlanCopy: { color: "#A1A1AA", fontSize: 12, lineHeight: 18, textAlign: "center" },
+  planError: { color: colors.danger, fontSize: 12, lineHeight: 18, textAlign: "center" },
   weekBlock: { gap: 10 },
+  lockedPreview: { opacity: 0.3 },
   weekHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   weekTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
   weekBadge: { borderRadius: 999, fontSize: 11, fontWeight: "900", overflow: "hidden", paddingHorizontal: 10, paddingVertical: 6 },
   dayList: { gap: 9 },
-  dayCard: { alignItems: "center", backgroundColor: "#1A1A1F", borderColor: "rgba(255,255,255,0.06)", borderLeftWidth: 3, borderRadius: 15, borderWidth: 1, flexDirection: "row", gap: 12, minHeight: 70, padding: 12 },
+  dayCard: { alignItems: "center", backgroundColor: "#1A1A1F", borderColor: "rgba(255,255,255,0.06)", borderLeftWidth: 3, borderRadius: 15, borderWidth: 1, flexDirection: "row", gap: 12, minHeight: 74, padding: 12 },
   restDayCard: { backgroundColor: "#111114", borderLeftColor: "#2B2B31", opacity: 0.72 },
   dayIcon: { alignItems: "center", borderRadius: 17, height: 38, justifyContent: "center", width: 38 },
   restIcon: { backgroundColor: "rgba(255,255,255,0.045)" },
   dayCopy: { flex: 1, gap: 3 },
   dayTitle: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" },
-  daySubtitle: { color: "#8B8B96", fontSize: 11, fontWeight: "700" },
+  daySubtitle: { color: "#A1A1AA", fontSize: 11, fontWeight: "800", lineHeight: 16 },
+  dayNote: { color: "#71717A", fontSize: 10, fontWeight: "700", lineHeight: 14 },
   restText: { color: "#9CA3AF" },
-  playCircle: { alignItems: "center", borderRadius: 18, height: 36, justifyContent: "center", width: 36 }
+  playCircle: { alignItems: "center", borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
+  unlockOverlay: { alignItems: "center", backgroundColor: "rgba(5,5,6,0.94)", borderColor: "rgba(255,199,51,0.28)", borderRadius: 22, borderWidth: 1, gap: 10, marginTop: -10, padding: 20 },
+  unlockTitle: { color: "#FFFFFF", fontSize: 20, fontWeight: "900", textAlign: "center" },
+  unlockCopy: { color: "#A1A1AA", fontSize: 13, lineHeight: 19, textAlign: "center" },
+  unlockButton: { alignItems: "center", backgroundColor: colors.gold, borderRadius: 14, flexDirection: "row", gap: 8, justifyContent: "center", minHeight: 50, paddingHorizontal: 18, width: "100%" },
+  unlockButtonText: { color: "#050506", fontSize: 14, fontWeight: "900" }
 });
