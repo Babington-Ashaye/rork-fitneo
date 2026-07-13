@@ -33,11 +33,12 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoading) return;
     const firstSegment = segments[0];
+    const inWelcome = !firstSegment;
     const inAuth = firstSegment === "auth";
     const inCheckout = firstSegment === "checkout";
     const inLegalConsent = firstSegment === "legal-consent";
     const inOnboarding = firstSegment === "onboarding";
-    if (!session && !inAuth && !inCheckout) {
+    if (!session && !inWelcome && !inAuth && !inCheckout) {
       router.replace("/auth/sign-in");
       return;
     }

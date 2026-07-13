@@ -224,12 +224,30 @@ export default function ActiveWorkoutScreen() {
 
       {phase === "rest" ? (
         <View style={styles.restModule}>
+          <View style={styles.restGlow} />
           <Text style={styles.restLabel}>REST</Text>
           <Text style={styles.restValue}>{formatTime(restRemaining)}</Text>
-          <Text style={styles.nextLabel}>Next: {exercise.name} · set {currentSet}</Text>
-          <TouchableOpacity style={styles.skipRest} onPress={() => { setRestRemaining(0); setPhase("exercise"); }}>
-            <Text style={styles.skipRestText}>Skip Rest</Text>
-          </TouchableOpacity>
+          <Text style={styles.restCopy}>Breathe in. Shake the arms out. Own the next set.</Text>
+          <GlassCard radius={24} style={styles.nextExerciseCard}>
+            <View style={styles.nextThumbWrap}>
+              <Image source={{ uri: exercise.animationUrl }} style={styles.nextThumb} resizeMode="contain" />
+            </View>
+            <View style={styles.nextCopy}>
+              <Text style={styles.nextKicker}>UP NEXT</Text>
+              <Text numberOfLines={1} style={styles.nextName}>{exercise.name}</Text>
+              <Text style={styles.nextMeta}>Set {currentSet} · {exercise.reps} reps</Text>
+            </View>
+          </GlassCard>
+          <View style={styles.restActions}>
+            <TouchableOpacity style={styles.restSecondary} onPress={() => setRestRemaining((current) => current + 20)}>
+              <Ionicons name="add" size={16} color={colors.textPrimary} />
+              <Text style={styles.restSecondaryText}>20s</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.restPrimary} onPress={() => { setRestRemaining(0); setPhase("exercise"); }}>
+              <Text style={styles.restPrimaryText}>Skip Rest</Text>
+              <Ionicons name="arrow-forward" size={17} color={colors.appBlueDeep} />
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <>
@@ -398,10 +416,24 @@ const styles = StyleSheet.create({
   primaryText: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" },
   disabled: { opacity: 0.45 },
   error: { color: colors.danger, fontSize: 11, textAlign: "center" },
-  restModule: { alignItems: "center", flex: 1, justifyContent: "center" },
-  restLabel: { color: colors.accent, fontSize: 11, fontWeight: "900", letterSpacing: 2 },
-  restValue: { color: colors.textPrimary, fontSize: 72, fontVariant: ["tabular-nums"], fontWeight: "300", letterSpacing: -3, marginVertical: 8 },
+  restModule: { alignItems: "center", backgroundColor: colors.appBlueDeep, borderRadius: 30, flex: 1, gap: 14, justifyContent: "center", overflow: "hidden", padding: 22 },
+  restGlow: { backgroundColor: colors.appBlueBright, borderRadius: 170, height: 280, opacity: 0.18, position: "absolute", right: -120, top: -80, width: 280 },
+  restLabel: { color: "rgba(255,255,255,0.72)", fontSize: 13, fontWeight: "900", letterSpacing: 4 },
+  restValue: { color: colors.textPrimary, fontSize: 86, fontVariant: ["tabular-nums"], fontWeight: "900", letterSpacing: -5, marginVertical: 0 },
+  restCopy: { color: "rgba(255,255,255,0.72)", fontSize: 13, lineHeight: 19, maxWidth: 280, textAlign: "center" },
   nextLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 24 },
+  nextExerciseCard: { alignItems: "center", backgroundColor: "rgba(0,0,0,0.24)", borderColor: "rgba(255,255,255,0.16)", flexDirection: "row", gap: 12, padding: 12, width: "100%" },
+  nextThumbWrap: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.94)", borderRadius: 18, height: 72, justifyContent: "center", overflow: "hidden", width: 72 },
+  nextThumb: { height: "100%", width: "100%" },
+  nextCopy: { flex: 1, minWidth: 0 },
+  nextKicker: { color: colors.teal, fontSize: 9, fontWeight: "900", letterSpacing: 1.4 },
+  nextName: { color: colors.textPrimary, fontSize: 17, fontWeight: "900", marginTop: 4 },
+  nextMeta: { color: "rgba(255,255,255,0.60)", fontSize: 12, fontWeight: "700", marginTop: 3 },
+  restActions: { flexDirection: "row", gap: 10, width: "100%" },
+  restSecondary: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.13)", borderColor: "rgba(255,255,255,0.20)", borderRadius: 17, borderWidth: 1, flexDirection: "row", gap: 5, justifyContent: "center", minHeight: 54, width: 88 },
+  restSecondaryText: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" },
+  restPrimary: { alignItems: "center", backgroundColor: colors.textPrimary, borderRadius: 17, flex: 1, flexDirection: "row", gap: 7, justifyContent: "center", minHeight: 54 },
+  restPrimaryText: { color: colors.appBlueDeep, fontSize: 15, fontWeight: "900" },
   skipRest: { paddingHorizontal: 22, paddingVertical: 12 },
   skipRestText: { color: colors.accent, fontSize: 14, fontWeight: "900" },
   completeScreen: { alignItems: "center", gap: 14, justifyContent: "center" },

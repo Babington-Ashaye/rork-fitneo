@@ -16,6 +16,7 @@ const navIcons: Record<string, IconName> = {
   index: "home",
   workouts: "barbell",
   nutrition: "leaf",
+  daily: "calendar",
   progress: "bar-chart",
   profile: "person"
 };
@@ -24,6 +25,7 @@ const navLabelKeys: Record<string, string> = {
   index: "nav.home",
   workouts: "nav.workouts",
   nutrition: "nav.nutrition",
+  daily: "Daily",
   progress: "nav.progress",
   profile: "nav.profile"
 };
@@ -94,6 +96,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="workouts" options={{ title: "Workouts" }} />
       <Tabs.Screen name="nutrition" options={{ title: "Nutrition" }} />
+      <Tabs.Screen name="daily" options={{ title: "Daily" }} />
       <Tabs.Screen name="progress" options={{ title: "Progress" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
       <Tabs.Screen name="coach" options={{ href: null }} />
