@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { GlassCard } from "@/components/ScreenKit";
@@ -26,19 +26,42 @@ export default function BarcodeScannerScreen() {
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
+  const [manualCode, setManualCode] = useState("");
+  const [lastCode, setLastCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const scanLine = useRef(new Animated.Value(0)).current;
 
-  async function handleBarcode(result: BarcodeScanningResult) {
-    if (isLookingUp || product || !result.data) {
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLine, { duration: 950, toValue: 1, useNativeDriver: true }),
+        Animated.timing(scanLine, { duration: 950, toValue: 0, useNativeDriver: true })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [scanLine]);
+
+  function normalizeBarcode(value: string) {
+    return value.replace(/[^0-9A-Za-z]/g, "").trim();
+  }
+
+  async function lookupBarcode(rawCode: string) {
+    const code = normalizeBarcode(rawCode);
+    if (isLookingUp || product || !code) return;
+    if (code.length < 6) {
+      setError("Enter or scan a valid barcode.");
       return;
     }
+
+    setLastCode(code);
     setIsLookingUp(true);
     setError(null);
     try {
-      const fields = "product_name,serving_size,nutriments";
+      const fields = "product_name,brands,serving_size,nutriments";
       const response = await fetch(
-        `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(result.data)}.json?fields=${fields}`,
-        { headers: { "User-Agent": "FITNEO/1.0 (nutrition barcode scanner)" } }
+        `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${fields}`,
+        { headers: { Accept: "application/json" } }
       );
       if (!response.ok) {
         throw new Error(`Product lookup failed (${response.status}).`);
@@ -46,18 +69,19 @@ export default function BarcodeScannerScreen() {
       const body = await response.json() as {
         status?: number;
         product?: {
+          brands?: string;
           product_name?: string;
           serving_size?: string;
           nutriments?: Record<string, number>;
         };
       };
       if (body.status !== 1 || !body.product) {
-        throw new Error("This barcode is not in the food database yet.");
+        throw new Error("This barcode is not in the food database yet. Try typing the number or add it manually.");
       }
       const nutrients = body.product.nutriments ?? {};
       setProduct({
-        barcode: result.data,
-        name: body.product.product_name || "Scanned food",
+        barcode: code,
+        name: body.product.product_name || body.product.brands || "Scanned food",
         serving: body.product.serving_size || "100 g",
         calories: Number(nutrients["energy-kcal_100g"] ?? nutrients["energy-kcal"] ?? 0),
         protein: Number(nutrients.proteins_100g ?? nutrients.proteins ?? 0),
@@ -71,10 +95,21 @@ export default function BarcodeScannerScreen() {
     }
   }
 
+  async function handleBarcode(result: BarcodeScanningResult) {
+    if (isLookingUp || product || !result.data) return;
+    const code = normalizeBarcode(result.data);
+    if (!code || code === lastCode) return;
+    await lookupBarcode(code);
+  }
+
+  function resetScan() {
+    setProduct(null);
+    setError(null);
+    setLastCode("");
+  }
+
   async function addToDiary() {
-    if (!product) {
-      return;
-    }
+    if (!product) return;
     setIsSaving(true);
     setError(null);
     try {
@@ -88,8 +123,10 @@ export default function BarcodeScannerScreen() {
         fat: product.fat,
         scanMethod: "barcode"
       });
-      setError("Added to today’s nutrition log.");
+      setError("Added to today's nutrition log.");
       setProduct(null);
+      setManualCode("");
+      setLastCode("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save this food.");
     } finally {
@@ -119,8 +156,8 @@ export default function BarcodeScannerScreen() {
   }
 
   return (
-    <AppLayout contentContainerStyle={styles.screen}>
-      <ScreenHeader title="Barcode Scanner" subtitle={`Point the frame at a packaged food barcode for ${mealType}.`} />
+    <AppLayout scroll contentContainerStyle={styles.screen}>
+      <ScreenHeader title="Barcode Scanner" subtitle={`Scan packaged food or type the barcode for ${mealType}.`} />
       <View style={styles.cameraShell}>
         <CameraView
           barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "code93", "itf14", "qr"] }}
@@ -129,18 +166,56 @@ export default function BarcodeScannerScreen() {
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.scanFrame} pointerEvents="none">
+          <Animated.View
+            style={[
+              styles.scanLine,
+              {
+                transform: [{
+                  translateY: scanLine.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [8, 142]
+                  })
+                }]
+              }
+            ]}
+          />
           <View style={styles.cornerTopLeft} />
           <View style={styles.cornerTopRight} />
           <View style={styles.cornerBottomLeft} />
           <View style={styles.cornerBottomRight} />
         </View>
+        <View style={styles.scanBadge}>
+          <Ionicons name={isLookingUp ? "cloud-download" : "barcode"} size={15} color={colors.textPrimary} />
+          <Text style={styles.scanBadgeText}>{isLookingUp ? "LOOKING UP FOOD" : "READY TO SCAN"}</Text>
+        </View>
         {isLookingUp ? (
           <View style={styles.lookup}>
             <ActivityIndicator color={colors.textPrimary} />
-            <Text style={styles.lookupText}>Looking up food...</Text>
+            <Text style={styles.lookupText}>Checking nutrition database...</Text>
           </View>
         ) : null}
       </View>
+
+      <GlassCard radius={16} style={styles.manualCard}>
+        <View style={styles.manualHeader}>
+          <Ionicons name="keypad" size={18} color={colors.teal} />
+          <Text style={styles.manualTitle}>Barcode not scanning?</Text>
+        </View>
+        <View style={styles.manualRow}>
+          <TextInput
+            keyboardType="number-pad"
+            onChangeText={setManualCode}
+            placeholder="Type barcode number"
+            placeholderTextColor={colors.textTertiary}
+            style={styles.manualInput}
+            underlineColorAndroid="transparent"
+            value={manualCode}
+          />
+          <TouchableOpacity activeOpacity={0.82} style={styles.lookupButton} onPress={() => void lookupBarcode(manualCode)} disabled={isLookingUp}>
+            {isLookingUp ? <ActivityIndicator color={colors.textPrimary} /> : <Ionicons name="search" size={18} color={colors.textPrimary} />}
+          </TouchableOpacity>
+        </View>
+      </GlassCard>
 
       {product ? (
         <GlassCard radius={16} selected style={styles.productCard}>
@@ -153,7 +228,7 @@ export default function BarcodeScannerScreen() {
             <Nutrient value={`${product.fat.toFixed(1)}g`} label="fat" />
           </View>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.secondary} onPress={() => setProduct(null)}>
+            <TouchableOpacity style={styles.secondary} onPress={resetScan}>
               <Text style={styles.secondaryText}>Scan again</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.primary} onPress={addToDiary} disabled={isSaving}>
@@ -181,14 +256,23 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", gap: 14, justifyContent: "center", paddingHorizontal: 28 },
   permissionTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: "800", textAlign: "center" },
   permissionCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
-  cameraShell: { borderRadius: 18, flex: 1, minHeight: 300, overflow: "hidden" },
-  scanFrame: { alignSelf: "center", height: 150, marginTop: 78, width: "78%" },
+  cameraShell: { borderColor: "rgba(10,132,255,0.22)", borderRadius: 24, borderWidth: 1, flex: 1, minHeight: 360, overflow: "hidden" },
+  scanFrame: { alignSelf: "center", borderColor: "rgba(10,132,255,0.18)", borderRadius: 18, height: 160, marginTop: 92, width: "82%" },
+  scanLine: { alignSelf: "center", backgroundColor: colors.accent, borderRadius: 999, height: 3, opacity: 0.95, position: "absolute", shadowColor: colors.accent, shadowOpacity: 0.75, shadowRadius: 18, top: 0, width: "88%" },
+  scanBadge: { alignItems: "center", backgroundColor: "rgba(0,0,0,0.72)", borderColor: "rgba(255,255,255,0.18)", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 7, left: 14, paddingHorizontal: 12, paddingVertical: 8, position: "absolute", top: 14 },
+  scanBadgeText: { color: colors.textPrimary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
   cornerTopLeft: { borderLeftColor: colors.accent, borderLeftWidth: 4, borderTopColor: colors.accent, borderTopLeftRadius: 10, borderTopWidth: 4, height: 34, left: 0, position: "absolute", top: 0, width: 34 },
   cornerTopRight: { borderRightColor: colors.accent, borderRightWidth: 4, borderTopColor: colors.accent, borderTopRightRadius: 10, borderTopWidth: 4, height: 34, position: "absolute", right: 0, top: 0, width: 34 },
   cornerBottomLeft: { borderBottomColor: colors.accent, borderBottomLeftRadius: 10, borderBottomWidth: 4, borderLeftColor: colors.accent, borderLeftWidth: 4, bottom: 0, height: 34, left: 0, position: "absolute", width: 34 },
   cornerBottomRight: { borderBottomColor: colors.accent, borderBottomRightRadius: 10, borderBottomWidth: 4, borderRightColor: colors.accent, borderRightWidth: 4, bottom: 0, height: 34, position: "absolute", right: 0, width: 34 },
   lookup: { alignItems: "center", backgroundColor: "rgba(6,9,20,0.82)", borderRadius: 14, bottom: 18, flexDirection: "row", gap: 9, left: 18, padding: 12, position: "absolute", right: 18 },
   lookupText: { color: colors.textPrimary, fontSize: 13, fontWeight: "700" },
+  manualCard: { gap: 10, padding: 14 },
+  manualHeader: { alignItems: "center", flexDirection: "row", gap: 8 },
+  manualTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" },
+  manualRow: { alignItems: "center", flexDirection: "row", gap: 10 },
+  manualInput: { backgroundColor: "rgba(255,255,255,0.045)", borderColor: colors.cardStroke, borderRadius: radii.md, borderWidth: 1, color: colors.textPrimary, flex: 1, minHeight: 48, paddingHorizontal: 12 },
+  lookupButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 14, height: 48, justifyContent: "center", width: 52 },
   productCard: { gap: 10, padding: 16 },
   productName: { color: colors.textPrimary, fontSize: 18, fontWeight: "800" },
   serving: { color: colors.textTertiary, fontSize: 11 },
@@ -204,4 +288,3 @@ const styles = StyleSheet.create({
   status: { color: colors.danger, fontSize: 12, lineHeight: 17, textAlign: "center" },
   success: { color: colors.teal }
 });
-
