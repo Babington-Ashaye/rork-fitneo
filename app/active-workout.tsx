@@ -6,14 +6,14 @@ import { AppLayout } from "@/components/AppLayout";
 import { ErrorState, GlassCard, LoadingState } from "@/components/ScreenKit";
 import { useSubscription } from "@/context/SubscriptionContext";
 import { completeWorkoutSession } from "@/lib/api";
-import { getCleanEquipmentTierLabel, getWorkoutProgramExercises, getWorkoutTrainingFrequency } from "@/lib/exercises";
+import { findExercise, getCleanEquipmentTierLabel, getWorkoutProgramExercises, getWorkoutTrainingFrequency } from "@/lib/exercises";
 import { colors } from "@/lib/theme";
 
 type WorkoutPhase = "exercise" | "rest";
 
 export default function ActiveWorkoutScreen() {
   const { height, width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ programId?: string; programName?: string }>();
+  const params = useLocalSearchParams<{ exerciseIds?: string; programId?: string; programName?: string }>();
   const { isLoading: isSubscriptionLoading } = useSubscription();
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
@@ -31,7 +31,24 @@ export default function ActiveWorkoutScreen() {
 
   const programName = typeof params.programName === "string" ? params.programName : "Workout Session";
   const programId = typeof params.programId === "string" ? params.programId : undefined;
-  const exercises = useMemo(() => getWorkoutProgramExercises(programId), [programId]);
+  const exerciseIdsParam = typeof params.exerciseIds === "string" ? params.exerciseIds : undefined;
+  const exercises = useMemo(() => {
+    if (exerciseIdsParam) {
+      try {
+        const ids = JSON.parse(exerciseIdsParam);
+        if (Array.isArray(ids)) {
+          const selected = ids
+            .filter((id): id is string => typeof id === "string")
+            .map((id) => findExercise(id))
+            .filter((exercise): exercise is NonNullable<ReturnType<typeof findExercise>> => Boolean(exercise));
+          if (selected.length > 0) return selected;
+        }
+      } catch {
+        // Fall back to the program library if the route param is malformed.
+      }
+    }
+    return getWorkoutProgramExercises(programId);
+  }, [exerciseIdsParam, programId]);
   const trainingFrequency = useMemo(() => getWorkoutTrainingFrequency(programId), [programId]);
   const currentExerciseIndex = exercises.length > 0 ? Math.min(exerciseIndex, exercises.length - 1) : 0;
   const exercise = exercises[currentExerciseIndex];

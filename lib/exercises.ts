@@ -687,7 +687,7 @@ const exerciseGifOverrides: Partial<Record<string, string>> = {
   diamond_push_ups: "0283-soIB2rj.gif",
   decline_push_ups: "0279-i5cEhka.gif",
   wide_push_ups: "3294-A9qxk2F.gif",
-  pike_push_ups: "https://raw.githubusercontent.com/Masum-Osman/exercise-animations/main/exercises/pike-pushup.gif",
+  pike_push_ups: "3662-XPUDTt7.gif",
   high_knees: "https://raw.githubusercontent.com/Masum-Osman/exercise-animations/main/exercises/high-knees.gif",
   box_jumps: "https://raw.githubusercontent.com/Masum-Osman/exercise-animations/main/exercises/box-jump.gif",
   tuck_jumps: "https://raw.githubusercontent.com/Masum-Osman/exercise-animations/main/exercises/tuck-jump.gif",
