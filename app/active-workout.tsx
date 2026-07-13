@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { ResizeMode, Video } from "expo-av";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
@@ -24,6 +25,7 @@ export default function ActiveWorkoutScreen() {
   const [timerRemaining, setTimerRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [isDemoVisible, setIsDemoVisible] = useState(true);
+  const [demoMode, setDemoMode] = useState<"gif" | "video">("gif");
   const [mediaFailed, setMediaFailed] = useState(false);
   const [finished, setFinished] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -55,6 +57,7 @@ export default function ActiveWorkoutScreen() {
   const timedSeconds = useMemo(() => exercise ? parseTimedDuration(exercise.reps) : null, [exercise]);
   const progress = exercises.length > 0 ? ((currentExerciseIndex + 1) / exercises.length) * 100 : 0;
   const mediaHeight = Math.max(178, Math.min(238, height * 0.28, width * 0.62));
+  const hasVideoDemo = Boolean(exercise?.videoUrl);
 
   useEffect(() => {
     const timer = setInterval(() => setElapsed((current) => current + 1), 1000);
@@ -71,6 +74,7 @@ export default function ActiveWorkoutScreen() {
     if (!exercise) return;
     setTimerRunning(false);
     setTimerRemaining(timedSeconds ?? 0);
+    setDemoMode("gif");
     setMediaFailed(false);
   }, [exercise, currentSet, timedSeconds]);
 
@@ -258,6 +262,16 @@ export default function ActiveWorkoutScreen() {
                   <Ionicons name="barbell-outline" size={34} color={colors.accent} />
                   <Text style={styles.mediaFallbackText}>Demo unavailable — follow the coaching cues below.</Text>
                 </View>
+              ) : hasVideoDemo && demoMode === "video" && exercise.videoUrl ? (
+                <Video
+                  source={{ uri: exercise.videoUrl }}
+                  style={styles.animation}
+                  resizeMode={ResizeMode.CONTAIN}
+                  shouldPlay
+                  isLooping
+                  isMuted
+                  onError={() => setMediaFailed(true)}
+                />
               ) : (
                 <Image
                   source={{ uri: exercise.animationUrl }}
@@ -268,13 +282,23 @@ export default function ActiveWorkoutScreen() {
               )}
               <TouchableOpacity style={styles.mediaBadge} onPress={() => setIsDemoVisible(false)}>
                 <Ionicons name="eye-off-outline" size={11} color={colors.textSecondary} />
-                <Text style={styles.mediaBadgeText}>Hide video</Text>
+                <Text style={styles.mediaBadgeText}>Hide demo</Text>
               </TouchableOpacity>
+              {hasVideoDemo ? (
+                <View style={styles.demoModeSwitch}>
+                  <TouchableOpacity style={[styles.demoModeOption, demoMode === "gif" && styles.demoModeOptionActive]} onPress={() => { setDemoMode("gif"); setMediaFailed(false); }}>
+                    <Text style={[styles.demoModeText, demoMode === "gif" && styles.demoModeTextActive]}>GIF</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.demoModeOption, demoMode === "video" && styles.demoModeOptionActive]} onPress={() => { setDemoMode("video"); setMediaFailed(false); }}>
+                    <Text style={[styles.demoModeText, demoMode === "video" && styles.demoModeTextActive]}>Video</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </View>
           ) : (
             <TouchableOpacity style={styles.showVideoButton} onPress={() => setIsDemoVisible(true)}>
               <Ionicons name="play-circle" size={16} color={colors.accent} />
-              <Text style={styles.showVideoText}>Show video</Text>
+              <Text style={styles.showVideoText}>Show demo</Text>
             </TouchableOpacity>
           )}
 
@@ -390,6 +414,11 @@ const styles = StyleSheet.create({
   mediaFallbackText: { color: "#334155", fontSize: 12, lineHeight: 17, textAlign: "center" },
   mediaBadge: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.82)", borderRadius: 12, flexDirection: "row", gap: 4, paddingHorizontal: 8, paddingVertical: 5, position: "absolute", right: 12, top: 12 },
   mediaBadgeText: { color: "#64748B", fontSize: 9, fontWeight: "900" },
+  demoModeSwitch: { backgroundColor: "rgba(0,0,0,0.58)", borderColor: "rgba(255,255,255,0.12)", borderRadius: 14, borderWidth: 1, bottom: 12, flexDirection: "row", gap: 4, left: 12, padding: 4, position: "absolute" },
+  demoModeOption: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  demoModeOptionActive: { backgroundColor: colors.accent },
+  demoModeText: { color: colors.textSecondary, fontSize: 10, fontWeight: "900" },
+  demoModeTextActive: { color: colors.textPrimary },
   showVideoButton: { alignItems: "center", alignSelf: "flex-end", backgroundColor: "rgba(0,163,255,0.12)", borderColor: "rgba(0,163,255,0.32)", borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
   showVideoText: { color: colors.accent, fontSize: 12, fontWeight: "900" },
   exerciseCard: { flexShrink: 1, gap: 12, padding: 24 },

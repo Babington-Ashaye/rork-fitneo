@@ -3,8 +3,10 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { ImageBackground, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { AdaptiveBanner } from "@/components/AdaptiveBanner";
 import { AppLayout } from "@/components/AppLayout";
 import { Chip, EmptySpacer, IconBubble, MetaItem, ScreenTitle, TouchableCard } from "@/components/ScreenKit";
+import { useSubscription } from "@/context/SubscriptionContext";
 import {
   getEquipmentTierBadgeColor,
   getCleanEquipmentTierLabel,
@@ -27,6 +29,7 @@ const programImages = {
 };
 
 export default function WorkoutsScreen() {
+  const { isPremium } = useSubscription();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
 
@@ -77,6 +80,8 @@ export default function WorkoutsScreen() {
         <Text style={styles.heroTitle}>Choose your next win</Text>
         <Text style={styles.heroCopy}>Home, gym, strength, conditioning, mobility — every plan now opens with a full preview before you start.</Text>
       </View>
+
+      <AdaptiveBanner enabled={!isPremium} label="Sponsored training plan" />
 
       <ScreenTitle title="Workouts" subtitle="Programs tuned to your level" />
 

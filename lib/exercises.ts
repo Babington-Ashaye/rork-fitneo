@@ -10,6 +10,9 @@ export type Exercise = {
   instructions: string;
   tip: string;
   animationUrl: string;
+  videoUrl?: string;
+  videoSource?: string;
+  videoLicense?: string;
 };
 
 export type ExerciseAccessPlan = "free" | "premium";
@@ -697,6 +700,11 @@ const exerciseGifOverrides: Partial<Record<string, string>> = {
   bird_dogs: "1512-qBcKorM.gif"
 };
 
+const exerciseVideoDemos: Partial<Record<string, Pick<Exercise, "videoLicense" | "videoSource" | "videoUrl">>> = {
+  // Real-human video demos can be added here only when the source/license is verified.
+  // Keep GIFs as the default demo so no exercise silently points at unlicensed media.
+};
+
 function getExerciseGif(id: string, fallbackGif: string) {
   return exerciseGifOverrides[id] ?? fallbackGif;
 }
@@ -729,6 +737,7 @@ export const exerciseCatalog: Exercise[] = exerciseRows.map(
     instructions,
     tip,
     animationUrl: getExerciseAnimationUrl(id, gif),
+    ...exerciseVideoDemos[id],
   })
 );
 
