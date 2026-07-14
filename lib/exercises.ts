@@ -29,7 +29,7 @@ export type WorkoutProgram = {
   difficulty: "Beginner" | "Intermediate" | "Advanced";
 };
 
-export const EXERCISE_CATALOG_BASELINE_COUNT = 108;
+export const EXERCISE_CATALOG_BASELINE_COUNT = 126;
 export const FREE_EXERCISE_LIMIT = EXERCISE_CATALOG_BASELINE_COUNT;
 
 const videoBase =
@@ -602,6 +602,80 @@ const exerciseRows: Array<[
     "2202-oMypNrz.gif",
     "From a plank bring one knee forward placing it behind your wrist. Extend the other leg behind you and lower your torso toward the floor.",
     "Use a cushion under your hip if the stretch is too intense."],
+
+  // Walk & Run — all no-equipment drills so this mode never shows gym exercises.
+  ["brisk_walk_intervals", "Brisk Walk Intervals", "Walk & Run", "Beginner", 6, "2 min", 30,
+    "3636-ealLwvX.gif",
+    "Walk at a strong but controlled pace, then recover with an easy walk before the next interval.",
+    "Keep your chest tall, arms relaxed, and steps quick rather than heavy."],
+  ["power_walk", "Power Walk", "Walk & Run", "Beginner", 5, "3 min", 45,
+    "3636-ealLwvX.gif",
+    "Use purposeful arm drive and a quick cadence to turn walking into low-impact conditioning.",
+    "Push the ground behind you and keep your shoulders low."],
+  ["easy_jog_intervals", "Easy Jog Intervals", "Walk & Run", "Beginner", 6, "90 sec", 60,
+    "0685-oLrKqDH.gif",
+    "Jog at a conversational pace, then walk until your breathing settles before repeating.",
+    "Stay light on your feet and avoid sprinting the easy intervals."],
+  ["walk_jog_repeats", "Walk-Jog Repeats", "Walk & Run", "Beginner", 8, "1 min jog / 1 min walk", 30,
+    "0685-oLrKqDH.gif",
+    "Alternate smooth jogging with relaxed walking to build aerobic base safely.",
+    "Keep every jog repeat controlled enough that you could repeat it again."],
+  ["cadence_drills", "Cadence Drills", "Walk & Run", "Intermediate", 4, "45 sec", 30,
+    "3636-ealLwvX.gif",
+    "Take quick, short steps while maintaining posture to improve running rhythm and efficiency.",
+    "Think quiet feet and fast turnover, not long strides."],
+  ["running_strides", "Running Strides", "Walk & Run", "Intermediate", 6, "20 sec", 60,
+    "0685-oLrKqDH.gif",
+    "Build from easy pace to fast-but-relaxed running, then walk back to recover.",
+    "Finish each stride feeling sharp, not exhausted."],
+  ["butt_kicks", "Butt Kicks", "Walk & Run", "Beginner", 3, "40 sec", 25,
+    "3636-ealLwvX.gif",
+    "Jog in place while bringing your heels toward your glutes to warm up hamstrings and cadence.",
+    "Keep knees pointing down and let the lower leg cycle naturally."],
+  ["a_skips", "A-Skips", "Walk & Run", "Intermediate", 4, "30 sec", 30,
+    "3636-ealLwvX.gif",
+    "Skip forward with a tall posture and active knee drive to sharpen running mechanics.",
+    "Drive the knee up, snap the foot down, and keep your rhythm smooth."],
+  ["side_shuffles", "Side Shuffles", "Walk & Run", "Beginner", 4, "30 sec each", 30,
+    "3223-HtfCpfi.gif",
+    "Shuffle laterally with soft knees to train hips, ankles, and change-of-direction control.",
+    "Stay low and keep your feet from clicking together."],
+  ["fast_feet", "Fast Feet", "Walk & Run", "Intermediate", 5, "20 sec", 40,
+    "3636-ealLwvX.gif",
+    "Run in place with very quick ground contacts to improve foot speed and responsiveness.",
+    "Move fast but stay relaxed through the face, neck, and shoulders."],
+  ["hill_walk_march", "Hill Walk March", "Walk & Run", "Beginner", 5, "2 min", 45,
+    "1688-K9VL0Jq.gif",
+    "March powerfully with knee drive, mimicking uphill walking without needing a treadmill.",
+    "Press through the full foot and squeeze the glute on each step."],
+  ["recovery_walk", "Recovery Walk", "Walk & Run", "Beginner", 3, "5 min", 30,
+    "3636-ealLwvX.gif",
+    "Walk easily to lower your heart rate while keeping blood flowing through the legs.",
+    "Breathe through your nose if possible and let the pace feel restorative."],
+  ["ankle_bounces", "Ankle Bounces", "Walk & Run", "Beginner", 3, "30 sec", 20,
+    "1373-bJYHBIN.gif",
+    "Bounce lightly through your ankles to prepare calves and feet for walking or running.",
+    "Keep the movement small and springy, not like a full jump."],
+  ["leg_swings", "Leg Swings", "Walk & Run", "Beginner", 2, "12 each", 20,
+    "0054-t8iSghb.gif",
+    "Swing each leg forward and back under control to open hips before walking or running.",
+    "Hold a wall if needed and keep your torso upright."],
+  ["runner_calf_mobility", "Runner Calf Mobility", "Walk & Run", "Beginner", 2, "45 sec each", 20,
+    "1373-bJYHBIN.gif",
+    "Mobilize calves and ankles after walking or running to reduce lower-leg tightness.",
+    "Ease into the stretch and keep the heel heavy."],
+  ["runner_lunge_stretch", "Runner Lunge Stretch", "Walk & Run", "Beginner", 2, "45 sec each", 20,
+    "0054-t8iSghb.gif",
+    "Open the hip flexors with a long lunge position after runs or long walks.",
+    "Tuck your pelvis gently before leaning forward."],
+  ["post_run_hamstring", "Post-run Hamstring Release", "Walk & Run", "Beginner", 2, "45 sec each", 20,
+    "0493-B1EVP9F.gif",
+    "Stretch the hamstrings after running or walking sessions to restore range of motion.",
+    "Keep your spine long and avoid bouncing into the stretch."],
+  ["walk_run_cooldown", "Walk-Run Cooldown", "Walk & Run", "Beginner", 2, "3 min", 20,
+    "3636-ealLwvX.gif",
+    "Finish with relaxed walking to bring your breathing and heart rate back down.",
+    "Slow down gradually instead of stopping suddenly."]
 ];
 
 // ─── EQUIPMENT TIER CLASSIFICATION ───────────────────────────────────────────
@@ -663,6 +737,24 @@ const equipmentTierOverrides: Partial<Record<string, ExerciseEquipmentTier>> = {
   sprint_intervals: "none",
   tabata_rounds: "none",
   power_cleans_bw: "none",
+  brisk_walk_intervals: "none",
+  power_walk: "none",
+  easy_jog_intervals: "none",
+  walk_jog_repeats: "none",
+  cadence_drills: "none",
+  running_strides: "none",
+  butt_kicks: "none",
+  a_skips: "none",
+  side_shuffles: "none",
+  fast_feet: "none",
+  hill_walk_march: "none",
+  recovery_walk: "none",
+  ankle_bounces: "none",
+  leg_swings: "none",
+  runner_calf_mobility: "none",
+  runner_lunge_stretch: "none",
+  post_run_hamstring: "none",
+  walk_run_cooldown: "none",
 
   // Few — home gear (dumbbells, bands, pull-up bar, box)
   ab_wheel: "few",
@@ -697,7 +789,25 @@ const exerciseGifOverrides: Partial<Record<string, string>> = {
   lateral_raises: "0355-n5cWCsI.gif",
   romanian_deadlift: "1459-rR0LJzx.gif",
   bear_crawl: "3360-0Yz8WdV.gif",
-  bird_dogs: "1512-qBcKorM.gif"
+  bird_dogs: "1512-qBcKorM.gif",
+  brisk_walk_intervals: "3636-ealLwvX.gif",
+  power_walk: "3636-ealLwvX.gif",
+  easy_jog_intervals: "0685-oLrKqDH.gif",
+  walk_jog_repeats: "0685-oLrKqDH.gif",
+  cadence_drills: "3636-ealLwvX.gif",
+  running_strides: "0685-oLrKqDH.gif",
+  butt_kicks: "3636-ealLwvX.gif",
+  a_skips: "3636-ealLwvX.gif",
+  side_shuffles: "3223-HtfCpfi.gif",
+  fast_feet: "3636-ealLwvX.gif",
+  hill_walk_march: "1688-K9VL0Jq.gif",
+  recovery_walk: "3636-ealLwvX.gif",
+  ankle_bounces: "1373-bJYHBIN.gif",
+  leg_swings: "0054-t8iSghb.gif",
+  runner_calf_mobility: "1373-bJYHBIN.gif",
+  runner_lunge_stretch: "0054-t8iSghb.gif",
+  post_run_hamstring: "0493-B1EVP9F.gif",
+  walk_run_cooldown: "3636-ealLwvX.gif"
 };
 
 const exerciseVideoDemos: Partial<Record<string, Pick<Exercise, "videoLicense" | "videoSource" | "videoUrl">>> = {
@@ -1096,14 +1206,14 @@ export const workoutPrograms: WorkoutProgram[] = [
     id: "sport-running",
     name: "Running Athletic Session",
     category: "Sports",
-    description: "Leg strength, hip stability, core control, and injury prevention for runners.",
+    description: "Runner-specific cadence, stride, calf resilience, hip mobility, and cooldown work with no gym equipment.",
     equipmentTier: "none",
     difficulty: "Intermediate",
     durationMinutes: 40,
     exerciseIds: [
-      "romanian_deadlift", "single_leg_glute_bridge", "calf_raises", "hip_flexor_stretch",
-      "hamstring_stretch", "dead_bug", "plank", "step_ups",
-      "lunges", "mountain_climbers", "bird_dogs", "glute_bridges"
+      "easy_jog_intervals", "cadence_drills", "running_strides", "butt_kicks",
+      "a_skips", "runner_lunge_stretch", "runner_calf_mobility", "post_run_hamstring",
+      "recovery_walk", "walk_run_cooldown"
     ],
   },
   {
@@ -1154,26 +1264,26 @@ export const workoutPrograms: WorkoutProgram[] = [
     id: "walk-run-foundation",
     name: "Run-Walk Foundation",
     category: "Walk & Run",
-    description: "Beginner-friendly walk/jog intervals that build aerobic base, ankle resilience, and confidence without gym equipment.",
+    description: "Beginner-friendly walking and jogging intervals that build aerobic base, ankle resilience, and confidence without gym equipment.",
     equipmentTier: "none",
     difficulty: "Beginner",
     durationMinutes: 24,
     exerciseIds: [
-      "high_knees", "calf_raises", "lunges", "glute_bridges",
-      "hamstring_stretch", "hip_flexor_stretch", "plank", "bird_dogs"
+      "brisk_walk_intervals", "walk_jog_repeats", "ankle_bounces", "leg_swings",
+      "power_walk", "recovery_walk", "runner_calf_mobility", "walk_run_cooldown"
     ],
   },
   {
     id: "walking-weight-loss",
     name: "Walking Weight Loss",
     category: "Walk & Run",
-    description: "Low-impact walking conditioning mixed with mobility and core work for steady calorie burn and joint-friendly progress.",
+    description: "Low-impact walking conditioning for steady calorie burn, joint-friendly stamina, and daily movement consistency.",
     equipmentTier: "none",
     difficulty: "Beginner",
     durationMinutes: 32,
     exerciseIds: [
-      "jumping_jacks", "calf_raises", "step_ups", "wall_sit",
-      "dead_bug", "side_plank", "downward_dog", "hamstring_stretch"
+      "power_walk", "brisk_walk_intervals", "hill_walk_march", "cadence_drills",
+      "recovery_walk", "post_run_hamstring", "runner_lunge_stretch", "walk_run_cooldown"
     ],
   },
   {
@@ -1185,8 +1295,8 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 36,
     exerciseIds: [
-      "high_knees", "sprint_intervals", "single_leg_glute_bridge", "calf_raises",
-      "lunges", "mountain_climbers", "plank", "hip_flexor_stretch"
+      "easy_jog_intervals", "cadence_drills", "butt_kicks", "a_skips",
+      "running_strides", "side_shuffles", "runner_calf_mobility", "walk_run_cooldown"
     ],
   },
   {
@@ -1198,8 +1308,8 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Beginner",
     durationMinutes: 18,
     exerciseIds: [
-      "cat_cow", "downward_dog", "hamstring_stretch", "hip_flexor_stretch",
-      "childs_pose", "cobra_stretch", "bird_dogs", "dead_bug"
+      "leg_swings", "runner_lunge_stretch", "runner_calf_mobility", "post_run_hamstring",
+      "hip_flexor_stretch", "hamstring_stretch", "cat_cow", "walk_run_cooldown"
     ],
   },
   {
@@ -1211,8 +1321,8 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 40,
     exerciseIds: [
-      "sprint_intervals", "high_knees", "jump_lunges", "bear_crawl",
-      "single_leg_glute_bridge", "calf_raises", "plank", "side_plank"
+      "easy_jog_intervals", "cadence_drills", "running_strides", "fast_feet",
+      "side_shuffles", "a_skips", "brisk_walk_intervals", "walk_run_cooldown"
     ],
   },
 ];

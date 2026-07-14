@@ -27,6 +27,7 @@ const modes: Array<{ key: TrainingMode | "sports"; label: string }> = [
 ];
 
 const categories = ["Full Body", "Core", "Chest", "Arm", "Legs", "Mobility", "Cardio"];
+const walkCategories = ["Walking", "Running", "Mobility", "Endurance", "Beginner"];
 const difficultyDots: Record<WorkoutProgram["difficulty"], number> = { Beginner: 1, Intermediate: 2, Advanced: 3 };
 
 const programImages: Record<string, string> = {
@@ -60,11 +61,11 @@ const programImageById: Record<string, string> = {
   "upper-body-pump-gym": "https://images.unsplash.com/photo-1532384748853-8f54a8f476e2?auto=format&fit=crop&w=1200&q=85",
   "fat-loss-circuit": "https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?auto=format&fit=crop&w=1200&q=85",
   "recovery-flow": "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=1200&q=85",
-  "walk-run-foundation": "https://images.unsplash.com/photo-1486218119243-13883505764c?auto=format&fit=crop&w=1200&q=85",
-  "walking-weight-loss": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85",
+  "walk-run-foundation": "https://images.unsplash.com/photo-1502224562085-639556652f33?auto=format&fit=crop&w=1200&q=85",
+  "walking-weight-loss": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=85",
   "easy-jog-builder": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1200&q=85",
-  "runner-mobility-reset": "https://images.unsplash.com/photo-1526676037777-05a232554f77?auto=format&fit=crop&w=1200&q=85",
-  "5k-conditioning": "https://images.unsplash.com/photo-1502904550040-7534597429ae?auto=format&fit=crop&w=1200&q=85"
+  "runner-mobility-reset": "https://images.unsplash.com/photo-1529693662653-9d480530a697?auto=format&fit=crop&w=1200&q=85",
+  "5k-conditioning": "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=1200&q=85"
 };
 
 export default function WorkoutsScreen() {
@@ -72,15 +73,21 @@ export default function WorkoutsScreen() {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<TrainingMode>("home");
   const [category, setCategory] = useState("Full Body");
+  const activeCategories = mode === "walk" ? walkCategories : categories;
+  const selectedCategory = activeCategories.includes(category) ? category : activeCategories[0];
 
   const modePrograms = useMemo(() => workoutPrograms.filter((program) => matchesMode(program, mode)), [mode]);
   const visiblePrograms = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
     return modePrograms.filter((program) => {
+      const categoryNeedle = selectedCategory.toLowerCase();
       const matchesCategory =
-        category === "Full Body" ||
-        program.category.toLowerCase().includes(category.toLowerCase()) ||
-        program.name.toLowerCase().includes(category.toLowerCase());
+        selectedCategory === "Full Body" ||
+        selectedCategory === "Walking" ||
+        program.category.toLowerCase().includes(categoryNeedle) ||
+        program.name.toLowerCase().includes(categoryNeedle) ||
+        program.description.toLowerCase().includes(categoryNeedle) ||
+        program.difficulty.toLowerCase().includes(categoryNeedle);
       const matchesQuery =
         !cleanQuery ||
         program.name.toLowerCase().includes(cleanQuery) ||
@@ -88,7 +95,7 @@ export default function WorkoutsScreen() {
         program.description.toLowerCase().includes(cleanQuery);
       return matchesCategory && matchesQuery;
     });
-  }, [category, modePrograms, query]);
+  }, [modePrograms, query, selectedCategory]);
 
   const featuredPrograms = useMemo(() => {
     const preferred = modePrograms.filter((program) => (
@@ -125,7 +132,14 @@ export default function WorkoutsScreen() {
               key={item.key}
               activeOpacity={0.78}
               style={styles.modeTab}
-              onPress={() => item.key === "sports" ? router.push("/sports-mode") : setMode(item.key)}
+              onPress={() => {
+                if (item.key === "sports") {
+                  router.push("/sports-mode");
+                  return;
+                }
+                setMode(item.key);
+                setCategory(item.key === "walk" ? "Walking" : "Full Body");
+              }}
             >
               <Text style={[styles.modeText, active && styles.modeTextActive]}>{item.label}</Text>
               {active ? <View style={styles.modeUnderline} /> : null}
@@ -149,7 +163,7 @@ export default function WorkoutsScreen() {
       <AdaptiveBanner enabled={!isPremium} label="Sponsored training plan" />
 
       {featuredPrograms.length > 0 ? (
-        <EditorialRow title="Classic Plan" action="See All">
+        <EditorialRow title={mode === "walk" ? "Training plans" : mode === "gym" ? "Gym Programs" : "Classic Plan"} action="See All">
           {featuredPrograms.map((program) => (
             <FeaturedPlanCard key={program.id} program={program} mode={mode} />
           ))}
@@ -158,10 +172,10 @@ export default function WorkoutsScreen() {
 
       <View style={styles.categorySection}>
         <Text style={styles.sectionKicker}>QUICK START</Text>
-        <Text style={styles.sectionTitle}>Classic Workouts</Text>
+        <Text style={styles.sectionTitle}>{mode === "walk" ? "Walk & Run Workouts" : "Classic Workouts"}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChips}>
-          {categories.map((item) => {
-            const active = category === item;
+          {activeCategories.map((item) => {
+            const active = selectedCategory === item;
             return (
               <TouchableOpacity key={item} activeOpacity={0.78} style={[styles.categoryChip, active && styles.categoryChipActive]} onPress={() => setCategory(item)}>
                 <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{item}</Text>
@@ -213,9 +227,10 @@ export default function WorkoutsScreen() {
 }
 
 function matchesMode(program: WorkoutProgram, mode: TrainingMode) {
-  if (mode === "home") return program.equipmentTier !== "full";
+  const category = program.category.toLowerCase();
+  if (mode === "home") return program.equipmentTier !== "full" && !category.includes("walk") && !category.includes("sports");
   if (mode === "gym") return program.equipmentTier !== "none";
-  return program.category.toLowerCase().includes("walk");
+  return category.includes("walk");
 }
 
 function getProgramImage(program: WorkoutProgram, mode?: TrainingMode) {
