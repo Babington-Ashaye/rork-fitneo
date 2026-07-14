@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
+import { FitneoAiMark } from "@/components/FitneoAiMark";
 import { SkeletonBlock } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -17,9 +18,14 @@ import {
 } from "@/lib/api";
 import { askFitneoCoachWithRetry } from "@/lib/edgeFunctions";
 import { generatePersonalizedPlan } from "@/lib/generateAiPlan";
-import { colors, radii } from "@/lib/theme";
+import { colors, radii, spacing } from "@/lib/theme";
 
-const suggestions = ["Build my weekly plan", "Generate a HIIT workout", "Review my recovery", "Tune my calories"];
+const suggestions = [
+  { icon: "calendar-outline" as const, title: "Build my weekly plan" },
+  { icon: "flash-outline" as const, title: "Generate a HIIT workout" },
+  { icon: "pulse-outline" as const, title: "Review my recovery" },
+  { icon: "restaurant-outline" as const, title: "Tune my calories" }
+];
 const LOCAL_HISTORY_KEY = "fitneo.ai.chatHistory.v1";
 
 const coachMemory: {
@@ -73,6 +79,7 @@ export default function CoachScreen() {
   const [composerFocused, setComposerFocused] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState("");
   const scrollRef = useRef<ScrollView>(null);
   const dotOne = useRef(new Animated.Value(0.35)).current;
   const dotTwo = useRef(new Animated.Value(0.35)).current;
@@ -237,6 +244,16 @@ export default function CoachScreen() {
     [messages]
   );
 
+  const filteredSessions = useMemo(() => {
+    const query = historyQuery.trim().toLowerCase();
+    if (!query) return sessions;
+    return sessions.filter((session) => {
+      const title = getSessionTitle(session).toLowerCase();
+      const preview = getSessionPreview(session).toLowerCase();
+      return title.includes(query) || preview.includes(query);
+    });
+  }, [activeSession?.id, historyQuery, messages, sessions]);
+
   async function sendPrompt(value = prompt) {
     const cleanPrompt = value.trim();
     if (!cleanPrompt || isSending) {
@@ -362,26 +379,29 @@ export default function CoachScreen() {
   return (
     <AppLayout contentContainerStyle={styles.screen}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace("/(tabs)")} style={styles.iconButton}>
+        <HeaderIconButton onPress={() => router.replace("/(tabs)")}>
           <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
+        </HeaderIconButton>
         <View style={styles.aiIdentity}>
-          <View style={styles.aiOrb}><Ionicons name="hardware-chip" size={18} color={colors.accent} /></View>
+          <FitneoAiMark size={23} />
           <View>
             <Text style={styles.title}>FITNEO AI</Text>
-            <Text style={styles.online}>COACH ONLINE · {activeSession ? getSessionTitle(activeSession) : "New Chat"}</Text>
+            <View style={styles.subtitleRow}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.online}>{activeSession ? getSessionTitle(activeSession) : "New Chat"}</Text>
+            </View>
           </View>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => { setMenuOpen(false); setHistoryOpen((current) => !current); }} style={styles.iconButton}>
+          <HeaderIconButton onPress={() => { setMenuOpen(false); setHistoryOpen((current) => !current); }}>
             <Ionicons name="albums-outline" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => void newChat()} style={styles.iconButton}>
+          </HeaderIconButton>
+          <HeaderIconButton onPress={() => void newChat()}>
             <Ionicons name="create-outline" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setHistoryOpen(false); setMenuOpen((current) => !current); }} style={styles.iconButton}>
+          </HeaderIconButton>
+          <HeaderIconButton onPress={() => { setHistoryOpen(false); setMenuOpen((current) => !current); }}>
             <Ionicons name="ellipsis-horizontal" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
+          </HeaderIconButton>
         </View>
       </View>
 
@@ -398,34 +418,34 @@ export default function CoachScreen() {
         </View>
       ) : null}
 
-      <View style={styles.coachHero}>
-        <View style={styles.coachHeroIcon}>
-          <Ionicons name="sparkles" size={18} color={colors.textPrimary} />
-        </View>
-        <View style={styles.flex}>
-          <Text style={styles.coachHeroTitle}>Your training command center</Text>
-          <Text style={styles.coachHeroCopy}>Ask for plans, meal targets, recovery fixes, sport drills, or custom routines.</Text>
-        </View>
-      </View>
-
       {historyOpen ? (
         <View style={styles.drawerLayer}>
           <TouchableOpacity activeOpacity={1} style={styles.drawerScrim} onPress={() => setHistoryOpen(false)} />
           <View style={styles.historyPanel}>
           <View style={styles.historyHeader}>
-            <Text style={styles.drawerBrand}>Chat History</Text>
+            <Text style={styles.drawerBrand}>History</Text>
             <TouchableOpacity onPress={() => void newChat()}>
               <Text style={styles.newChat}>+ New Chat</Text>
             </TouchableOpacity>
           </View>
+          <View style={styles.historySearch}>
+            <Ionicons name="search" size={16} color={colors.textTertiary} />
+            <TextInput
+              placeholder="Search conversations"
+              placeholderTextColor={colors.textTertiary}
+              style={styles.historySearchInput}
+              value={historyQuery}
+              onChangeText={setHistoryQuery}
+              underlineColorAndroid="transparent"
+            />
+          </View>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sessionList}>
-            {sessions.map((session) => (
+            {filteredSessions.map((session) => (
               <TouchableOpacity
                 key={session.id}
                 onPress={() => void openSession(session)}
                 style={[styles.sessionRow, session.id === activeSession?.id && styles.sessionRowActive]}
               >
-                <Ionicons name="chatbubble-ellipses-outline" size={16} color={session.id === activeSession?.id ? colors.textPrimary : colors.textSecondary} />
                 <View style={styles.sessionTextBlock}>
                   <Text numberOfLines={1} style={[styles.sessionTitle, session.id === activeSession?.id && styles.sessionTitleActive]}>
                     {getSessionTitle(session)}
@@ -434,9 +454,12 @@ export default function CoachScreen() {
                     {getSessionPreview(session)}
                   </Text>
                 </View>
-                <Text style={[styles.sessionDate, session.id === activeSession?.id && styles.sessionPreviewActive]}>{formatSessionDate(session.createdAt)}</Text>
+                <Text style={[styles.sessionDate, session.id === activeSession?.id && styles.sessionDateActive]}>{formatSessionDate(session.createdAt)}</Text>
               </TouchableOpacity>
             ))}
+            {filteredSessions.length === 0 ? (
+              <Text style={styles.noSessions}>No matching conversations yet.</Text>
+            ) : null}
           </ScrollView>
           </View>
         </View>
@@ -451,22 +474,33 @@ export default function CoachScreen() {
         ) : messages.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyOrb}>
-              <Ionicons name="hardware-chip" size={30} color={colors.accent} />
+              <FitneoAiMark size={34} />
             </View>
-            <Text style={styles.emptyTitle}>What are we building today?</Text>
-            <Text style={styles.emptyCopy}>Start with a goal and FITNEO will structure the routine, nutrition target, and recovery angle.</Text>
-            <View style={styles.emptySuggestions}>
+            <Text style={styles.emptyTitle}>Train smarter today.</Text>
+            <Text style={styles.emptyCopy}>Tell FITNEO what you need — a plan, a meal target, recovery help, or a tighter routine.</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.emptySuggestions}
+              style={styles.emptySuggestionScroller}
+            >
               {suggestions.map((suggestion) => (
-                <TouchableOpacity key={suggestion} style={styles.emptySuggestionChip} onPress={() => void sendPrompt(suggestion)}>
-                  <Text style={styles.emptySuggestionText}>{suggestion}</Text>
+                <TouchableOpacity key={suggestion.title} style={styles.emptySuggestionChip} onPress={() => void sendPrompt(suggestion.title)}>
+                  <Ionicons name={suggestion.icon} size={16} color={colors.accent} />
+                  <Text style={styles.emptySuggestionText}>{suggestion.title}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           </View>
         ) : (
           messages.map((message) => (
-            <View key={message.id} style={[styles.messageGroup, message.role === "user" && styles.userMessageGroup]}>
-              {message.role === "assistant" ? <Text style={styles.senderLabel}>FITNEO AI</Text> : null}
+            <AnimatedMessageGroup key={message.id} role={message.role}>
+              {message.role === "assistant" ? (
+                <View style={styles.senderRow}>
+                  <FitneoAiMark size={14} />
+                  <Text style={styles.senderLabel}>FITNEO AI</Text>
+                </View>
+              ) : null}
               <View style={[styles.bubble, message.role === "user" ? styles.userBubble : styles.assistantBubble]}>
                 <Text style={styles.messageText}>{formatCoachMessage(message.content)}</Text>
               </View>
@@ -486,11 +520,15 @@ export default function CoachScreen() {
                   </TouchableOpacity>
                 </View>
               ) : null}
-            </View>
+            </AnimatedMessageGroup>
           ))
         )}
         {isSending ? (
-          <View style={[styles.bubble, styles.assistantBubble, styles.typingBubble]}>
+          <View style={styles.typingGroup}>
+            <View style={styles.senderRow}>
+              <FitneoAiMark size={14} />
+              <Text style={styles.senderLabel}>FITNEO AI</Text>
+            </View>
             {streamingText ? (
               <Text style={styles.messageText}>{formatCoachMessage(streamingText)}</Text>
             ) : (
@@ -532,16 +570,55 @@ export default function CoachScreen() {
           onFocus={() => setComposerFocused(true)}
           underlineColorAndroid="transparent"
         />
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.sendButton, (!prompt.trim() || isSending) && styles.sendDisabled]}
+        <Pressable
+          style={({ pressed }) => [
+            styles.sendButton,
+            prompt.trim() && !isSending && styles.sendButtonReady,
+            (!prompt.trim() || isSending) && styles.sendDisabled,
+            pressed && prompt.trim() && !isSending && styles.sendPressed
+          ]}
           onPress={() => void sendPrompt()}
           disabled={!prompt.trim() || isSending}
         >
-          <Ionicons name="arrow-up" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
+          <Ionicons name={prompt.trim() && !isSending ? "arrow-up" : "mic-outline"} size={20} color={colors.textPrimary} />
+        </Pressable>
       </View>
     </AppLayout>
+  );
+}
+
+function HeaderIconButton({ children, onPress }: { children: ReactNode; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
+function AnimatedMessageGroup({ children, role }: { children: ReactNode; role: ChatMessageRecord["role"] }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { duration: 220, toValue: 1, useNativeDriver: true }),
+      Animated.timing(translateY, { duration: 220, toValue: 0, useNativeDriver: true })
+    ]).start();
+  }, [opacity, translateY]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.messageGroup,
+        role === "user" && styles.userMessageGroup,
+        { opacity, transform: [{ translateY }] }
+      ]}
+    >
+      {children}
+    </Animated.View>
   );
 }
 
@@ -565,19 +642,22 @@ function shouldGenerateAppPlan(value: string) {
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.background, gap: 10, paddingBottom: 24 },
+  screen: { backgroundColor: colors.background, gap: spacing.md, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
-  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", gap: 10 },
-  headerActions: { alignItems: "center", flexDirection: "row", gap: 8 },
-  menuCard: { alignSelf: "flex-end", backgroundColor: "#101015", borderColor: colors.cardStroke, borderRadius: 16, borderWidth: 1, gap: 2, marginTop: -4, padding: 6, position: "absolute", right: 0, top: 48, width: 210, zIndex: 50 },
+  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", gap: spacing.sm },
+  headerActions: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
+  menuCard: { alignSelf: "flex-end", backgroundColor: colors.surfaceSoft, borderColor: colors.cardStroke, borderRadius: radii.lg, borderWidth: 1, gap: spacing.tiny, marginTop: -4, padding: spacing.sm, position: "absolute", right: 0, top: 48, width: 210, zIndex: 50 },
   menuItem: { alignItems: "center", borderRadius: 12, flexDirection: "row", gap: 9, minHeight: 40, paddingHorizontal: 10 },
   menuText: { color: colors.textSecondary, fontSize: 12, fontWeight: "800" },
   saveActionText: { color: colors.accent },
-  iconButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", width: 38 },
-  aiIdentity: { alignItems: "center", flex: 1, flexDirection: "row", gap: 10, minWidth: 0 },
+  iconButton: { alignItems: "center", borderRadius: radii.pill, height: 38, justifyContent: "center", opacity: 0.92, width: 38 },
+  iconButtonPressed: { backgroundColor: colors.surfaceMuted, opacity: 0.66, transform: [{ scale: 0.94 }] },
+  aiIdentity: { alignItems: "center", flex: 1, flexDirection: "row", gap: spacing.sm, minWidth: 0 },
   aiOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.18)", borderColor: "rgba(0,163,255,0.55)", borderRadius: 18, borderWidth: 1, height: 36, justifyContent: "center", shadowColor: colors.accent, shadowOpacity: 0.55, shadowRadius: 12, width: 36 },
-  title: { color: colors.textPrimary, fontSize: 18, fontWeight: "900", letterSpacing: 2 },
-  online: { color: colors.teal, fontSize: 9, fontWeight: "800", letterSpacing: 1.2, maxWidth: 190 },
+  title: { color: colors.textPrimary, fontSize: 17, fontWeight: "900", letterSpacing: 1.2 },
+  subtitleRow: { alignItems: "center", flexDirection: "row", gap: spacing.xs, marginTop: 2 },
+  onlineDot: { backgroundColor: colors.teal, borderRadius: 4, height: 7, shadowColor: colors.teal, shadowOpacity: 0.9, shadowRadius: 8, width: 7 },
+  online: { color: colors.textTertiary, fontSize: 11, fontWeight: "700", maxWidth: 190 },
   coachHero: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.10)", borderColor: "rgba(10,132,255,0.24)", borderRadius: 20, borderWidth: 1, flexDirection: "row", gap: 12, padding: 14 },
   coachHeroIcon: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
   coachHeroTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" },
@@ -585,64 +665,72 @@ const styles = StyleSheet.create({
   drawerLayer: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0, zIndex: 40 },
   drawerScrim: { backgroundColor: "rgba(0,0,0,0.48)", bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
   historyPanel: {
-    backgroundColor: "#050506",
-    borderColor: "rgba(255,255,255,0.10)",
-    borderRadius: 26,
-    borderWidth: 1,
-    bottom: 12,
-    gap: 18,
+    backgroundColor: colors.background,
+    borderRightColor: colors.cardStroke,
+    borderRightWidth: 1,
+    bottom: 0,
+    gap: spacing.lg,
     left: 0,
-    padding: 18,
+    padding: spacing.lg,
     position: "absolute",
     top: 0,
-    width: "82%",
+    width: "88%",
     zIndex: 41
   },
   historyHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  drawerBrand: { color: colors.textPrimary, fontSize: 22, fontWeight: "900", letterSpacing: -0.5 },
+  drawerBrand: { color: colors.textPrimary, fontSize: 26, fontWeight: "900", letterSpacing: -0.7 },
   newChat: { color: colors.accent, fontSize: 13, fontWeight: "800" },
-  sessionList: { gap: 10, paddingBottom: 18 },
-  sessionRow: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.07)", borderColor: colors.cardStroke, borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 10, minHeight: 58, paddingHorizontal: 12 },
-  sessionRowActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  historySearch: { alignItems: "center", backgroundColor: colors.surfaceMuted, borderRadius: radii.pill, flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.md },
+  historySearchInput: { color: colors.textPrimary, flex: 1, fontSize: 14, paddingVertical: spacing.sm },
+  sessionList: { gap: spacing.sm, paddingBottom: spacing.xl },
+  sessionRow: { alignItems: "center", backgroundColor: "transparent", borderRadius: radii.lg, flexDirection: "row", gap: spacing.sm, minHeight: 64, paddingHorizontal: spacing.md },
+  sessionRowActive: { backgroundColor: colors.surfaceAccentWash },
   sessionTextBlock: { flex: 1, minWidth: 0 },
-  sessionTitle: { color: colors.textSecondary, fontSize: 13, fontWeight: "900" },
+  sessionTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" },
   sessionTitleActive: { color: colors.textPrimary },
-  sessionPreview: { color: colors.textTertiary, fontSize: 10, marginTop: 3 },
-  sessionPreviewActive: { color: "rgba(255,255,255,0.82)" },
-  sessionDate: { color: colors.textTertiary, fontSize: 9, fontWeight: "900", marginLeft: 6 },
+  sessionPreview: { color: colors.textTertiary, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  sessionPreviewActive: { color: colors.textSecondary },
+  sessionDate: { backgroundColor: colors.surfaceMuted, borderRadius: radii.pill, color: colors.textTertiary, fontSize: 9, fontWeight: "900", marginLeft: 6, overflow: "hidden", paddingHorizontal: 8, paddingVertical: 4 },
+  sessionDateActive: { backgroundColor: "rgba(0,163,255,0.16)", color: colors.accent },
+  noSessions: { color: colors.textTertiary, fontSize: 13, fontWeight: "700", padding: spacing.md, textAlign: "center" },
   messages: { flex: 1, zIndex: 1 },
-  messageContent: { flexGrow: 1, gap: 12, justifyContent: "flex-end", paddingBottom: 18, paddingTop: 18 },
+  messageContent: { flexGrow: 1, gap: spacing.lg, justifyContent: "flex-end", paddingBottom: spacing.xl, paddingTop: spacing.lg },
   messageGroup: { alignSelf: "flex-start", maxWidth: "94%" },
   userMessageGroup: { alignSelf: "flex-end" },
-  bubble: { borderRadius: 18, maxWidth: "100%", paddingHorizontal: 16, paddingVertical: 13 },
-  userBubble: { alignSelf: "flex-end", backgroundColor: "#253044" },
-  assistantBubble: { alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.055)", borderColor: "rgba(255,255,255,0.08)", borderLeftColor: colors.accent, borderLeftWidth: 2, borderWidth: 1 },
-  senderLabel: { color: colors.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1.1, marginBottom: 5, marginLeft: 6 },
-  messageText: { color: colors.textPrimary, fontSize: 15, lineHeight: 24 },
-  messageActions: { alignItems: "center", flexDirection: "row", gap: 6, marginLeft: 6, marginTop: 7 },
-  messageAction: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 13, height: 26, justifyContent: "center", width: 26 },
-  typingBubble: { alignItems: "center", flexDirection: "row", gap: 9 },
-  typingDots: { alignItems: "center", flexDirection: "row", gap: 5, paddingHorizontal: 4, paddingVertical: 5 },
+  bubble: { borderRadius: 22, maxWidth: "100%", paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  userBubble: { alignSelf: "flex-end", backgroundColor: colors.appBlueDeep, borderBottomRightRadius: spacing.xs },
+  assistantBubble: { alignSelf: "flex-start", backgroundColor: "transparent", paddingHorizontal: spacing.xs, paddingVertical: spacing.xs },
+  senderRow: { alignItems: "center", flexDirection: "row", gap: spacing.xs, marginBottom: spacing.xs, marginLeft: spacing.xs },
+  senderLabel: { color: colors.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
+  messageText: { color: colors.textPrimary, fontSize: 15, lineHeight: 25 },
+  messageActions: { alignItems: "center", flexDirection: "row", gap: spacing.xs, marginLeft: spacing.xs, marginTop: spacing.xs },
+  messageAction: { alignItems: "center", borderRadius: radii.pill, height: 30, justifyContent: "center", width: 30 },
+  typingGroup: { alignSelf: "flex-start", maxWidth: "94%", paddingHorizontal: spacing.xs },
+  typingBubble: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  typingDots: { alignItems: "center", flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.xs, paddingVertical: spacing.sm },
   typingDot: { backgroundColor: colors.accent, borderRadius: 4, height: 8, width: 8 },
   errorCard: { alignItems: "center", alignSelf: "center", backgroundColor: "rgba(255,199,51,0.10)", borderColor: "rgba(255,199,51,0.26)", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 9, marginTop: 4, maxWidth: "94%", padding: 12 },
   errorText: { color: colors.textSecondary, flex: 1, fontSize: 12, lineHeight: 17 },
   retryButton: { backgroundColor: "rgba(255,199,51,0.16)", borderColor: "rgba(255,199,51,0.40)", borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
   retryText: { color: colors.gold, fontSize: 11, fontWeight: "900" },
   saveStatus: { color: colors.teal, fontSize: 12, lineHeight: 18, textAlign: "center" },
-  emptyState: { alignItems: "center", gap: 10, justifyContent: "center", paddingHorizontal: 18, paddingVertical: 40 },
-  emptyOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.12)", borderColor: "rgba(0,163,255,0.30)", borderRadius: 30, borderWidth: 1, height: 60, justifyContent: "center", marginBottom: 4, width: 60 },
-  emptyTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: "900", letterSpacing: -0.4, textAlign: "center" },
-  emptyCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
-  emptySuggestions: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 12, width: "100%" },
-  emptySuggestionChip: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.055)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: 10, width: "47%" },
-  emptySuggestionText: { color: colors.textSecondary, fontSize: 11, fontWeight: "800", textAlign: "center" },
-  composerSeparator: { backgroundColor: "rgba(255,255,255,0.08)", height: 1, marginBottom: 2 },
-  composer: { alignItems: "center", backgroundColor: "#101015", borderColor: "rgba(0,163,255,0.34)", borderRadius: 22, borderWidth: 1, flexDirection: "row", gap: 5, padding: 5, shadowColor: colors.accent, shadowOpacity: 0.18, shadowRadius: 16, zIndex: 5 },
-  composerFocused: { borderColor: "rgba(0,163,255,0.72)", shadowOpacity: 0.32 },
+  emptyState: { alignItems: "flex-start", gap: spacing.md, justifyContent: "center", paddingVertical: 40 },
+  emptyOrb: { alignItems: "center", backgroundColor: colors.surfaceAccentWash, borderRadius: radii.pill, height: 68, justifyContent: "center", marginBottom: spacing.sm, width: 68 },
+  emptyTitle: { color: colors.textPrimary, fontSize: 34, fontWeight: "900", letterSpacing: -1.2, lineHeight: 38 },
+  emptyCopy: { color: colors.textSecondary, fontSize: 15, lineHeight: 23, maxWidth: 360 },
+  emptySuggestionScroller: { flexGrow: 0, marginHorizontal: -spacing.screen, marginTop: spacing.md, maxHeight: 54 },
+  emptySuggestions: { alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.screen },
+  emptySuggestionChip: { alignItems: "center", backgroundColor: colors.surfaceMuted, borderRadius: radii.pill, flexDirection: "row", gap: spacing.sm, minHeight: 46, paddingHorizontal: spacing.md },
+  emptySuggestionText: { color: colors.textPrimary, fontSize: 13, fontWeight: "800" },
+  composerSeparator: { backgroundColor: "rgba(255,255,255,0.06)", height: 1, marginBottom: 2 },
+  composer: { alignItems: "center", backgroundColor: colors.surfaceSoft, borderColor: "transparent", borderRadius: radii.pill, borderWidth: 1, flexDirection: "row", gap: spacing.xs, padding: spacing.xs, shadowColor: colors.black, shadowOpacity: 0.30, shadowRadius: 20, zIndex: 5 },
+  composerFocused: { borderColor: "rgba(0,163,255,0.70)", shadowColor: colors.accent, shadowOpacity: 0.24 },
   composerMark: { alignItems: "center", height: 38, justifyContent: "center", width: 36 },
   input: { color: colors.textPrimary, flex: 1, fontSize: 14, maxHeight: 56, minHeight: 38, paddingHorizontal: 4, paddingVertical: 8 },
-  sendButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 19, height: 38, justifyContent: "center", width: 38 },
-  sendDisabled: { opacity: 0.4 },
+  sendButton: { alignItems: "center", backgroundColor: colors.surfaceElevated, borderRadius: radii.pill, height: 38, justifyContent: "center", width: 38 },
+  sendButtonReady: { backgroundColor: colors.accent, transform: [{ scale: 1.04 }] },
+  sendDisabled: { opacity: 0.52 },
+  sendPressed: { opacity: 0.78, transform: [{ scale: 0.94 }] },
   assistantSkeleton: { alignSelf: "flex-start", width: "82%" },
   userSkeleton: { alignSelf: "flex-end", width: "64%" }
 });

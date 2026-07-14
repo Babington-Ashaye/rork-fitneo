@@ -9,6 +9,7 @@ const preferenceKeys: Record<NotificationPreference, string> = {
   streak: "fitneo.notifications.streak",
   coach: "fitneo.notifications.coach"
 };
+const LOCAL_NOTIFICATION_MARKER = "local-notification-preference-enabled";
 
 const schedules: Record<NotificationPreference, {
   hour: number;
@@ -87,13 +88,18 @@ export async function setNotificationPreference(
   const storageKey = preferenceKeys[preference];
   const existingIdentifier = await secureStorage.getItem(storageKey);
 
-  if (existingIdentifier && Notifications) {
-    await Notifications.cancelScheduledNotificationAsync(existingIdentifier);
+  if (existingIdentifier) {
+    if (Notifications && existingIdentifier !== LOCAL_NOTIFICATION_MARKER) {
+      await Notifications.cancelScheduledNotificationAsync(existingIdentifier);
+    }
     await secureStorage.removeItem(storageKey);
   }
   if (!enabled) return;
 
-  if (!Notifications) return;
+  if (!Notifications) {
+    await secureStorage.setItem(storageKey, LOCAL_NOTIFICATION_MARKER);
+    return;
+  }
 
   const permissions = await Notifications.getPermissionsAsync();
   let finalStatus = permissions.status;

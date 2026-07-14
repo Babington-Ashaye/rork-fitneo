@@ -9,6 +9,9 @@ export const colors = {
   cardStrokeSelected: "#00A3FF",
   surface: "#0B0B0F",
   surfaceSoft: "#14141A",
+  surfaceMuted: "rgba(255,255,255,0.055)",
+  surfaceWash: "rgba(255,255,255,0.035)",
+  surfaceAccentWash: "rgba(0,163,255,0.10)",
   surfaceElevated: "#1B1B22",
   appBlue: "#075BFF",
   appBlueBright: "#0A84FF",
@@ -48,6 +51,7 @@ export const radii = {
   xl: 20,
   xxl: 22,
   hero: 24,
+  pill: 999,
   round: 999
 };
 

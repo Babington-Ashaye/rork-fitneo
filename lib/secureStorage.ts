@@ -46,7 +46,13 @@ async function setNativeValue(key: string, value: string) {
 export const secureStorage = {
   async getItem(key: string): Promise<string | null> {
     if (Platform.OS === "web") {
-      return memoryStorage.get(key) ?? null;
+      const memoryValue = memoryStorage.get(key);
+      if (memoryValue !== undefined) return memoryValue;
+      const storedValue = await AsyncStorage.getItem(key);
+      if (storedValue !== null) {
+        memoryStorage.set(key, storedValue);
+      }
+      return storedValue;
     }
     if (!(await SecureStore.isAvailableAsync())) {
       return memoryStorage.get(key) ?? null;
@@ -80,6 +86,7 @@ export const secureStorage = {
   async setItem(key: string, value: string): Promise<void> {
     if (Platform.OS === "web" || !(await SecureStore.isAvailableAsync())) {
       memoryStorage.set(key, value);
+      await AsyncStorage.setItem(key, value);
       return;
     }
     await setNativeValue(key, value);

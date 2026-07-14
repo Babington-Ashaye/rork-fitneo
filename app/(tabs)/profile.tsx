@@ -237,7 +237,7 @@ export default function ProfileScreen() {
       </TouchableCard>
 
       <RowCard icon="trophy" title={t("profileScreen.leaderboard")} subtitle={t("profileScreen.leaderboardSubtitle")} onPress={() => router.push("/(tabs)/leaderboard")} />
-      <RowCard icon="person-circle" title={t("profileScreen.tellUs")} subtitle={t("profileScreen.tellUsSubtitle")} onPress={() => router.push({ pathname: "/onboarding", params: { mode: "edit" } })} />
+      <RowCard icon="person-circle" title={t("profileScreen.tellUs")} subtitle={t("profileScreen.tellUsSubtitle")} onPress={() => router.push("/legal/support")} />
       <LegalSettingsMenu />
 
       <TouchableCard radius={radii.xl} style={styles.settingsCard}>
