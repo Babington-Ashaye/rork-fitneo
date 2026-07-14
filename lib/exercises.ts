@@ -1148,6 +1148,73 @@ export const workoutPrograms: WorkoutProgram[] = [
       "jump_lunges", "band_pull_aparts", "face_pulls", "jump_rope"
     ],
   },
+
+  // ── WALK & RUN ───────────────────────────────────────────────────────────
+  {
+    id: "walk-run-foundation",
+    name: "Run-Walk Foundation",
+    category: "Walk & Run",
+    description: "Beginner-friendly walk/jog intervals that build aerobic base, ankle resilience, and confidence without gym equipment.",
+    equipmentTier: "none",
+    difficulty: "Beginner",
+    durationMinutes: 24,
+    exerciseIds: [
+      "high_knees", "calf_raises", "lunges", "glute_bridges",
+      "hamstring_stretch", "hip_flexor_stretch", "plank", "bird_dogs"
+    ],
+  },
+  {
+    id: "walking-weight-loss",
+    name: "Walking Weight Loss",
+    category: "Walk & Run",
+    description: "Low-impact walking conditioning mixed with mobility and core work for steady calorie burn and joint-friendly progress.",
+    equipmentTier: "none",
+    difficulty: "Beginner",
+    durationMinutes: 32,
+    exerciseIds: [
+      "jumping_jacks", "calf_raises", "step_ups", "wall_sit",
+      "dead_bug", "side_plank", "downward_dog", "hamstring_stretch"
+    ],
+  },
+  {
+    id: "easy-jog-builder",
+    name: "Easy Jog Builder",
+    category: "Walk & Run",
+    description: "A smooth runner prep block for improving cadence, hip stability, breathing rhythm, and lower-body endurance.",
+    equipmentTier: "none",
+    difficulty: "Intermediate",
+    durationMinutes: 36,
+    exerciseIds: [
+      "high_knees", "sprint_intervals", "single_leg_glute_bridge", "calf_raises",
+      "lunges", "mountain_climbers", "plank", "hip_flexor_stretch"
+    ],
+  },
+  {
+    id: "runner-mobility-reset",
+    name: "Runner Mobility Reset",
+    category: "Walk & Run",
+    description: "Recovery-focused mobility for runners: hips, calves, hamstrings, lower back, and core control after miles.",
+    equipmentTier: "none",
+    difficulty: "Beginner",
+    durationMinutes: 18,
+    exerciseIds: [
+      "cat_cow", "downward_dog", "hamstring_stretch", "hip_flexor_stretch",
+      "childs_pose", "cobra_stretch", "bird_dogs", "dead_bug"
+    ],
+  },
+  {
+    id: "5k-conditioning",
+    name: "5K Conditioning Prep",
+    category: "Walk & Run",
+    description: "Sharper no-equipment conditioning for runners building toward a faster 5K with speed, core, and leg stamina.",
+    equipmentTier: "none",
+    difficulty: "Intermediate",
+    durationMinutes: 40,
+    exerciseIds: [
+      "sprint_intervals", "high_knees", "jump_lunges", "bear_crawl",
+      "single_leg_glute_bridge", "calf_raises", "plank", "side_plank"
+    ],
+  },
 ];
 
 // ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
@@ -1199,7 +1266,12 @@ const workoutTrainingFrequency: Record<string, string> = {
   "upper-body-pump-home": "3x per week",
   "upper-body-pump-gym": "3x per week",
   "fat-loss-circuit": "3-4x per week",
-  "recovery-flow": "Daily or on rest days"
+  "recovery-flow": "Daily or on rest days",
+  "walk-run-foundation": "3x per week",
+  "walking-weight-loss": "4x per week",
+  "easy-jog-builder": "3x per week",
+  "runner-mobility-reset": "After runs",
+  "5k-conditioning": "3x per week"
 };
 
 export function getWorkoutTrainingFrequency(programId: string | undefined) {

@@ -102,7 +102,7 @@ function getPlanSessionName(plan: GeneratedPlan | null, selectedSport: string, d
 
 export default function SportsModeScreen() {
   const { profile, refreshProfile, user } = useAuth();
-  const { isFreeExpired, isPremium } = useSubscription();
+  const { isPremium } = useSubscription();
   const savedAnswers = profile?.onboarding_answers ?? {};
   const savedSport = typeof savedAnswers.sport === "string" ? savedAnswers.sport : "";
   const [selected, setSelected] = useState(savedSport || "Football (Soccer)");
@@ -324,6 +324,7 @@ export default function SportsModeScreen() {
   if (mode === "empty") {
     return (
       <AppLayout contentContainerStyle={styles.emptyScreen}>
+        <SportsHeader />
         <View style={styles.emptyHalo}>
           <Ionicons name="trophy" size={34} color={colors.gold} />
         </View>
@@ -351,6 +352,7 @@ export default function SportsModeScreen() {
   if (mode === "completion") {
     return (
       <AppLayout contentContainerStyle={styles.completionScreen}>
+        <SportsHeader />
         <View style={[styles.completionIcon, { borderColor: displayColor }]}>
           <Ionicons name={selectedSport.icon} size={48} color={displayColor} />
         </View>
@@ -371,9 +373,10 @@ export default function SportsModeScreen() {
 
   if (mode === "dashboard") {
     const visibleWeeks = plan?.weeks ?? [];
-    const previewWeeks = isFreeExpired ? visibleWeeks.slice(0, 1) : visibleWeeks;
+    const previewWeeks = visibleWeeks;
     return (
       <AppLayout scroll contentContainerStyle={styles.dashboardScreen}>
+        <SportsHeader />
         <LinearGradient colors={["#151821", "#0D0D11"]} style={[styles.heroCard, { borderLeftColor: displayColor }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroIdentity}>
@@ -422,7 +425,7 @@ export default function SportsModeScreen() {
         {planError ? <Text style={styles.planError}>{planError}</Text> : null}
 
         {previewWeeks.map((week) => (
-          <View key={week.weekNumber} style={[styles.weekBlock, isFreeExpired && styles.lockedPreview]}>
+          <View key={week.weekNumber} style={styles.weekBlock}>
             <View style={styles.weekHeader}>
               <Text style={styles.weekTitle}>Week {week.weekNumber}</Text>
               <Text style={[styles.weekBadge, { backgroundColor: `${displayColor}24`, color: displayColor }]}>{week.theme}</Text>
@@ -457,23 +460,13 @@ export default function SportsModeScreen() {
           </View>
         ))}
 
-        {isFreeExpired ? (
-          <View style={styles.unlockOverlay}>
-            <Ionicons name="lock-closed" size={28} color={colors.gold} />
-            <Text style={styles.unlockTitle}>Your AI Training Plan is ready</Text>
-            <Text style={styles.unlockCopy}>Upgrade to Pro to unlock all 4 weeks, every AI-calibrated day, and full sports programming.</Text>
-            <TouchableOpacity activeOpacity={0.86} style={styles.unlockButton} onPress={() => router.push("/paywall")}>
-              <Text style={styles.unlockButtonText}>Unlock My Plan</Text>
-              <Ionicons name="arrow-forward" size={16} color="#050506" />
-            </TouchableOpacity>
-          </View>
-        ) : null}
       </AppLayout>
     );
   }
 
   return (
     <AppLayout scroll contentContainerStyle={styles.onboardingScreen}>
+      <SportsHeader />
       <LinearGradient
         colors={[`${displayColor}42`, "rgba(8,8,8,0.98)"]}
         start={{ x: 0, y: 0 }}
@@ -591,6 +584,18 @@ export default function SportsModeScreen() {
   );
 }
 
+function SportsHeader() {
+  return (
+    <View style={styles.screenHeader}>
+      <TouchableOpacity activeOpacity={0.78} style={styles.screenBackButton} onPress={() => router.back()}>
+        <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+      </TouchableOpacity>
+      <Text style={styles.screenHeaderTitle}>Sports Mode</Text>
+      <View style={styles.screenBackSpacer} />
+    </View>
+  );
+}
+
 function QuestionScreen({ children, question }: { children: ReactNode; question: string }) {
   return (
     <View style={styles.questionScreen}>
@@ -631,6 +636,10 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  screenHeader: { alignItems: "center", flexDirection: "row", gap: 10, justifyContent: "space-between", width: "100%" },
+  screenBackButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.14)", borderRadius: 18, borderWidth: 1, height: 40, justifyContent: "center", width: 40 },
+  screenBackSpacer: { height: 40, width: 40 },
+  screenHeaderTitle: { color: "#FFFFFF", flex: 1, fontSize: 18, fontWeight: "900", textAlign: "center" },
   emptyScreen: { alignItems: "center", backgroundColor: "#080808", gap: 18, justifyContent: "center", paddingHorizontal: 24 },
   emptyHalo: { alignItems: "center", backgroundColor: "rgba(255,199,51,0.12)", borderColor: "rgba(255,199,51,0.28)", borderRadius: 34, borderWidth: 1, height: 68, justifyContent: "center", shadowColor: colors.gold, shadowOpacity: 0.28, shadowRadius: 18, width: 68 },
   emptySportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 260 },

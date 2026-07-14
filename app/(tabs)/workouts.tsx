@@ -40,6 +40,33 @@ const programImages: Record<string, string> = {
   custom: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85"
 };
 
+const programImageById: Record<string, string> = {
+  "full-body-beginner-home": "https://images.unsplash.com/photo-1599058917765-a780eda07a3e?auto=format&fit=crop&w=1200&q=85",
+  "full-body-beginner-gym": "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=1200&q=85",
+  "upper-lower-split-home": "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?auto=format&fit=crop&w=1200&q=85",
+  "upper-lower-split-gym": "https://images.unsplash.com/photo-1534367507873-d2d7e24c797f?auto=format&fit=crop&w=1200&q=85",
+  "push-pull-legs-home": "https://images.unsplash.com/photo-1594737625785-a6cbdabd333c?auto=format&fit=crop&w=1200&q=85",
+  "push-pull-legs-gym": "https://images.unsplash.com/photo-1571019613914-85f342c1d70c?auto=format&fit=crop&w=1200&q=85",
+  "hiit-burn-home": "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85",
+  "core-control-home": "https://images.unsplash.com/photo-1518459031867-a89b944bffe4?auto=format&fit=crop&w=1200&q=85",
+  "core-control-gym": "https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=1200&q=85",
+  "home-no-equipment": "https://images.unsplash.com/photo-1616279969856-759f316a5ac1?auto=format&fit=crop&w=1200&q=85",
+  "mobility-reset": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=85",
+  "athletic-conditioning-home": "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=1200&q=85",
+  "athletic-conditioning-gym": "https://images.unsplash.com/photo-1517963879433-6ad2b056d712?auto=format&fit=crop&w=1200&q=85",
+  "leg-power-home": "https://images.unsplash.com/photo-1434682881908-b43d0467b798?auto=format&fit=crop&w=1200&q=85",
+  "leg-power-gym": "https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=1200&q=85",
+  "upper-body-pump-home": "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=1200&q=85",
+  "upper-body-pump-gym": "https://images.unsplash.com/photo-1532384748853-8f54a8f476e2?auto=format&fit=crop&w=1200&q=85",
+  "fat-loss-circuit": "https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?auto=format&fit=crop&w=1200&q=85",
+  "recovery-flow": "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=1200&q=85",
+  "walk-run-foundation": "https://images.unsplash.com/photo-1486218119243-13883505764c?auto=format&fit=crop&w=1200&q=85",
+  "walking-weight-loss": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85",
+  "easy-jog-builder": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1200&q=85",
+  "runner-mobility-reset": "https://images.unsplash.com/photo-1526676037777-05a232554f77?auto=format&fit=crop&w=1200&q=85",
+  "5k-conditioning": "https://images.unsplash.com/photo-1502904550040-7534597429ae?auto=format&fit=crop&w=1200&q=85"
+};
+
 export default function WorkoutsScreen() {
   const { isPremium } = useSubscription();
   const [query, setQuery] = useState("");
@@ -188,16 +215,12 @@ export default function WorkoutsScreen() {
 function matchesMode(program: WorkoutProgram, mode: TrainingMode) {
   if (mode === "home") return program.equipmentTier !== "full";
   if (mode === "gym") return program.equipmentTier !== "none";
-  return (
-    program.category.toLowerCase().includes("conditioning") ||
-    program.category.toLowerCase().includes("cardio") ||
-    program.name.toLowerCase().includes("fat") ||
-    program.name.toLowerCase().includes("hiit")
-  );
+  return program.category.toLowerCase().includes("walk");
 }
 
 function getProgramImage(program: WorkoutProgram, mode?: TrainingMode) {
   const category = program.category.toLowerCase();
+  if (programImageById[program.id]) return programImageById[program.id];
   if (mode === "gym" || program.equipmentTier === "full") return programImages.gym;
   if (mode === "walk") return programImages.run;
   if (category.includes("conditioning")) return programImages.conditioning;

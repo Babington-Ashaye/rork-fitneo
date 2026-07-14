@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { secureStorage } from "@/lib/secureStorage";
 
 export type NotificationPreference = "workout" | "streak" | "coach";
@@ -10,6 +11,11 @@ const preferenceKeys: Record<NotificationPreference, string> = {
   coach: "fitneo.notifications.coach"
 };
 const LOCAL_NOTIFICATION_MARKER = "local-notification-preference-enabled";
+const preferenceMirrorKeys: Record<NotificationPreference, string> = {
+  workout: "fitneo.notifications.enabled.workout",
+  streak: "fitneo.notifications.enabled.streak",
+  coach: "fitneo.notifications.enabled.coach"
+};
 
 const schedules: Record<NotificationPreference, {
   hour: number;
@@ -71,10 +77,14 @@ export async function initializeNotifications() {
 
 export async function loadNotificationPreferences(): Promise<NotificationPreferences> {
   const entries = await Promise.all(
-    (Object.keys(preferenceKeys) as NotificationPreference[]).map(async (key) => [
-      key,
-      (await secureStorage.getItem(preferenceKeys[key])) !== null
-    ] as const)
+    (Object.keys(preferenceKeys) as NotificationPreference[]).map(async (key) => {
+      const secureValue = await secureStorage.getItem(preferenceKeys[key]);
+      const mirrorValue = await AsyncStorage.getItem(preferenceMirrorKeys[key]);
+      return [
+        key,
+        secureValue !== null || mirrorValue === "true"
+      ] as const;
+    })
   );
   return Object.fromEntries(entries) as NotificationPreferences;
 }
@@ -94,7 +104,12 @@ export async function setNotificationPreference(
     }
     await secureStorage.removeItem(storageKey);
   }
-  if (!enabled) return;
+  if (!enabled) {
+    await AsyncStorage.removeItem(preferenceMirrorKeys[preference]);
+    return;
+  }
+
+  await AsyncStorage.setItem(preferenceMirrorKeys[preference], "true");
 
   if (!Notifications) {
     await secureStorage.setItem(storageKey, LOCAL_NOTIFICATION_MARKER);
@@ -125,6 +140,7 @@ export async function setNotificationPreference(
     }
   });
   await secureStorage.setItem(storageKey, identifier);
+  await AsyncStorage.setItem(preferenceMirrorKeys[preference], "true");
 }
 
 export async function clearNotificationState() {
@@ -133,7 +149,10 @@ export async function clearNotificationState() {
     await Notifications?.cancelAllScheduledNotificationsAsync();
   } finally {
     await Promise.all(
-      Object.values(preferenceKeys).map((key) => secureStorage.removeItem(key))
+      [
+        ...Object.values(preferenceKeys).map((key) => secureStorage.removeItem(key)),
+        ...Object.values(preferenceMirrorKeys).map((key) => AsyncStorage.removeItem(key))
+      ]
     );
   }
 }

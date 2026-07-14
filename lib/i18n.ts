@@ -7,7 +7,25 @@ export const LANGUAGE_STORAGE_KEY = "fitneo.language";
 export const supportedLanguages = [
   { code: "en", label: "English" },
   { code: "es", label: "Español" },
-  { code: "fr", label: "Français" }
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+  { code: "pt", label: "Português" },
+  { code: "it", label: "Italiano" },
+  { code: "nl", label: "Nederlands" },
+  { code: "pl", label: "Polski" },
+  { code: "tr", label: "Türkçe" },
+  { code: "ar", label: "العربية" },
+  { code: "hi", label: "हिन्दी" },
+  { code: "id", label: "Bahasa Indonesia" },
+  { code: "ms", label: "Bahasa Melayu" },
+  { code: "yo", label: "Yorùbá" },
+  { code: "ha", label: "Hausa" },
+  { code: "ig", label: "Igbo" },
+  { code: "sw", label: "Kiswahili" },
+  { code: "zh", label: "中文" },
+  { code: "ja", label: "日本語" },
+  { code: "ko", label: "한국어" },
+  { code: "ru", label: "Русский" }
 ] as const;
 
 export type SupportedLanguage = (typeof supportedLanguages)[number]["code"];
@@ -706,6 +724,34 @@ export const resources = {
   }
 } as const;
 
+const englishFallbackLanguages = [
+  "de",
+  "pt",
+  "it",
+  "nl",
+  "pl",
+  "tr",
+  "ar",
+  "hi",
+  "id",
+  "ms",
+  "yo",
+  "ha",
+  "ig",
+  "sw",
+  "zh",
+  "ja",
+  "ko",
+  "ru"
+] as const;
+
+const i18nResources = {
+  ...resources,
+  ...Object.fromEntries(
+    englishFallbackLanguages.map((language) => [language, resources.en])
+  )
+};
+
 void i18n.use(initReactI18next).init({
   compatibilityJSON: "v4",
   fallbackLng: "en",
@@ -716,7 +762,7 @@ void i18n.use(initReactI18next).init({
   react: {
     useSuspense: false
   },
-  resources
+  resources: i18nResources
 });
 
 void AsyncStorage.getItem(LANGUAGE_STORAGE_KEY).then((savedLanguage) => {

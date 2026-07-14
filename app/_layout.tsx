@@ -84,6 +84,7 @@ function RootNavigator() {
         <Stack.Screen name="active-workout" options={{ headerShown: false }} />
         <Stack.Screen name="sports-mode" options={{ headerShown: false }} />
         <Stack.Screen name="badges" options={{ headerShown: false }} />
+        <Stack.Screen name="feedback" options={{ headerShown: false }} />
         <Stack.Screen name="chat-history" options={{ title: "Chat History" }} />
         <Stack.Screen name="subscription-test" options={{ title: "Subscription Testing" }} />
         <Stack.Screen name="legal/privacy" options={{ title: "Privacy Policy" }} />

@@ -123,7 +123,46 @@ async function awardLocalBadge(userId: string, badgeId: string, badgeName: strin
   });
 }
 
+async function clearRemoteUserData(userId: string) {
+  const userScopedTables = [
+    "body_metrics",
+    "workout_sessions",
+    "nutrition_logs",
+    "xp_transactions",
+    "badges",
+    "workout_programs",
+    "chat_sessions",
+    "chat_messages"
+  ];
+
+  await Promise.allSettled(
+    userScopedTables.map((table) =>
+      supabase.from(table).delete().eq("user_id", userId)
+    )
+  );
+
+  await Promise.allSettled([
+    supabase
+      .from("user_profiles")
+      .update({
+        total_xp: 0,
+        current_streak: 0,
+        longest_streak: 0,
+        weekly_workout_count: 0,
+        ai_messages_today: 0,
+        ai_scans_remaining: 0,
+        onboarding_completed: false,
+        onboarding_answers: {}
+      })
+      .eq("id", userId),
+    supabase.from("onboarding_answers").delete().eq("user_id", userId)
+  ]);
+}
+
 export async function clearAllLocalAppData(userId: string | null) {
+  if (userId) {
+    await clearRemoteUserData(userId).catch(() => undefined);
+  }
   await clearNotificationState().catch(() => undefined);
   await AsyncStorage.clear();
   await secureStorage.removeItem(LOCAL_ONBOARDING_KEY);
