@@ -474,6 +474,32 @@ export default function SportsModeScreen() {
 
   return (
     <AppLayout scroll contentContainerStyle={styles.onboardingScreen}>
+      <LinearGradient
+        colors={[`${displayColor}42`, "rgba(8,8,8,0.98)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.onboardingHero}
+      >
+        <View style={styles.heroGlowDot} />
+        <View style={styles.onboardingHeroTop}>
+          <View style={[styles.onboardingSportOrb, { borderColor: displayColor, shadowColor: displayColor }]}>
+            <Ionicons name={selectedSport.icon} size={28} color={displayColor} />
+          </View>
+          <View style={styles.onboardingHeroCopy}>
+            <Text style={styles.onboardingKicker}>FITNEO AI SPORTS</Text>
+            <Text style={styles.onboardingHeroTitle}>Build a plan like a real athlete</Text>
+          </View>
+        </View>
+        <Text style={styles.onboardingHeroText}>
+          Pick your sport profile and FITNEO will calibrate drills, intensity, rest days, and position work around you.
+        </Text>
+        <View style={styles.onboardingHeroPills}>
+          <Text style={styles.onboardingHeroPill}>Position aware</Text>
+          <Text style={styles.onboardingHeroPill}>4-week block</Text>
+          <Text style={styles.onboardingHeroPill}>AI tuned</Text>
+        </View>
+      </LinearGradient>
+
       <View style={styles.topProgressRow}>
         <Text style={styles.progressText}>Step {step + 1} of {TOTAL_STEPS}</Text>
         <Text style={styles.largeStep}>{String(step + 1).padStart(2, "0")}</Text>
@@ -491,12 +517,17 @@ export default function SportsModeScreen() {
                   activeOpacity={0.84}
                   key={sport.name}
                   onPress={() => setSelected(sport.name)}
-                  style={[styles.sportCard, selected === sport.name && { backgroundColor: sport.accent, borderColor: sport.accent }]}
+                  style={[styles.sportCard, selected === sport.name && { borderColor: sport.accent, shadowColor: sport.accent }]}
                 >
+                  {selected === sport.name ? (
+                    <LinearGradient colors={[sport.accent, `${sport.accent}99`]} style={StyleSheet.absoluteFillObject} />
+                  ) : null}
                   {selected === sport.name ? (
                     <View style={styles.checkBadge}><Ionicons name="checkmark" size={13} color="#FFFFFF" /></View>
                   ) : null}
-                  <Ionicons name={sport.icon} size={32} color={selected === sport.name ? "#FFFFFF" : sport.accent} />
+                  <View style={[styles.sportIconRing, { backgroundColor: selected === sport.name ? "rgba(255,255,255,0.18)" : `${sport.accent}18` }]}>
+                    <Ionicons name={sport.icon} size={32} color={selected === sport.name ? "#FFFFFF" : sport.accent} />
+                  </View>
                   <Text style={styles.sportName}>{sport.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -609,6 +640,16 @@ const styles = StyleSheet.create({
   emptyFeatureRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
   emptyFeature: { backgroundColor: "rgba(10,132,255,0.12)", borderColor: "rgba(10,132,255,0.28)", borderRadius: 999, borderWidth: 1, color: colors.accent, fontSize: 11, fontWeight: "900", overflow: "hidden", paddingHorizontal: 10, paddingVertical: 6 },
   onboardingScreen: { backgroundColor: "#080808", gap: 16 },
+  onboardingHero: { borderColor: "rgba(255,255,255,0.10)", borderRadius: 26, borderWidth: 1, gap: 14, overflow: "hidden", padding: 18, position: "relative" },
+  heroGlowDot: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 92, height: 184, position: "absolute", right: -82, top: -88, width: 184 },
+  onboardingHeroTop: { alignItems: "center", flexDirection: "row", gap: 13 },
+  onboardingSportOrb: { alignItems: "center", backgroundColor: "rgba(5,5,6,0.74)", borderRadius: 22, borderWidth: 1, height: 54, justifyContent: "center", shadowOpacity: 0.42, shadowRadius: 18, width: 54 },
+  onboardingHeroCopy: { flex: 1 },
+  onboardingKicker: { color: colors.accent, fontSize: 10, fontWeight: "900", letterSpacing: 1.9 },
+  onboardingHeroTitle: { color: "#FFFFFF", fontSize: 23, fontWeight: "900", letterSpacing: -0.6, lineHeight: 27, marginTop: 4 },
+  onboardingHeroText: { color: "#D1D5DB", fontSize: 13, fontWeight: "700", lineHeight: 19 },
+  onboardingHeroPills: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  onboardingHeroPill: { backgroundColor: "rgba(255,255,255,0.10)", borderColor: "rgba(255,255,255,0.14)", borderRadius: 999, borderWidth: 1, color: "#FFFFFF", fontSize: 10, fontWeight: "900", overflow: "hidden", paddingHorizontal: 9, paddingVertical: 6 },
   topProgressRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   progressText: { color: "#9CA3AF", fontSize: 12, fontWeight: "800" },
   largeStep: { color: "#4B5563", fontSize: 34, fontWeight: "900" },
@@ -618,7 +659,8 @@ const styles = StyleSheet.create({
   questionText: { color: "#FFFFFF", fontSize: 28, fontWeight: "800", lineHeight: 35, paddingHorizontal: 8, paddingVertical: 14, textAlign: "center" },
   optionsWrap: { gap: 10 },
   sportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  sportCard: { alignItems: "center", aspectRatio: 1, backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, gap: 8, justifyContent: "center", position: "relative", width: "48%" },
+  sportCard: { alignItems: "center", aspectRatio: 1, backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 20, borderWidth: 1, gap: 10, justifyContent: "center", overflow: "hidden", position: "relative", shadowOpacity: 0.24, shadowRadius: 15, width: "48%" },
+  sportIconRing: { alignItems: "center", borderRadius: 24, height: 56, justifyContent: "center", width: 56 },
   sportName: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", textAlign: "center" },
   checkBadge: { alignItems: "center", backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 11, height: 22, justifyContent: "center", position: "absolute", right: 10, top: 10, width: 22 },
   optionRow: { alignItems: "center", backgroundColor: "#1A1A1F", borderColor: "#2A2A35", borderRadius: 14, borderWidth: 1, flexDirection: "row", minHeight: 56, paddingHorizontal: 14 },

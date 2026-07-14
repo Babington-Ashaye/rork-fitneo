@@ -16,7 +16,7 @@ function FallbackBanner({ label = "Sponsored training boost" }: { label?: string
       </View>
       <View style={styles.copyBlock}>
         <Text style={styles.title}>{label}</Text>
-        <Text style={styles.copy}>Add EXPO_PUBLIC_ADMOB_BANNER_ID to show live AdMob ads here.</Text>
+        <Text style={styles.copy}>Premium fitness picks appear here while live ads are being prepared.</Text>
       </View>
     </View>
   );
