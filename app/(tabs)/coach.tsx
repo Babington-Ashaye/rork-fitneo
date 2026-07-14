@@ -147,8 +147,11 @@ export default function CoachScreen() {
     setActiveSession((current) => current?.id === session.id ? titledSession : current);
     setSessions((current) => current.map((item) => item.id === session.id ? titledSession : item));
     if (!session.id.startsWith("local-")) {
-      void updateChatSessionTitle(session.id, title).catch(() => {
-        // Local title is still useful even if cloud title sync is unavailable.
+      void updateChatSessionTitle(session.id, title).catch((err) => {
+        console.warn(
+          "[FITNEO chat] Could not persist session title:",
+          err instanceof Error ? err.message : String(err)
+        );
       });
     }
     return titledSession;
@@ -557,7 +560,7 @@ export default function CoachScreen() {
       <View style={styles.composerSeparator} />
       <View style={[styles.composer, composerFocused && styles.composerFocused]}>
         <View style={styles.composerMark}>
-          <Ionicons name="sparkles" size={16} color={colors.accent} />
+          <FitneoAiMark size={17} color={colors.accent} />
         </View>
         <TextInput
           multiline

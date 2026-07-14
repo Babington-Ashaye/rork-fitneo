@@ -707,18 +707,22 @@ export async function fetchChatSessions(): Promise<ChatSessionSummary[]> {
     };
   });
 
-  for (const session of hydrated) {
-    if (session.title !== "New Chat") {
+  await Promise.allSettled(
+    hydrated.map(async (session) => {
       const original = sessions.find((item) => item.id === session.id);
-      if (original?.title === "New Chat") {
-        void supabase
-          .from("chat_sessions")
-          .update({ title: session.title })
-          .eq("id", session.id)
-          .eq("user_id", userId);
+      if (session.title === "New Chat" || original?.title !== "New Chat") return;
+
+      const { error: titleError } = await supabase
+        .from("chat_sessions")
+        .update({ title: session.title })
+        .eq("id", session.id)
+        .eq("user_id", userId);
+
+      if (titleError) {
+        console.warn("[FITNEO chat] Could not backfill session title:", titleError.message);
       }
-    }
-  }
+    })
+  );
 
   return hydrated;
 }
@@ -726,7 +730,7 @@ export async function fetchChatSessions(): Promise<ChatSessionSummary[]> {
 function makeChatTitle(value: string) {
   const clean = value.replace(/\s+/g, " ").trim();
   if (!clean) return "New Chat";
-  return clean.length > 34 ? `${clean.slice(0, 34)}…` : clean;
+  return clean.length > 34 ? `${clean.slice(0, 34)}...` : clean;
 }
 
 function makeChatPreview(value: string) {
@@ -787,6 +791,24 @@ export async function saveChatMessage(
   if (!userId) {
     throw new Error("You must be signed in.");
   }
+
+  let shouldTitleSession = false;
+  if (role === "user") {
+    const { data: existingUserMessage, error: titleProbeError } = await supabase
+      .from("chat_messages")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("session_id", sessionId)
+      .eq("role", "user")
+      .limit(1)
+      .maybeSingle();
+
+    if (titleProbeError) {
+      console.warn("[FITNEO chat] Could not check first user message:", titleProbeError.message);
+    }
+    shouldTitleSession = !existingUserMessage && !titleProbeError;
+  }
+
   const { error } = await supabase.from("chat_messages").insert({
     user_id: userId,
     session_id: sessionId,
@@ -795,6 +817,18 @@ export async function saveChatMessage(
   });
   if (error) {
     throw error;
+  }
+
+  if (shouldTitleSession) {
+    const { error: titleError } = await supabase
+      .from("chat_sessions")
+      .update({ title: makeChatTitle(content) })
+      .eq("id", sessionId)
+      .eq("user_id", userId);
+
+    if (titleError) {
+      console.warn("[FITNEO chat] Could not title session from first prompt:", titleError.message);
+    }
   }
 }
 

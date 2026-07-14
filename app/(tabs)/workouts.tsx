@@ -80,14 +80,7 @@ export default function WorkoutsScreen() {
   const visiblePrograms = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
     return modePrograms.filter((program) => {
-      const categoryNeedle = selectedCategory.toLowerCase();
-      const matchesCategory =
-        selectedCategory === "Full Body" ||
-        selectedCategory === "Walking" ||
-        program.category.toLowerCase().includes(categoryNeedle) ||
-        program.name.toLowerCase().includes(categoryNeedle) ||
-        program.description.toLowerCase().includes(categoryNeedle) ||
-        program.difficulty.toLowerCase().includes(categoryNeedle);
+      const matchesCategory = matchesProgramCategory(program, selectedCategory);
       const matchesQuery =
         !cleanQuery ||
         program.name.toLowerCase().includes(cleanQuery) ||
@@ -231,6 +224,23 @@ function matchesMode(program: WorkoutProgram, mode: TrainingMode) {
   if (mode === "home") return program.equipmentTier !== "full" && !category.includes("walk") && !category.includes("sports");
   if (mode === "gym") return program.equipmentTier !== "none";
   return category.includes("walk");
+}
+
+function matchesProgramCategory(program: WorkoutProgram, selectedCategory: string) {
+  const needle = selectedCategory.toLowerCase();
+  const haystack = `${program.category} ${program.name} ${program.description} ${program.difficulty}`.toLowerCase();
+
+  if (selectedCategory === "Full Body" || selectedCategory === "Walking") return true;
+  if (needle === "cardio") {
+    return /cardio|conditioning|hiit|fat|burn|athletic|endurance|sprint|run|jog|pace/.test(haystack);
+  }
+  if (needle === "arm") {
+    return /arm|upper|bicep|tricep|push|pull/.test(haystack);
+  }
+  if (needle === "legs") {
+    return /leg|lower|glute|squat|lunge/.test(haystack);
+  }
+  return haystack.includes(needle);
 }
 
 function getProgramImage(program: WorkoutProgram, mode?: TrainingMode) {

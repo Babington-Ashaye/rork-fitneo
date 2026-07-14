@@ -68,9 +68,11 @@ function FloatingTabBar({ state, navigation }: any) {
               style={[styles.navItem, isActive ? styles.navItemActive : styles.navItemInactive]}
             >
               <Ionicons name={navIcons[route.name]} size={20} color={color} style={isActive ? styles.activeIcon : undefined} />
-              <Text numberOfLines={1} style={[styles.navLabel, isActive ? styles.navLabelActive : styles.navLabelInactive]}>
-                {t(navLabelKeys[route.name])}
-              </Text>
+              {isActive ? (
+                <Text numberOfLines={1} style={[styles.navLabel, styles.navLabelActive]}>
+                  {t(navLabelKeys[route.name])}
+                </Text>
+              ) : null}
             </Pressable>
           );
         })}

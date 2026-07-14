@@ -18,56 +18,84 @@ export function FitneoAiMark({ color = colors.accent, size = 22 }: FitneoAiMarkP
     >
       <View
         style={[
-          styles.orbit,
+          styles.head,
           {
             borderColor: color,
-            borderRadius: size / 2,
-            height: size * 0.78,
-            left: size * 0.11,
-            top: size * 0.11,
-            width: size * 0.78
-          }
-        ]}
-      />
-      <View
-        style={[
-          styles.pulse,
-          {
-            backgroundColor: color,
-            borderRadius: 3 * unit,
-            height: 4 * unit,
+            borderRadius: 8 * unit,
+            borderBottomLeftRadius: 6 * unit,
+            borderBottomRightRadius: 10 * unit,
+            height: 17 * unit,
             left: 3 * unit,
-            top: 9 * unit,
-            width: 16 * unit
+            top: 2 * unit,
+            width: 15 * unit
           }
         ]}
       />
       <View
         style={[
-          styles.spark,
+          styles.faceCut,
+          {
+            borderColor: color,
+            borderRadius: 7 * unit,
+            height: 10 * unit,
+            left: 7 * unit,
+            top: 5 * unit,
+            width: 8 * unit
+          }
+        ]}
+      />
+      <View
+        style={[
+          styles.neck,
           {
             backgroundColor: color,
             borderRadius: 2 * unit,
-            height: 10 * unit,
-            left: 10 * unit,
-            top: 3 * unit,
+            height: 3 * unit,
+            left: 9 * unit,
+            top: 17 * unit,
+            width: 5 * unit
+          }
+        ]}
+      />
+      <View
+        style={[
+          styles.circuitStem,
+          {
+            backgroundColor: color,
+            height: 6 * unit,
+            left: 9.3 * unit,
+            top: 7 * unit,
+            width: 1.4 * unit
+          }
+        ]}
+      />
+      <View
+        style={[
+          styles.circuitBranch,
+          {
+            backgroundColor: color,
+            height: 1.4 * unit,
+            left: 9.5 * unit,
+            top: 8.6 * unit,
+            width: 4.5 * unit
+          }
+        ]}
+      />
+      <View
+        style={[
+          styles.circuitBranch,
+          {
+            backgroundColor: color,
+            height: 1.4 * unit,
+            left: 6.5 * unit,
+            top: 12 * unit,
             width: 4 * unit
           }
         ]}
       />
-      <View
-        style={[
-          styles.core,
-          {
-            backgroundColor: color,
-            borderRadius: 4 * unit,
-            height: 7 * unit,
-            left: 8 * unit,
-            top: 8 * unit,
-            width: 7 * unit
-          }
-        ]}
-      />
+      <View style={[styles.node, { backgroundColor: color, borderRadius: 2 * unit, height: 3.2 * unit, left: 13 * unit, top: 7.7 * unit, width: 3.2 * unit }]} />
+      <View style={[styles.node, { backgroundColor: color, borderRadius: 2 * unit, height: 3 * unit, left: 5 * unit, top: 11.2 * unit, width: 3 * unit }]} />
+      <View style={[styles.node, { backgroundColor: color, borderRadius: 2 * unit, height: 2.8 * unit, left: 8.6 * unit, top: 5.4 * unit, width: 2.8 * unit }]} />
     </View>
   );
 }
@@ -76,23 +104,33 @@ const styles = StyleSheet.create({
   host: {
     position: "relative"
   },
-  orbit: {
-    borderWidth: 1,
-    opacity: 0.38,
-    position: "absolute",
-    transform: [{ rotate: "-28deg" }]
+  head: {
+    borderWidth: 1.8,
+    opacity: 0.96,
+    position: "absolute"
   },
-  pulse: {
-    opacity: 0.92,
+  faceCut: {
+    borderBottomWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+    opacity: 0.44,
     position: "absolute",
-    transform: [{ rotate: "-34deg" }]
+    transform: [{ rotate: "-14deg" }]
   },
-  spark: {
-    opacity: 0.95,
-    position: "absolute",
-    transform: [{ rotate: "38deg" }]
+  neck: {
+    opacity: 0.9,
+    position: "absolute"
   },
-  core: {
+  circuitStem: {
+    opacity: 0.9,
+    position: "absolute"
+  },
+  circuitBranch: {
+    opacity: 0.9,
+    position: "absolute"
+  },
+  node: {
     position: "absolute"
   }
 });

@@ -29,7 +29,7 @@ export type WorkoutProgram = {
   difficulty: "Beginner" | "Intermediate" | "Advanced";
 };
 
-export const EXERCISE_CATALOG_BASELINE_COUNT = 126;
+export const EXERCISE_CATALOG_BASELINE_COUNT = 161;
 export const FREE_EXERCISE_LIMIT = EXERCISE_CATALOG_BASELINE_COUNT;
 
 const videoBase =
@@ -217,6 +217,11 @@ const exerciseRows: Array<[
     "Form an inverted V shape with your hips high and hands and feet on the floor. Bend your elbows to lower your head toward the floor then push back up.",
     "The higher your hips the more this targets your shoulders like an overhead press."],
 
+  ["prone_y_t_w_raises", "Prone Y-T-W Raises", "Shoulders", "Beginner", 3, "10 each", 45,
+    "0762-nFUwqG6.gif",
+    "Lie face down and raise your arms into Y, T, and W shapes, squeezing your shoulder blades on every rep without using weights.",
+    "Move slowly and keep your neck relaxed so the rear shoulders and upper back do the work."],
+
   ["band_pull_aparts", "Band Pull-aparts", "Shoulders", "Beginner", 3, "20", 30,
     "0762-nFUwqG6.gif",
     "Hold a resistance band in front of you at chest height with both hands. Pull the band apart by moving your arms out to the sides until it touches your chest.",
@@ -273,6 +278,11 @@ const exerciseRows: Array<[
     "1685-QChZi3x.gif",
     "Stand with feet shoulder-width apart. Push your hips back and bend your knees to lower until thighs are parallel to the floor then drive back up.",
     "Keep your chest up, weight in your heels, and knees tracking over your toes."],
+
+  ["squat_jumps", "Squat Jumps", "Legs", "Intermediate", 4, "10", 60,
+    "1374-iPm26QU.gif",
+    "Lower into a bodyweight squat, then drive through the floor and jump explosively. Land softly and reset before the next rep.",
+    "Absorb the landing quietly with bent knees to protect your joints."],
 
   ["lunges", "Bodyweight Lunges", "Legs", "Beginner", 3, "10 each", 60,
     "1688-K9VL0Jq.gif",
@@ -675,7 +685,150 @@ const exerciseRows: Array<[
   ["walk_run_cooldown", "Walk-Run Cooldown", "Walk & Run", "Beginner", 2, "3 min", 20,
     "3636-ealLwvX.gif",
     "Finish with relaxed walking to bring your breathing and heart rate back down.",
-    "Slow down gradually instead of stopping suddenly."]
+    "Slow down gradually instead of stopping suddenly."],
+
+  // Gym core / machine-based core
+  ["cable_crunch", "Cable Crunch", "Core", "Intermediate", 3, "12", 45,
+    "0222-HQFffmz.gif",
+    "Kneel at a cable station and curl your ribs toward your pelvis under control.",
+    "Move through your abs, not your hips or arms."],
+  ["cable_woodchop", "Cable Woodchop", "Core", "Intermediate", 3, "10 each", 45,
+    "0222-HQFffmz.gif",
+    "Rotate against cable resistance to train controlled power through the trunk.",
+    "Keep your hips stable and turn through the ribs."],
+  ["machine_crunch", "Machine Crunch", "Core", "Beginner", 3, "12", 45,
+    "0222-HQFffmz.gif",
+    "Use a crunch machine to load your abs through a short controlled range.",
+    "Exhale as you crunch and avoid pulling with your arms."],
+  ["captains_chair_leg_raise", "Captain's Chair Leg Raise", "Core", "Intermediate", 3, "12", 45,
+    "0689-Hgs6Nl1.gif",
+    "Brace your forearms on the chair and raise your knees or legs with control.",
+    "Avoid swinging; pause briefly at the top."],
+  ["hanging_knee_raise", "Hanging Knee Raise", "Core", "Intermediate", 3, "10", 60,
+    "0689-Hgs6Nl1.gif",
+    "Hang from a bar and draw your knees toward your chest while keeping your ribs down.",
+    "Control the lower phase instead of dropping your legs."],
+
+  // Sport-specific no-equipment drills
+  ["football_acceleration_starts", "Football Acceleration Starts", "Cardio", "Advanced", 6, "10 sec", 40,
+    "0685-oLrKqDH.gif",
+    "Explode from a staggered stance into short sprint starts for first-step sharpness.",
+    "Stay low for the first three steps like you are attacking space."],
+  ["football_lateral_cuts", "Football Lateral Cuts", "Cardio", "Intermediate", 4, "30 sec", 35,
+    "3223-HtfCpfi.gif",
+    "Shuffle and plant hard into quick direction changes to mimic match cuts.",
+    "Sink your hips before each cut and push off the outside foot."],
+  ["football_backpedal_turns", "Football Backpedal Turns", "Cardio", "Intermediate", 4, "30 sec", 35,
+    "3636-ealLwvX.gif",
+    "Backpedal, open your hips, and accelerate forward like defending a transition.",
+    "Turn both directions evenly and keep your eyes forward."],
+  ["football_close_control_feet", "Football Close-Control Feet", "Cardio", "Beginner", 4, "40 sec", 25,
+    "3636-ealLwvX.gif",
+    "Use quick in-place foot taps and small steps to build close-control rhythm without a ball.",
+    "Stay light on the balls of your feet."],
+  ["football_single_leg_bounds", "Football Single-leg Bounds", "Legs", "Advanced", 4, "8 each", 50,
+    "0054-t8iSghb.gif",
+    "Bound from one leg to the other to develop single-leg power for sprinting and shooting.",
+    "Land softly with knee tracking over toes."],
+
+  ["basketball_defensive_slides", "Basketball Defensive Slides", "Cardio", "Intermediate", 5, "30 sec", 30,
+    "3223-HtfCpfi.gif",
+    "Hold a defensive stance and slide laterally with quick feet.",
+    "Do not let your feet click together between slides."],
+  ["basketball_closeout_sprints", "Basketball Closeout Sprints", "Cardio", "Intermediate", 5, "20 sec", 35,
+    "0685-oLrKqDH.gif",
+    "Sprint forward then chop your feet into a controlled closeout stance.",
+    "Finish balanced with hands high."],
+  ["basketball_rebound_jumps", "Basketball Rebound Jumps", "Legs", "Intermediate", 4, "10", 45,
+    "1374-iPm26QU.gif",
+    "Jump vertically and land in control as if attacking repeated rebounds.",
+    "Reset your hips between reps for quality height."],
+  ["basketball_crossover_footwork", "Basketball Crossover Footwork", "Cardio", "Beginner", 4, "40 sec", 25,
+    "3636-ealLwvX.gif",
+    "Practice quick crossover steps and hip shifts to sharpen court footwork.",
+    "Keep your chest tall and rhythm smooth."],
+
+  ["rugby_get_up_sprints", "Rugby Get-up Sprints", "Full Body", "Advanced", 6, "15 sec", 45,
+    "1160-dK9394r.gif",
+    "Drop to the floor, pop up fast, and sprint in place for repeat-effort conditioning.",
+    "Own the get-up before accelerating."],
+  ["rugby_lateral_bound", "Rugby Lateral Bounds", "Legs", "Advanced", 4, "8 each", 45,
+    "0054-t8iSghb.gif",
+    "Bound side-to-side to build change-of-direction power for contact sports.",
+    "Stick each landing for one beat before rebounding."],
+  ["rugby_bear_crawl_drive", "Rugby Bear Crawl Drive", "Full Body", "Intermediate", 4, "30 sec", 35,
+    "3360-0Yz8WdV.gif",
+    "Drive forward in a bear crawl position to build trunk stiffness and shoulder endurance.",
+    "Keep hips low and push the ground away."],
+  ["rugby_sprawl_recoveries", "Rugby Sprawl Recoveries", "Full Body", "Advanced", 4, "10", 45,
+    "1160-dK9394r.gif",
+    "Sprawl to the floor then recover quickly to a strong athletic stance.",
+    "Move fast but land with control."],
+
+  ["boxing_jab_cross_rounds", "Jab-Cross Rounds", "Cardio", "Beginner", 4, "60 sec", 30,
+    "2271-hoXt6wv.gif",
+    "Shadowbox crisp jab-cross combinations while keeping your guard high.",
+    "Snap punches back to your face after every strike."],
+  ["boxing_slip_roll_drills", "Slip and Roll Drills", "Cardio", "Intermediate", 4, "45 sec", 30,
+    "2271-hoXt6wv.gif",
+    "Practice slipping and rolling under imaginary punches while staying balanced.",
+    "Bend at the knees, not the waist."],
+  ["boxing_l_step_footwork", "L-Step Footwork", "Cardio", "Intermediate", 4, "45 sec", 30,
+    "3636-ealLwvX.gif",
+    "Step off-line in an L pattern to build ring movement and angle changes.",
+    "Keep your stance under you after each step."],
+  ["boxing_pivot_drills", "Boxing Pivot Drills", "Cardio", "Beginner", 4, "45 sec", 30,
+    "3636-ealLwvX.gif",
+    "Pivot on the lead foot to create angles without crossing your feet.",
+    "Turn your hips and shoulders together."],
+
+  ["tennis_split_step_shuffles", "Tennis Split-Step Shuffles", "Cardio", "Intermediate", 4, "35 sec", 30,
+    "3223-HtfCpfi.gif",
+    "Bounce into a split-step then shuffle laterally for court recovery speed.",
+    "Land soft and react immediately into the shuffle."],
+  ["tennis_shadow_swings", "Tennis Shadow Swings", "Full Body", "Beginner", 3, "12 each", 30,
+    "2271-hoXt6wv.gif",
+    "Rotate through controlled forehand and backhand patterns without a racket.",
+    "Let your hips start the movement before your shoulders."],
+  ["tennis_lateral_recovery", "Tennis Lateral Recovery Runs", "Cardio", "Intermediate", 4, "30 sec", 35,
+    "3223-HtfCpfi.gif",
+    "Move out wide then recover back to center like resetting after a shot.",
+    "Push off the outside leg and stay low."],
+
+  ["swimmer_streamline_plank", "Swimmer Streamline Plank", "Core", "Intermediate", 3, "40 sec", 35,
+    "0464-CosupLu.gif",
+    "Hold a long plank with arms reaching forward to mimic streamline tension.",
+    "Squeeze glutes and keep ribs tucked."],
+  ["swimmer_band_pulls", "Swimmer Band Pulls", "Back", "Beginner", 3, "15", 40,
+    "0861-fUBheHs.gif",
+    "Pull a resistance band through a swim-stroke path for lat and shoulder endurance.",
+    "Keep shoulders down away from your ears."],
+  ["swimmer_dryland_kicks", "Swimmer Dryland Kicks", "Core", "Beginner", 3, "30 sec", 30,
+    "0689-Hgs6Nl1.gif",
+    "Flutter-kick from a braced position to build hip flexor and core endurance.",
+    "Keep the motion small and quick."],
+
+  ["cricket_shadow_bowling", "Cricket Shadow Bowling", "Full Body", "Intermediate", 4, "8 each", 35,
+    "2271-hoXt6wv.gif",
+    "Rehearse bowling mechanics without a ball to train rhythm and trunk rotation.",
+    "Stay smooth through the shoulder and finish balanced."],
+  ["cricket_lateral_pickups", "Cricket Lateral Pickups", "Cardio", "Intermediate", 4, "30 sec", 30,
+    "3223-HtfCpfi.gif",
+    "Shuffle and hinge toward the floor like fielding ground balls.",
+    "Keep your back flat and change sides quickly."],
+
+  ["volleyball_approach_jumps", "Volleyball Approach Jumps", "Legs", "Advanced", 4, "8", 45,
+    "1374-iPm26QU.gif",
+    "Use a three-step approach into a vertical jump for attacking power.",
+    "Swing arms aggressively and land softly."],
+  ["volleyball_block_jumps", "Volleyball Block Jumps", "Legs", "Intermediate", 4, "10", 40,
+    "1374-iPm26QU.gif",
+    "Jump straight up with hands high as if blocking at the net.",
+    "Keep your core tight and land under control."],
+  ["volleyball_sprawl_recoveries", "Volleyball Sprawl Recoveries", "Full Body", "Intermediate", 4, "8", 40,
+    "1160-dK9394r.gif",
+    "Drop low and recover quickly to mimic emergency digs and defensive resets.",
+    "Pop back to ready position after every rep."]
 ];
 
 // ─── EQUIPMENT TIER CLASSIFICATION ───────────────────────────────────────────
@@ -712,6 +865,7 @@ const equipmentTierOverrides: Partial<Record<string, ExerciseEquipmentTier>> = {
   lunges: "none",
   mountain_climbers: "none",
   pike_push_ups: "none",
+  prone_y_t_w_raises: "none",
   plank: "none",
   push_ups: "none",
   reverse_crunches: "none",
@@ -720,6 +874,7 @@ const equipmentTierOverrides: Partial<Record<string, ExerciseEquipmentTier>> = {
   side_plank: "none",
   single_leg_glute_bridge: "none",
   squats: "none",
+  squat_jumps: "none",
   supermans: "none",
   tuck_jumps: "none",
   v_ups: "none",
@@ -755,19 +910,61 @@ const equipmentTierOverrides: Partial<Record<string, ExerciseEquipmentTier>> = {
   runner_lunge_stretch: "none",
   post_run_hamstring: "none",
   walk_run_cooldown: "none",
+  football_acceleration_starts: "none",
+  football_lateral_cuts: "none",
+  football_backpedal_turns: "none",
+  football_close_control_feet: "none",
+  football_single_leg_bounds: "none",
+  basketball_defensive_slides: "none",
+  basketball_closeout_sprints: "none",
+  basketball_rebound_jumps: "none",
+  basketball_crossover_footwork: "none",
+  rugby_get_up_sprints: "none",
+  rugby_lateral_bound: "none",
+  rugby_bear_crawl_drive: "none",
+  rugby_sprawl_recoveries: "none",
+  boxing_jab_cross_rounds: "none",
+  boxing_slip_roll_drills: "none",
+  boxing_l_step_footwork: "none",
+  boxing_pivot_drills: "none",
+  tennis_split_step_shuffles: "none",
+  tennis_shadow_swings: "none",
+  tennis_lateral_recovery: "none",
+  swimmer_streamline_plank: "none",
+  swimmer_dryland_kicks: "none",
+  cricket_shadow_bowling: "none",
+  cricket_lateral_pickups: "none",
+  volleyball_approach_jumps: "none",
+  volleyball_block_jumps: "none",
+  volleyball_sprawl_recoveries: "none",
 
   // Few — home gear (dumbbells, bands, pull-up bar, box)
   ab_wheel: "few",
+  band_pull_aparts: "few",
   bent_over_rows: "few",
+  bicep_curls: "few",
   chest_dips: "few",
   deadlift: "few",
   face_pulls: "few",
+  front_raises: "few",
+  hammer_curls: "few",
+  lateral_raises: "few",
   overhead_press: "few",
   pull_ups: "few",
+  rear_delt_flyes: "few",
   romanian_deadlift: "few",
+  swimmer_band_pulls: "few",
   tricep_dips: "few",
   upright_rows: "few",
   arnold_press: "few",
+  plyometric_sets: "few",
+  assault_bike: "full",
+  cable_crunch: "full",
+  cable_woodchop: "full",
+  captains_chair_leg_raise: "full",
+  hanging_knee_raise: "full",
+  hip_thrust: "full",
+  machine_crunch: "full",
 };
 
 const exerciseGifOverrides: Partial<Record<string, string>> = {
@@ -881,7 +1078,7 @@ export const workoutPrograms: WorkoutProgram[] = [
     exerciseIds: [
       "goblet_squat", "dumbbell_press", "seated_cable_row",
       "leg_press", "dumbbell_shoulder_press", "cable_tricep_pushdown",
-      "bicep_curls", "plank"
+      "bicep_curls", "machine_crunch"
     ],
   },
 
@@ -895,7 +1092,7 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 40,
     exerciseIds: [
-      "push_ups", "pike_push_ups", "diamond_push_ups", "tricep_dips",
+      "push_ups", "pike_push_ups", "diamond_push_ups", "wide_push_ups",
       "squats", "lunges", "glute_bridges", "single_leg_glute_bridge", "calf_raises"
     ],
   },
@@ -909,7 +1106,7 @@ export const workoutPrograms: WorkoutProgram[] = [
     durationMinutes: 60,
     exerciseIds: [
       "bench_press", "bent_over_rows", "overhead_press", "lat_pulldown",
-      "barbell_squat", "romanian_deadlift", "leg_curl", "leg_extension", "calf_raises"
+      "barbell_squat", "romanian_deadlift", "leg_curl", "leg_extension", "hack_squat"
     ],
   },
 
@@ -923,7 +1120,7 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 45,
     exerciseIds: [
-      "push_ups", "pike_push_ups", "diamond_push_ups", "tricep_dips",
+      "push_ups", "pike_push_ups", "diamond_push_ups", "decline_push_ups",
       "supermans", "side_plank",
       "squats", "lunges", "glute_bridges", "wall_sit", "calf_raises"
     ],
@@ -939,7 +1136,7 @@ export const workoutPrograms: WorkoutProgram[] = [
     exerciseIds: [
       "bench_press", "incline_dumbbell_press", "dumbbell_shoulder_press", "lateral_raises", "cable_tricep_pushdown",
       "deadlift", "pull_ups", "seated_cable_row", "face_pulls", "bicep_curls",
-      "barbell_squat", "leg_press", "romanian_deadlift", "leg_curl", "calf_raises"
+      "barbell_squat", "leg_press", "romanian_deadlift", "leg_curl", "hack_squat"
     ],
   },
 
@@ -981,8 +1178,8 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 30,
     exerciseIds: [
-      "cable_crossover", "ab_wheel", "leg_raises",
-      "russian_twists", "side_plank", "v_ups", "dead_bug"
+      "cable_crunch", "cable_woodchop", "machine_crunch",
+      "captains_chair_leg_raise", "hanging_knee_raise", "ab_wheel"
     ],
   },
 
@@ -1055,8 +1252,8 @@ export const workoutPrograms: WorkoutProgram[] = [
     durationMinutes: 35,
     exerciseIds: [
       "squats", "lunges", "bulgarian_split_squat",
-      "step_ups", "wall_sit", "calf_raises",
-      "jump_lunges", "single_leg_glute_bridge"
+      "jump_lunges", "wall_sit", "calf_raises",
+      "squat_jumps", "single_leg_glute_bridge"
     ],
   },
   {
@@ -1070,7 +1267,7 @@ export const workoutPrograms: WorkoutProgram[] = [
     exerciseIds: [
       "barbell_squat", "leg_press", "romanian_deadlift",
       "leg_curl", "leg_extension", "hip_thrust",
-      "bulgarian_split_squat", "calf_raises"
+      "smith_machine_squat", "hack_squat"
     ],
   },
 
@@ -1085,7 +1282,7 @@ export const workoutPrograms: WorkoutProgram[] = [
     durationMinutes: 35,
     exerciseIds: [
       "push_ups", "wide_push_ups", "diamond_push_ups", "pike_push_ups",
-      "tricep_dips", "supermans", "side_plank", "decline_push_ups"
+      "prone_y_t_w_raises", "supermans", "side_plank", "decline_push_ups"
     ],
   },
   {
@@ -1141,9 +1338,9 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Advanced",
     durationMinutes: 45,
     exerciseIds: [
-      "sprint_intervals", "shuttle_runs", "jump_lunges", "high_knees",
-      "bear_crawl", "bulgarian_split_squat", "single_leg_glute_bridge", "plank",
-      "russian_twists", "calf_raises", "agility_ladder", "tuck_jumps"
+      "football_acceleration_starts", "football_lateral_cuts", "football_backpedal_turns",
+      "football_close_control_feet", "football_single_leg_bounds", "sprint_intervals",
+      "jump_lunges", "single_leg_glute_bridge", "plank", "russian_twists", "calf_raises", "tuck_jumps"
     ],
   },
   {
@@ -1155,9 +1352,9 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Advanced",
     durationMinutes: 45,
     exerciseIds: [
-      "box_jumps", "tuck_jumps", "lateral_raises", "sprint_intervals",
-      "jump_lunges", "plank", "mountain_climbers", "dumbbell_shoulder_press",
-      "pull_ups", "calf_raises", "agility_ladder", "jump_rope"
+      "basketball_defensive_slides", "basketball_closeout_sprints", "basketball_rebound_jumps",
+      "basketball_crossover_footwork", "box_jumps", "tuck_jumps", "jump_lunges",
+      "plank", "mountain_climbers", "dumbbell_shoulder_press", "pull_ups", "jump_rope"
     ],
   },
   {
@@ -1165,13 +1362,13 @@ export const workoutPrograms: WorkoutProgram[] = [
     name: "Rugby Athletic Session",
     category: "Sports",
     description: "Full-body strength, power, collision resistance, and repeat-effort endurance for rugby.",
-    equipmentTier: "full",
+    equipmentTier: "none",
     difficulty: "Advanced",
     durationMinutes: 55,
     exerciseIds: [
-      "barbell_squat", "deadlift", "bench_press", "bent_over_rows",
-      "farmer_carries", "sled_push", "burpees", "sprint_intervals",
-      "plank", "medicine_ball_slams", "pull_ups", "overhead_press"
+      "rugby_get_up_sprints", "rugby_lateral_bound", "rugby_bear_crawl_drive",
+      "rugby_sprawl_recoveries", "bear_crawl", "burpees", "sprint_intervals",
+      "jump_lunges", "plank", "push_ups", "tuck_jumps", "mountain_climbers"
     ],
   },
   {
@@ -1183,9 +1380,9 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 42,
     exerciseIds: [
-      "shadow_boxing", "burpees", "jump_rope", "mountain_climbers",
-      "russian_twists", "plank", "push_ups", "tricep_dips",
-      "high_knees", "bear_crawl", "medicine_ball_slams", "bicycle_crunches"
+      "boxing_jab_cross_rounds", "boxing_slip_roll_drills", "boxing_l_step_footwork",
+      "boxing_pivot_drills", "shadow_boxing", "burpees", "mountain_climbers",
+      "russian_twists", "plank", "push_ups", "high_knees", "bicycle_crunches"
     ],
   },
   {
@@ -1197,9 +1394,9 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 42,
     exerciseIds: [
-      "lateral_raises", "russian_twists", "agility_ladder", "sprint_intervals",
-      "dumbbell_shoulder_press", "plank", "side_plank", "jump_lunges",
-      "band_pull_aparts", "shuttle_runs", "high_knees", "face_pulls"
+      "tennis_split_step_shuffles", "tennis_shadow_swings", "tennis_lateral_recovery",
+      "russian_twists", "sprint_intervals", "dumbbell_shoulder_press", "plank",
+      "side_plank", "jump_lunges", "band_pull_aparts", "high_knees", "face_pulls"
     ],
   },
   {
@@ -1225,9 +1422,9 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 42,
     exerciseIds: [
-      "pull_ups", "lat_pulldown", "seated_cable_row", "face_pulls",
-      "band_pull_aparts", "cobra_stretch", "downward_dog", "plank",
-      "dead_bug", "overhead_press", "resistance_band_row", "cat_cow"
+      "swimmer_streamline_plank", "swimmer_band_pulls", "swimmer_dryland_kicks",
+      "pull_ups", "face_pulls", "band_pull_aparts", "cobra_stretch", "downward_dog",
+      "plank", "dead_bug", "resistance_band_row", "cat_cow"
     ],
   },
   {
@@ -1239,9 +1436,9 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 45,
     exerciseIds: [
-      "russian_twists", "medicine_ball_slams", "overhead_press", "lunges",
-      "romanian_deadlift", "plank", "side_plank", "dumbbell_row",
-      "sprint_intervals", "calf_raises", "bent_over_rows", "hip_flexor_stretch"
+      "cricket_shadow_bowling", "cricket_lateral_pickups", "russian_twists",
+      "medicine_ball_slams", "overhead_press", "lunges", "romanian_deadlift",
+      "plank", "side_plank", "dumbbell_row", "sprint_intervals", "hip_flexor_stretch"
     ],
   },
   {
@@ -1253,9 +1450,9 @@ export const workoutPrograms: WorkoutProgram[] = [
     difficulty: "Intermediate",
     durationMinutes: 44,
     exerciseIds: [
+      "volleyball_approach_jumps", "volleyball_block_jumps", "volleyball_sprawl_recoveries",
       "box_jumps", "tuck_jumps", "dumbbell_shoulder_press", "lateral_raises",
-      "plank", "side_plank", "agility_ladder", "calf_raises",
-      "jump_lunges", "band_pull_aparts", "face_pulls", "jump_rope"
+      "plank", "side_plank", "jump_lunges", "band_pull_aparts", "face_pulls"
     ],
   },
 
