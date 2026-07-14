@@ -108,22 +108,30 @@ export default function Index() {
   if (session) return <Redirect href="/(tabs)" />;
 
   if (showIntro) {
-    const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.22] });
-    const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.42, 0.82] });
+    const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.04] });
+    const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.42, 0.76] });
     return (
-      <View style={styles.intro}>
-        <Animated.View style={[styles.introGlow, { opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]} />
-        <View style={styles.logoOrb}>
-          <Ionicons name="fitness" size={42} color={colors.appBlueBright} />
+      <LinearGradient colors={[colors.appBlueBright, colors.appBlue, colors.appBlueDeep]} style={styles.intro}>
+        <Animated.View style={[styles.introHalo, { opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]} />
+        <Text style={styles.introMicro}>AI FITNESS OS</Text>
+        <View style={styles.introWordmark}>
+          <View style={styles.letterRow}>
+            {"FITNEO".split("").map((letter, index) => (
+              <Animated.Text key={`${letter}-${index}`} style={[styles.introLetter, { opacity: letterOpacities[index] }]}>
+                {letter}
+              </Animated.Text>
+            ))}
+          </View>
+          <Text style={styles.introSubline}>TRAINING · NUTRITION · SPORT</Text>
         </View>
-        <View style={styles.letterRow}>
-          {"FITNEO".split("").map((letter, index) => (
-            <Animated.Text key={`${letter}-${index}`} style={[styles.introLetter, { opacity: letterOpacities[index] }]}>
-              {letter}
-            </Animated.Text>
-          ))}
+        <Text style={styles.introProof}>Personal plans calibrated by FITNEO AI</Text>
+        <View style={styles.introDots}>
+          <View style={styles.introDotMuted} />
+          <View style={styles.introDotActive} />
         </View>
-      </View>
+        <View style={styles.introSlashOne} />
+        <View style={styles.introSlashTwo} />
+      </LinearGradient>
     );
   }
 
@@ -152,7 +160,21 @@ export default function Index() {
             <Text style={styles.badgeText}>{currentSlide.badge}</Text>
           </View>
           <Text style={styles.slideTitle}>{currentSlide.title}</Text>
-          <Text style={styles.slideSubtitle}>{currentSlide.subtitle}</Text>
+          <Text style={styles.slideSubtitle}>{currentSlide.badge === "FITNEO" ? "★★★★★ 4.9 RATED" : currentSlide.subtitle}</Text>
+          <View style={styles.valueRow}>
+            <View style={styles.valuePill}>
+              <Text style={styles.valueNumber}>108+</Text>
+              <Text style={styles.valueLabel}>Exercises</Text>
+            </View>
+            <View style={styles.valuePill}>
+              <Text style={styles.valueNumber}>AI</Text>
+              <Text style={styles.valueLabel}>Plans</Text>
+            </View>
+            <View style={styles.valuePill}>
+              <Text style={styles.valueNumber}>Sport</Text>
+              <Text style={styles.valueLabel}>Mode</Text>
+            </View>
+          </View>
         </View>
 
         <View style={[styles.bottomBlock, { paddingBottom: Math.max(28, insets.bottom + 18) }]}>
@@ -182,11 +204,21 @@ export default function Index() {
 const styles = StyleSheet.create({
   root: { backgroundColor: colors.black, flex: 1 },
   centerState: { backgroundColor: colors.background, flex: 1, justifyContent: "center", paddingHorizontal: 24 },
-  intro: { alignItems: "center", backgroundColor: colors.black, flex: 1, justifyContent: "center" },
+  intro: { alignItems: "center", flex: 1, justifyContent: "center", overflow: "hidden", paddingHorizontal: 28 },
+  introHalo: { backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 220, height: 420, position: "absolute", shadowColor: colors.textPrimary, shadowOpacity: 0.30, shadowRadius: 50, width: 420 },
+  introMicro: { color: "rgba(255,255,255,0.78)", fontSize: 11, fontWeight: "900", letterSpacing: 3.6, marginBottom: 18 },
+  introWordmark: { alignItems: "center" },
+  introSubline: { color: "rgba(255,255,255,0.62)", fontSize: 12, fontWeight: "800", letterSpacing: 3.1, marginTop: 14 },
+  introProof: { bottom: 86, color: "rgba(255,255,255,0.70)", fontSize: 13, fontWeight: "800", letterSpacing: 0.4, position: "absolute", textAlign: "center" },
+  introDots: { bottom: 52, flexDirection: "row", gap: 9, position: "absolute" },
+  introDotMuted: { backgroundColor: "rgba(255,255,255,0.34)", borderRadius: 6, height: 11, width: 11 },
+  introDotActive: { backgroundColor: colors.textPrimary, borderRadius: 6, height: 11, width: 11 },
+  introSlashOne: { backgroundColor: "rgba(255,255,255,0.10)", height: 520, position: "absolute", right: 28, top: 60, transform: [{ skewX: "-14deg" }], width: 92 },
+  introSlashTwo: { backgroundColor: "rgba(255,255,255,0.06)", bottom: 68, height: 360, left: -28, position: "absolute", transform: [{ skewX: "-14deg" }], width: 68 },
   introGlow: { backgroundColor: colors.appBlueBright, borderRadius: 120, height: 210, position: "absolute", shadowColor: colors.appBlueBright, shadowOpacity: 0.85, shadowRadius: 40, width: 210 },
   logoOrb: { alignItems: "center", backgroundColor: "rgba(0,79,255,0.20)", borderColor: "rgba(10,132,255,0.46)", borderRadius: 54, borderWidth: 1, height: 108, justifyContent: "center", marginBottom: 26, shadowColor: colors.appBlueBright, shadowOpacity: 0.82, shadowRadius: 28, width: 108 },
   letterRow: { flexDirection: "row", gap: 8 },
-  introLetter: { color: colors.textPrimary, fontSize: 40, fontWeight: "900", letterSpacing: 8, textShadowColor: "rgba(10,132,255,0.85)", textShadowRadius: 18 },
+  introLetter: { color: colors.textPrimary, fontSize: 46, fontWeight: "900", letterSpacing: 8, textShadowColor: "rgba(0,0,0,0.18)", textShadowRadius: 14 },
   heroContent: { flex: 1, justifyContent: "space-between", paddingHorizontal: 34 },
   topMark: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: 10 },
   miniOrb: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.16)", borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
@@ -196,6 +228,10 @@ const styles = StyleSheet.create({
   badgeText: { color: colors.appBlueDeep, fontSize: 13, fontWeight: "900", letterSpacing: 1 },
   slideTitle: { color: colors.textPrimary, fontSize: Platform.select({ web: 52, default: 48 }), fontWeight: "900", letterSpacing: -2, lineHeight: 56, maxWidth: 420, textShadowColor: "rgba(0,0,0,0.45)", textShadowRadius: 14 },
   slideSubtitle: { color: colors.textPrimary, fontSize: 24, fontWeight: "300", letterSpacing: 2.5, marginTop: 14 },
+  valueRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 20 },
+  valuePill: { backgroundColor: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.24)", borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
+  valueNumber: { color: colors.textPrimary, fontSize: 13, fontWeight: "900" },
+  valueLabel: { color: "rgba(255,255,255,0.68)", fontSize: 9, fontWeight: "800", marginTop: 1, textTransform: "uppercase" },
   bottomBlock: { gap: 15 },
   slideDots: { alignSelf: "center", flexDirection: "row", gap: 8, marginBottom: 2 },
   slideDot: { backgroundColor: "rgba(255,255,255,0.26)", borderRadius: 6, height: 6, width: 18 },
