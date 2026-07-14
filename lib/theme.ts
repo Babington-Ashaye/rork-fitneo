@@ -43,6 +43,23 @@ export const spacing = {
   bottomClearance: 128
 };
 
+export const typography = {
+  hero: { size: 34, weight: "900" as const, lineHeight: 38 },
+  title: { size: 26, weight: "900" as const, lineHeight: 31 },
+  cardTitle: { size: 18, weight: "900" as const, lineHeight: 23 },
+  body: { size: 14, weight: "700" as const, lineHeight: 21 },
+  meta: { size: 12, weight: "800" as const, lineHeight: 16 },
+  label: { size: 10, weight: "900" as const, letterSpacing: 1.4 }
+};
+
+export const categoryColors = {
+  strength: colors.accent,
+  conditioning: colors.coral,
+  recovery: colors.teal,
+  nutrition: colors.success,
+  sport: colors.gold
+};
+
 export const radii = {
   sm: 12,
   md: 14,

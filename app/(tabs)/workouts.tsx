@@ -1,119 +1,183 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { ImageBackground, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { AdaptiveBanner } from "@/components/AdaptiveBanner";
 import { AppLayout } from "@/components/AppLayout";
-import { Chip, EmptySpacer, IconBubble, MetaItem, ScreenTitle, TouchableCard } from "@/components/ScreenKit";
+import { EmptySpacer, MetaItem } from "@/components/ScreenKit";
 import { useSubscription } from "@/context/SubscriptionContext";
 import {
-  getEquipmentTierBadgeColor,
   getCleanEquipmentTierLabel,
+  getEquipmentTierBadgeColor,
   getWorkoutProgramExercises,
   getWorkoutTrainingFrequency,
   workoutPrograms
 } from "@/lib/exercises";
-import type { WorkoutProgram } from "@/lib/exercises";
-import { colors, radii } from "@/lib/theme";
+import type { ExerciseEquipmentTier, WorkoutProgram } from "@/lib/exercises";
+import { colors, radii, spacing, typography } from "@/lib/theme";
 
-const filters = ["All", "Strength", "Conditioning", "Mobility", "Core"];
-const equipmentOrder: Record<WorkoutProgram["equipmentTier"], number> = { none: 0, few: 1, full: 2 };
+type TrainingMode = "home" | "gym" | "walk";
+
+const modes: Array<{ key: TrainingMode | "sports"; label: string }> = [
+  { key: "home", label: "At Home" },
+  { key: "gym", label: "Gym" },
+  { key: "walk", label: "Walk & Run" },
+  { key: "sports", label: "Sports" }
+];
+
+const categories = ["Full Body", "Core", "Chest", "Arm", "Legs", "Mobility", "Cardio"];
 const difficultyDots: Record<WorkoutProgram["difficulty"], number> = { Beginner: 1, Intermediate: 2, Advanced: 3 };
-const workoutHeroImage = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&q=80";
-const programImages = {
-  strength: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=900&q=80",
-  conditioning: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=900&q=80",
-  mobility: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&q=80",
-  core: "https://images.unsplash.com/photo-1549576490-b0b4831ef60a?w=900&q=80"
+
+const programImages: Record<string, string> = {
+  hero: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=85",
+  strength: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=85",
+  conditioning: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=85",
+  mobility: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=85",
+  core: "https://images.unsplash.com/photo-1549576490-b0b4831ef60a?auto=format&fit=crop&w=1200&q=85",
+  gym: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=1200&q=85",
+  run: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1200&q=85",
+  custom: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85"
 };
 
 export default function WorkoutsScreen() {
   const { isPremium } = useSubscription();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("All");
+  const [mode, setMode] = useState<TrainingMode>("home");
+  const [category, setCategory] = useState("Full Body");
 
+  const modePrograms = useMemo(() => workoutPrograms.filter((program) => matchesMode(program, mode)), [mode]);
   const visiblePrograms = useMemo(() => {
-    return workoutPrograms.filter((program) => {
-      const matchesFilter = filter === "All" || program.category.toLowerCase().includes(filter.toLowerCase());
-      const cleanQuery = query.toLowerCase();
+    const cleanQuery = query.trim().toLowerCase();
+    return modePrograms.filter((program) => {
+      const matchesCategory =
+        category === "Full Body" ||
+        program.category.toLowerCase().includes(category.toLowerCase()) ||
+        program.name.toLowerCase().includes(category.toLowerCase());
       const matchesQuery =
+        !cleanQuery ||
         program.name.toLowerCase().includes(cleanQuery) ||
         program.category.toLowerCase().includes(cleanQuery) ||
         program.description.toLowerCase().includes(cleanQuery);
-      return matchesFilter && matchesQuery;
+      return matchesCategory && matchesQuery;
     });
-  }, [filter, query]);
+  }, [category, modePrograms, query]);
 
-  const groupedPrograms = useMemo(() => {
-    const groups = visiblePrograms.reduce<Array<{ name: string; programs: WorkoutProgram[] }>>((acc, program) => {
-      const existing = acc.find((group) => group.name === program.name);
-      if (existing) {
-        existing.programs.push(program);
-      } else {
-        acc.push({ name: program.name, programs: [program] });
-      }
-      return acc;
-    }, []);
-    return groups.map((group) => ({
-      ...group,
-      programs: [...group.programs].sort((a, b) => equipmentOrder[a.equipmentTier] - equipmentOrder[b.equipmentTier])
-    }));
-  }, [visiblePrograms]);
+  const featuredPrograms = useMemo(() => {
+    const preferred = modePrograms.filter((program) => (
+      program.name.toLowerCase().includes("full body") ||
+      program.name.toLowerCase().includes("upper") ||
+      program.name.toLowerCase().includes("fat") ||
+      program.category.toLowerCase().includes("conditioning")
+    ));
+    return (preferred.length ? preferred : modePrograms).slice(0, 4);
+  }, [modePrograms]);
+
+  const quickPrograms = visiblePrograms.slice(0, 5);
+  const freshPrograms = modePrograms
+    .filter((program) => !quickPrograms.some((quick) => quick.id === program.id))
+    .slice(0, 4);
 
   return (
-    <AppLayout scroll>
-      <View style={styles.segment}>
-        <TouchableOpacity activeOpacity={0.78} style={styles.segmentActive}>
-          <Text style={styles.segmentActiveText}>Normal</Text>
-        </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.78} style={styles.segmentInactive} onPress={() => router.push("/sports-mode")}>
-          <Text style={styles.segmentInactiveText}>Sports</Text>
+    <AppLayout scroll contentContainerStyle={styles.screen}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.kicker}>FITNEO TRAINING</Text>
+          <Text style={styles.screenTitle}>Workouts</Text>
+        </View>
+        <TouchableOpacity activeOpacity={0.78} style={styles.historyButton} onPress={() => router.push("/active-workout")}>
+          <Ionicons name="time-outline" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.hero}>
-        <ImageBackground source={{ uri: workoutHeroImage }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.heroImage}>
-          <LinearGradient colors={["rgba(0,0,0,0.38)", "rgba(0,0,0,0.88)"]} style={StyleSheet.absoluteFillObject} />
-        </ImageBackground>
-        <Text style={styles.heroKicker}>TRAINING LIBRARY</Text>
-        <Text style={styles.heroTitle}>Choose your next win</Text>
-        <Text style={styles.heroCopy}>Home, gym, strength, conditioning, mobility — every plan now opens with a full preview before you start.</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modeTabs}>
+        {modes.map((item) => {
+          const active = item.key === mode;
+          return (
+            <TouchableOpacity
+              key={item.key}
+              activeOpacity={0.78}
+              style={styles.modeTab}
+              onPress={() => item.key === "sports" ? router.push("/sports-mode") : setMode(item.key)}
+            >
+              <Text style={[styles.modeText, active && styles.modeTextActive]}>{item.label}</Text>
+              {active ? <View style={styles.modeUnderline} /> : null}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <View style={styles.search}>
+        <Ionicons name="search" size={18} color={colors.textTertiary} />
+        <TextInput
+          placeholder="Search workouts, plans..."
+          placeholderTextColor={colors.textTertiary}
+          style={styles.searchInput}
+          value={query}
+          onChangeText={setQuery}
+          underlineColorAndroid="transparent"
+        />
       </View>
 
       <AdaptiveBanner enabled={!isPremium} label="Sponsored training plan" />
 
-      <ScreenTitle title="Workouts" subtitle="Programs tuned to your level" />
+      {featuredPrograms.length > 0 ? (
+        <EditorialRow title="Classic Plan" action="See All">
+          {featuredPrograms.map((program) => (
+            <FeaturedPlanCard key={program.id} program={program} mode={mode} />
+          ))}
+        </EditorialRow>
+      ) : null}
 
-      <TouchableCard radius={radii.lg} style={styles.createCard} onPress={() => router.push("/custom-workout")}>
-        <Ionicons name="add-circle" size={20} color={colors.accent} />
-        <Text style={styles.createText}>Create Custom Workout</Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-      </TouchableCard>
-
-      <View style={styles.search}>
-        <Ionicons name="search" size={18} color={colors.textTertiary} />
-        <TextInput placeholder="Search workouts" placeholderTextColor={colors.textTertiary} style={styles.searchInput} value={query} onChangeText={setQuery} underlineColorAndroid="transparent" />
+      <View style={styles.categorySection}>
+        <Text style={styles.sectionKicker}>QUICK START</Text>
+        <Text style={styles.sectionTitle}>Classic Workouts</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChips}>
+          {categories.map((item) => {
+            const active = category === item;
+            return (
+              <TouchableOpacity key={item} activeOpacity={0.78} style={[styles.categoryChip, active && styles.categoryChipActive]} onPress={() => setCategory(item)}>
+                <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{item}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        {filters.map((item) => (
-          <TouchableOpacity key={item} activeOpacity={0.78} onPress={() => setFilter(item)}>
-            <Chip title={item} active={filter === item} />
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.quickList}>
+        {quickPrograms.map((program) => <QuickWorkoutRow key={program.id} program={program} />)}
+        {quickPrograms.length === 0 ? <Text style={styles.emptyText}>No programs match that search yet.</Text> : null}
+      </View>
 
-      <View style={styles.list}>
-        {groupedPrograms.map((group) => (
-          <View key={group.name} style={group.programs.length > 1 ? styles.programPair : undefined}>
-            {group.programs.length > 1 ? <Text style={styles.pairLabel}>{group.name} options</Text> : null}
-            {group.programs.map((program) => (
-              <WorkoutCard key={program.id} program={program} isPaired={group.programs.length > 1} />
-            ))}
+      {freshPrograms.length > 0 ? (
+        <View style={styles.freshSection}>
+          <Text style={styles.sectionKicker}>FRESH CHOICES · {new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase()}</Text>
+          <Text style={styles.sectionTitle}>Picks for Today</Text>
+          <View style={styles.freshCard}>
+            {freshPrograms.map((program) => <FreshPickRow key={program.id} program={program} />)}
           </View>
-        ))}
-        {visiblePrograms.length === 0 ? <Text style={styles.emptyText}>No programs match that filter.</Text> : null}
+        </View>
+      ) : null}
+
+      <View style={styles.aiSection}>
+        <Text style={styles.sectionKicker}>CREATE YOUR OWN</Text>
+        <Text style={styles.sectionTitle}>AI Workout</Text>
+        <View style={styles.creatorGrid}>
+          <CreatorTile
+            title="Daily AI Workout"
+            subtitle="Fresh plan tuned to today"
+            icon="sparkles"
+            image={programImages.run}
+            onPress={() => router.push("/(tabs)/coach")}
+          />
+          <CreatorTile
+            title="Custom by AI Creator"
+            subtitle="Pick focus, gear, duration"
+            icon="grid"
+            image={programImages.custom}
+            onPress={() => router.push("/custom-workout")}
+          />
+        </View>
       </View>
 
       <EmptySpacer />
@@ -121,273 +185,472 @@ export default function WorkoutsScreen() {
   );
 }
 
-function WorkoutCard({ isPaired, program }: { isPaired: boolean; program: WorkoutProgram }) {
-  const tint = program.category.toLowerCase().includes("conditioning") ? colors.coral : program.category.toLowerCase().includes("mobility") ? colors.teal : colors.accent;
-  const icon: keyof typeof Ionicons.glyphMap = program.category.toLowerCase().includes("mobility") ? "body" : program.category.toLowerCase().includes("conditioning") ? "flash" : "barbell";
-  const exercises = getWorkoutProgramExercises(program.id);
+function matchesMode(program: WorkoutProgram, mode: TrainingMode) {
+  if (mode === "home") return program.equipmentTier !== "full";
+  if (mode === "gym") return program.equipmentTier !== "none";
+  return (
+    program.category.toLowerCase().includes("conditioning") ||
+    program.category.toLowerCase().includes("cardio") ||
+    program.name.toLowerCase().includes("fat") ||
+    program.name.toLowerCase().includes("hiit")
+  );
+}
+
+function getProgramImage(program: WorkoutProgram, mode?: TrainingMode) {
+  const category = program.category.toLowerCase();
+  if (mode === "gym" || program.equipmentTier === "full") return programImages.gym;
+  if (mode === "walk") return programImages.run;
+  if (category.includes("conditioning")) return programImages.conditioning;
+  if (category.includes("mobility")) return programImages.mobility;
+  if (category.includes("core")) return programImages.core;
+  return programImages.strength;
+}
+
+function getProgramTint(program: WorkoutProgram) {
+  const category = program.category.toLowerCase();
+  if (category.includes("conditioning") || category.includes("cardio")) return colors.coral;
+  if (category.includes("mobility") || category.includes("recovery")) return colors.teal;
+  if (category.includes("nutrition")) return colors.success;
+  return colors.accent;
+}
+
+function getModeCopy(mode: TrainingMode) {
+  if (mode === "gym") return "Progressive gym plans with strength-focused programming.";
+  if (mode === "walk") return "Conditioning blocks for running, walking, and fat-loss stamina.";
+  return "Bodyweight and home-gear plans you can start anywhere.";
+}
+
+function EditorialRow({ action, children, title }: { action: string; children: React.ReactNode; title: string }) {
+  return (
+    <View style={styles.editorialRow}>
+      <View style={styles.rowBetween}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.seeAll}>{action}</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRail}>
+        {children}
+      </ScrollView>
+    </View>
+  );
+}
+
+function FeaturedPlanCard({ mode, program }: { mode: TrainingMode; program: WorkoutProgram }) {
+  const tint = getProgramTint(program);
   const badgeColor = getEquipmentTierBadgeColor(program.equipmentTier);
-  const tierVariant = program.equipmentTier === "none" ? "Home version" : program.equipmentTier === "few" ? "Home gear version" : "Gym version";
-  const frequency = getWorkoutTrainingFrequency(program.id);
-  const image = program.category.toLowerCase().includes("conditioning")
-    ? programImages.conditioning
-    : program.category.toLowerCase().includes("mobility")
-      ? programImages.mobility
-      : program.category.toLowerCase().includes("core")
-        ? programImages.core
-        : programImages.strength;
+  const exercises = getWorkoutProgramExercises(program.id);
 
   return (
-    <TouchableCard
-      radius={radii.xl}
-      style={[styles.workoutCard, isPaired && styles.pairedCard]}
+    <TouchableOpacity
+      activeOpacity={0.84}
+      style={styles.featuredCard}
       onPress={() => router.push({ pathname: "/workout-preview", params: { programId: program.id, programName: program.name } })}
     >
-      <ImageBackground source={{ uri: image }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.cardImage}>
-        <LinearGradient colors={["rgba(0,0,0,0.18)", "rgba(0,0,0,0.78)", "rgba(0,0,0,0.94)"]} style={StyleSheet.absoluteFillObject} />
+      <ImageBackground source={{ uri: getProgramImage(program, mode) }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.featuredImage}>
+        <LinearGradient colors={[`${tint}BB`, "rgba(0,0,0,0.36)", "rgba(0,0,0,0.88)"]} style={StyleSheet.absoluteFillObject} />
       </ImageBackground>
-      <View style={styles.row}>
-        <IconBubble icon={icon} tint={tint} shape="rounded" size={48} />
-        <View style={styles.workoutTitleBlock}>
-          <Text style={styles.workoutName}>{program.name}</Text>
-          <Text style={[styles.category, { color: tint }]}>{program.category} · {tierVariant}</Text>
+      <Text style={styles.featuredDays}>{program.durationMinutes <= 20 ? "Quick Start" : "28 Days"}</Text>
+      <Text style={styles.featuredTitle}>{program.name.toUpperCase()}</Text>
+      <Text style={styles.featuredCopy} numberOfLines={2}>{program.description}</Text>
+      <Text style={[styles.featuredBadge, { color: badgeColor }]}>{getCleanEquipmentTierLabel(program.equipmentTier)}</Text>
+      <View style={styles.featuredButton}>
+        <Text style={[styles.featuredButtonText, { color: tint }]}>Start</Text>
+        <View style={[styles.featuredArrow, { backgroundColor: tint }]}>
+          <Ionicons name="arrow-forward" size={18} color={colors.textPrimary} />
         </View>
-        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
       </View>
-      <Text style={styles.description} numberOfLines={3}>{program.description}</Text>
-      <View style={styles.frequencyPill}>
-        <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
-        <Text style={styles.frequencyText}>{frequency}</Text>
-      </View>
-      <View style={styles.equipmentRow}>
-        <Text style={[styles.equipmentPill, { backgroundColor: `${badgeColor}22`, borderColor: `${badgeColor}66`, color: badgeColor }]}>
-          {getCleanEquipmentTierLabel(program.equipmentTier)}
-        </Text>
-      </View>
-      <View style={styles.metaFooter}>
+      <View style={styles.featuredMeta}>
         <MetaItem icon="time" text={`${program.durationMinutes}m`} />
         <MetaItem icon="layers" text={`${exercises.length || program.exerciseIds.length} ex`} />
-        <MetaItem icon="bar-chart" text={program.difficulty} />
-        <View style={styles.dots}>
-          {[1, 2, 3].map((dot) => <View key={dot} style={[styles.dot, { backgroundColor: dot <= difficultyDots[program.difficulty] ? colors.accent : "rgba(255,255,255,0.15)" }]} />)}
-        </View>
       </View>
-    </TouchableCard>
+    </TouchableOpacity>
+  );
+}
+
+function QuickWorkoutRow({ program }: { program: WorkoutProgram }) {
+  const tint = getProgramTint(program);
+  return (
+    <TouchableOpacity
+      activeOpacity={0.82}
+      style={styles.quickRow}
+      onPress={() => router.push({ pathname: "/workout-preview", params: { programId: program.id, programName: program.name } })}
+    >
+      <ImageBackground source={{ uri: getProgramImage(program) }} resizeMode="cover" style={styles.quickThumb} imageStyle={styles.quickThumbImage}>
+        <LinearGradient colors={["rgba(0,0,0,0.06)", "rgba(0,0,0,0.35)"]} style={StyleSheet.absoluteFillObject} />
+      </ImageBackground>
+      <View style={styles.quickBody}>
+        <Text style={styles.quickTitle}>{program.name} · {program.difficulty}</Text>
+        <Text style={styles.quickMeta}>{program.durationMinutes} mins · {program.category}</Text>
+      </View>
+      <View style={[styles.quickArrow, { backgroundColor: `${tint}22` }]}>
+        <Ionicons name="arrow-forward" size={15} color={tint} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function FreshPickRow({ program }: { program: WorkoutProgram }) {
+  const tint = getProgramTint(program);
+  return (
+    <TouchableOpacity
+      activeOpacity={0.82}
+      style={styles.freshRow}
+      onPress={() => router.push({ pathname: "/workout-preview", params: { programId: program.id, programName: program.name } })}
+    >
+      <ImageBackground source={{ uri: getProgramImage(program) }} resizeMode="cover" style={styles.freshThumb} imageStyle={styles.freshThumbImage} />
+      <View style={styles.freshCopy}>
+        <Text style={styles.freshTitle}>{program.name}</Text>
+        <Text style={styles.freshMeta}><Text style={{ color: tint }}>{program.durationMinutes} mins</Text> | {program.difficulty}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function CreatorTile({
+  icon,
+  image,
+  onPress,
+  subtitle,
+  title
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  image: string;
+  onPress: () => void;
+  subtitle: string;
+  title: string;
+}) {
+  return (
+    <TouchableOpacity activeOpacity={0.84} style={styles.creatorTile} onPress={onPress}>
+      <ImageBackground source={{ uri: image }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.creatorImage}>
+        <LinearGradient colors={["rgba(0,217,178,0.75)", "rgba(7,91,255,0.62)", "rgba(0,0,0,0.70)"]} style={StyleSheet.absoluteFillObject} />
+      </ImageBackground>
+      <Ionicons name={icon} size={24} color={colors.textPrimary} style={styles.creatorIcon} />
+      <Text style={styles.creatorTitle}>{title}</Text>
+      <Text style={styles.creatorSubtitle}>{subtitle}</Text>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  segment: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderColor: colors.cardStroke,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    flexDirection: "row",
-    padding: 3
+  screen: {
+    gap: spacing.lg
   },
-  segmentActive: {
-    backgroundColor: colors.accent,
-    borderRadius: radii.round,
-    flex: 1,
-    paddingVertical: 11
-  },
-  segmentInactive: {
-    flex: 1,
-    paddingVertical: 11
-  },
-  segmentActiveText: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-    textAlign: "center"
-  },
-  segmentInactiveText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: "700",
-    textAlign: "center"
-  },
-  hero: {
-    borderColor: "rgba(10,132,255,0.24)",
-    borderRadius: 28,
-    borderWidth: 1,
-    gap: 8,
-    minHeight: 190,
-    overflow: "hidden",
-    padding: 22,
-    justifyContent: "flex-end"
-  },
-  heroImage: {
-    borderRadius: 28
-  },
-  heroKicker: {
-    color: colors.accent,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.7
-  },
-  heroTitle: {
-    color: colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "900",
-    letterSpacing: -0.7
-  },
-  heroCopy: {
-    color: "rgba(255,255,255,0.84)",
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 19,
-    maxWidth: 330
-  },
-  createCard: {
+  header: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 14,
-    minHeight: 68,
-    padding: 18
+    justifyContent: "space-between",
+    paddingTop: spacing.sm
   },
-  createText: {
+  kicker: {
+    color: colors.accent,
+    fontSize: typography.label.size,
+    fontWeight: typography.label.weight,
+    letterSpacing: typography.label.letterSpacing
+  },
+  screenTitle: {
     color: colors.textPrimary,
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "700"
+    fontSize: 34,
+    fontWeight: "900",
+    letterSpacing: -1.1,
+    marginTop: spacing.xs
+  },
+  historyButton: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.cardStroke,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: "center",
+    width: 44
+  },
+  modeTabs: {
+    alignItems: "center",
+    gap: spacing.xl,
+    paddingRight: spacing.screen
+  },
+  modeTab: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingBottom: spacing.xs,
+    paddingTop: spacing.sm
+  },
+  modeText: {
+    color: colors.textTertiary,
+    fontSize: 22,
+    fontWeight: "800"
+  },
+  modeTextActive: {
+    color: colors.textPrimary,
+    fontSize: 28,
+    fontWeight: "900"
+  },
+  modeUnderline: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: radii.pill,
+    height: 4,
+    width: 54
   },
   search: {
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderColor: colors.cardStroke,
-    borderRadius: radii.md,
-    borderWidth: 1,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.pill,
     flexDirection: "row",
-    gap: 10,
+    gap: spacing.md,
     minHeight: 56,
-    paddingHorizontal: 16
+    paddingHorizontal: spacing.lg
   },
   searchInput: {
     color: colors.textPrimary,
     flex: 1,
-    fontSize: 15
-  },
-  chips: {
-    gap: 10,
-    paddingRight: 20
-  },
-  list: {
-    gap: 16
-  },
-  programPair: {
-    backgroundColor: "rgba(255,255,255,0.025)",
-    borderColor: "rgba(255,255,255,0.07)",
-    borderRadius: 22,
-    borderWidth: 1,
-    gap: 10,
-    padding: 8
-  },
-  pairLabel: {
-    color: colors.textTertiary,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.1,
-    paddingHorizontal: 8,
-    textTransform: "uppercase"
-  },
-  workoutCard: {
-    borderColor: "rgba(255,255,255,0.12)",
-    borderWidth: 1,
-    gap: 14,
-    minHeight: 236,
-    overflow: "hidden",
-    padding: 18,
-    justifyContent: "flex-end"
-  },
-  cardImage: {
-    borderRadius: radii.xl
-  },
-  pairedCard: {
-    backgroundColor: "rgba(255,255,255,0.04)"
-  },
-  row: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 14
-  },
-  workoutTitleBlock: {
-    flex: 1,
-    gap: 4
-  },
-  workoutName: {
-    color: colors.textPrimary,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700"
   },
-  category: {
-    fontSize: 12,
-    fontWeight: "600"
+  editorialRow: {
+    gap: spacing.md
   },
-  description: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 19
-  },
-  equipmentRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 7
-  },
-  frequencyPill: {
+  rowBetween: {
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(148,163,184,0.10)",
-    borderColor: "rgba(148,163,184,0.18)",
-    borderRadius: 999,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 5
+    justifyContent: "space-between"
   },
-  frequencyText: {
-    color: colors.textSecondary,
-    fontSize: 10,
+  sectionKicker: {
+    color: colors.accent,
+    fontSize: typography.label.size,
+    fontWeight: typography.label.weight,
+    letterSpacing: typography.label.letterSpacing
+  },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontSize: 26,
+    fontWeight: "900",
+    letterSpacing: -0.55
+  },
+  seeAll: {
+    color: colors.accent,
+    fontSize: 15,
     fontWeight: "800"
   },
-  equipmentPill: {
-    backgroundColor: "rgba(255,199,51,0.12)",
-    borderColor: "rgba(255,199,51,0.26)",
-    borderRadius: 999,
-    borderWidth: 1,
-    color: colors.gold,
+  featuredRail: {
+    gap: spacing.md,
+    paddingRight: spacing.screen
+  },
+  featuredCard: {
+    borderRadius: 28,
+    height: 360,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+    padding: spacing.xl,
+    width: 318
+  },
+  featuredImage: {
+    borderRadius: 28
+  },
+  featuredDays: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: "800",
+    marginBottom: spacing.lg
+  },
+  featuredTitle: {
+    color: colors.textPrimary,
+    fontSize: 33,
+    fontWeight: "900",
+    letterSpacing: -1,
+    lineHeight: 36,
+    maxWidth: 240
+  },
+  featuredCopy: {
+    color: "rgba(255,255,255,0.86)",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 20,
+    marginTop: spacing.xl
+  },
+  featuredBadge: {
+    backgroundColor: "rgba(0,0,0,0.44)",
+    borderRadius: radii.pill,
     fontSize: 9,
     fontWeight: "900",
-    letterSpacing: 0.5,
-    paddingHorizontal: 8,
-    paddingVertical: 3
+    letterSpacing: 0.8,
+    marginTop: spacing.sm,
+    overflow: "hidden",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    textTransform: "uppercase"
   },
-  noEquipmentPill: {
-    backgroundColor: "rgba(0,217,178,0.12)",
-    borderColor: "rgba(0,217,178,0.3)",
-    color: colors.teal
+  featuredButton: {
+    alignItems: "center",
+    backgroundColor: colors.textPrimary,
+    borderRadius: radii.lg,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: spacing.xl,
+    minHeight: 54,
+    paddingHorizontal: spacing.lg
   },
-  metaFooter: {
+  featuredButtonText: {
+    fontSize: 18,
+    fontWeight: "900"
+  },
+  featuredArrow: {
+    alignItems: "center",
+    borderRadius: radii.pill,
+    height: 30,
+    justifyContent: "center",
+    width: 30
+  },
+  featuredMeta: {
     alignItems: "center",
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16
+    gap: spacing.lg,
+    marginTop: spacing.md
   },
-  dots: {
+  categorySection: {
+    gap: spacing.sm
+  },
+  categoryChips: {
+    gap: spacing.md,
+    paddingRight: spacing.screen,
+    paddingTop: spacing.sm
+  },
+  categoryChip: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md
+  },
+  categoryChipActive: {
+    backgroundColor: colors.appBlue
+  },
+  categoryChipText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: "900"
+  },
+  categoryChipTextActive: {
+    color: colors.textPrimary
+  },
+  quickList: {
+    gap: spacing.sm
+  },
+  quickRow: {
+    alignItems: "center",
+    borderBottomColor: colors.cardStroke,
+    borderBottomWidth: 1,
     flexDirection: "row",
-    gap: 3,
-    marginLeft: "auto"
+    gap: spacing.md,
+    minHeight: 86,
+    paddingVertical: spacing.sm
   },
-  dot: {
-    borderRadius: 3,
-    height: 6,
-    width: 6
+  quickThumb: {
+    borderRadius: radii.md,
+    height: 70,
+    overflow: "hidden",
+    width: 70
+  },
+  quickThumbImage: {
+    borderRadius: radii.md
+  },
+  quickBody: {
+    flex: 1,
+    gap: spacing.xs
+  },
+  quickTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: "900"
+  },
+  quickMeta: {
+    color: colors.textTertiary,
+    fontSize: 15,
+    fontWeight: "700"
+  },
+  quickArrow: {
+    alignItems: "center",
+    borderRadius: radii.pill,
+    height: 30,
+    justifyContent: "center",
+    width: 30
+  },
+  freshSection: {
+    gap: spacing.sm
+  },
+  freshCard: {
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: 26,
+    gap: spacing.md,
+    padding: spacing.lg
+  },
+  freshRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md
+  },
+  freshThumb: {
+    borderRadius: radii.md,
+    height: 82,
+    overflow: "hidden",
+    width: 104
+  },
+  freshThumbImage: {
+    borderRadius: radii.md
+  },
+  freshCopy: {
+    flex: 1,
+    gap: spacing.xs
+  },
+  freshTitle: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: "900",
+    lineHeight: 21
+  },
+  freshMeta: {
+    color: colors.textTertiary,
+    fontSize: 14,
+    fontWeight: "700"
+  },
+  aiSection: {
+    gap: spacing.md
+  },
+  creatorGrid: {
+    flexDirection: "row",
+    gap: spacing.md
+  },
+  creatorTile: {
+    borderRadius: 24,
+    flex: 1,
+    height: 150,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+    padding: spacing.lg
+  },
+  creatorImage: {
+    borderRadius: 24
+  },
+  creatorIcon: {
+    position: "absolute",
+    right: spacing.lg,
+    top: spacing.lg
+  },
+  creatorTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: "900",
+    lineHeight: 20
+  },
+  creatorSubtitle: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 11,
+    fontWeight: "700",
+    lineHeight: 15,
+    marginTop: spacing.xs
   },
   emptyText: {
     color: colors.textTertiary,
     fontSize: 14,
     lineHeight: 20,
-    paddingVertical: 24,
+    paddingVertical: spacing.xxl,
     textAlign: "center"
   }
 });
