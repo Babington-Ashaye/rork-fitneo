@@ -104,7 +104,7 @@ export default function ScannerScreen() {
   }
 
   return (
-    <AppLayout contentContainerStyle={styles.screen}>
+    <AppLayout scroll contentContainerStyle={styles.screen}>
       <View style={styles.headerCard}>
         <View style={styles.headerIcon}>
           <Ionicons name="scan" size={20} color={colors.textPrimary} />
@@ -151,20 +151,22 @@ export default function ScannerScreen() {
         </Text>
         {result?.confidence ? <Text style={styles.confidence}>Confidence: {Math.round(result.confidence * 100)}%</Text> : null}
       </View>
-      <TouchableOpacity activeOpacity={0.8} style={styles.button} onPress={captureAndAnalyze} disabled={isScanning}>
-        {isScanning ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.buttonText}>Capture and analyze</Text>}
-      </TouchableOpacity>
-      {result ? (
-        <TouchableOpacity activeOpacity={0.8} style={[styles.button, styles.saveButton]} onPress={addToDiary} disabled={isSaving}>
-          {isSaving ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.buttonText}>Add to {mealType}</Text>}
+      <View style={styles.actionDock}>
+        <TouchableOpacity activeOpacity={0.8} style={styles.button} onPress={captureAndAnalyze} disabled={isScanning}>
+          {isScanning ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.buttonText}>Capture and analyze</Text>}
         </TouchableOpacity>
-      ) : null}
+        {result ? (
+          <TouchableOpacity activeOpacity={0.8} style={[styles.button, styles.saveButton]} onPress={addToDiary} disabled={isSaving}>
+            {isSaving ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={styles.buttonText}>Add to {mealType}</Text>}
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </AppLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { gap: 14, paddingBottom: 14 },
+  screen: { gap: 14, paddingBottom: 28 },
   center: { alignItems: "center", gap: 16, justifyContent: "center", paddingHorizontal: 28 },
   headerCard: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.10)", borderColor: "rgba(10,132,255,0.28)", borderRadius: 22, borderWidth: 1, flexDirection: "row", gap: 14, padding: 16 },
   headerIcon: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
@@ -172,7 +174,7 @@ const styles = StyleSheet.create({
   kicker: { color: colors.accent, fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   headerTitle: { color: colors.textPrimary, fontSize: 24, fontWeight: "900", marginTop: 2 },
   headerSubtitle: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  cameraFrame: { backgroundColor: "#050507", borderColor: "rgba(10,132,255,0.30)", borderRadius: 24, borderWidth: 1, flex: 1, minHeight: 350, overflow: "hidden" },
+  cameraFrame: { backgroundColor: "#050507", borderColor: "rgba(10,132,255,0.30)", borderRadius: 24, borderWidth: 1, minHeight: 320, overflow: "hidden" },
   cameraTint: { backgroundColor: "rgba(0,0,0,0.18)", ...StyleSheet.absoluteFillObject },
   guide: { alignSelf: "center", borderColor: colors.accent, borderRadius: 24, borderWidth: 2, height: "64%", marginTop: "18%", width: "82%" },
   cornerTopLeft: { borderColor: colors.teal, borderLeftWidth: 4, borderTopWidth: 4, borderTopLeftRadius: 18, height: 42, left: "9%", position: "absolute", top: "17%", width: 42 },
@@ -188,6 +190,7 @@ const styles = StyleSheet.create({
   status: { color: colors.textPrimary, fontSize: 14, fontWeight: "800", lineHeight: 20, textAlign: "center" },
   statusMuted: { color: colors.textSecondary, fontWeight: "600", textAlign: "left" },
   confidence: { color: colors.teal, fontSize: 11, fontWeight: "900", textAlign: "center" },
+  actionDock: { backgroundColor: "rgba(0,0,0,0.36)", borderColor: "rgba(255,255,255,0.08)", borderRadius: 22, borderWidth: 1, gap: 10, padding: 10 },
   button: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 16, justifyContent: "center", minHeight: 56, paddingHorizontal: 18 },
   saveButton: { backgroundColor: colors.teal },
   buttonText: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" }

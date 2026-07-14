@@ -75,15 +75,15 @@ function RootNavigator() {
         <Stack.Screen name="auth/callback" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="legal-consent" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="paywall" options={{ title: "Upgrade" }} />
+        <Stack.Screen name="paywall" options={{ headerShown: false }} />
         <Stack.Screen name="checkout" options={{ headerShown: false }} />
-        <Stack.Screen name="scanner" options={{ title: "AI Plate Scanner" }} />
-        <Stack.Screen name="barcode-scanner" options={{ title: "Barcode Scanner" }} />
+        <Stack.Screen name="scanner" options={{ headerShown: false }} />
+        <Stack.Screen name="barcode-scanner" options={{ headerShown: false }} />
         <Stack.Screen name="custom-workout" options={{ headerShown: false }} />
         <Stack.Screen name="workout-preview" options={{ headerShown: false }} />
         <Stack.Screen name="active-workout" options={{ headerShown: false }} />
-        <Stack.Screen name="sports-mode" options={{ title: "Sports Mode" }} />
-        <Stack.Screen name="badges" options={{ title: "Badges" }} />
+        <Stack.Screen name="sports-mode" options={{ headerShown: false }} />
+        <Stack.Screen name="badges" options={{ headerShown: false }} />
         <Stack.Screen name="chat-history" options={{ title: "Chat History" }} />
         <Stack.Screen name="subscription-test" options={{ title: "Subscription Testing" }} />
         <Stack.Screen name="legal/privacy" options={{ title: "Privacy Policy" }} />

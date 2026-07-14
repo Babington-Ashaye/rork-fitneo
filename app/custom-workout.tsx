@@ -160,7 +160,7 @@ export default function CustomWorkoutScreen() {
 
         {visibleExercises.length > 0 ? (
           <View style={styles.suggestions}>
-            {visibleExercises.slice(0, 36).map((item) => (
+            {visibleExercises.map((item) => (
               <TouchableOpacity key={item.id} style={styles.suggestion} onPress={() => addExercise(item)}>
                 <View style={styles.exerciseIcon}><Ionicons name="barbell" size={16} color={colors.accent} /></View>
                 <View style={styles.flex}>

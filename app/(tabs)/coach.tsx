@@ -153,7 +153,12 @@ export default function CoachScreen() {
     setSaveStatus(null);
     setIsLoading(true);
     try {
-      setMessages(await fetchChatMessages(session.id));
+      const sessionMessages = await fetchChatMessages(session.id);
+      setMessages(sessionMessages);
+      const firstUser = sessionMessages.find((message) => message.role === "user")?.content;
+      if (firstUser && session.title === "New Chat") {
+        persistSessionTitle(session, getChatTitle(firstUser));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -364,7 +369,7 @@ export default function CoachScreen() {
           <View style={styles.aiOrb}><Ionicons name="hardware-chip" size={18} color={colors.accent} /></View>
           <View>
             <Text style={styles.title}>FITNEO AI</Text>
-            <Text style={styles.online}>COACH ONLINE</Text>
+            <Text style={styles.online}>COACH ONLINE · {activeSession ? getSessionTitle(activeSession) : "New Chat"}</Text>
           </View>
         </View>
         <View style={styles.headerActions}>
@@ -392,6 +397,16 @@ export default function CoachScreen() {
           </TouchableOpacity>
         </View>
       ) : null}
+
+      <View style={styles.coachHero}>
+        <View style={styles.coachHeroIcon}>
+          <Ionicons name="sparkles" size={18} color={colors.textPrimary} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={styles.coachHeroTitle}>Your training command center</Text>
+          <Text style={styles.coachHeroCopy}>Ask for plans, meal targets, recovery fixes, sport drills, or custom routines.</Text>
+        </View>
+      </View>
 
       {historyOpen ? (
         <View style={styles.drawerLayer}>
@@ -435,9 +450,11 @@ export default function CoachScreen() {
           </>
         ) : messages.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="sparkles" size={26} color={colors.accent} />
+            <View style={styles.emptyOrb}>
+              <Ionicons name="hardware-chip" size={30} color={colors.accent} />
+            </View>
             <Text style={styles.emptyTitle}>What are we building today?</Text>
-            <Text style={styles.emptyCopy}>Ask for a structured routine, nutrition target, or recovery adjustment.</Text>
+            <Text style={styles.emptyCopy}>Start with a goal and FITNEO will structure the routine, nutrition target, and recovery angle.</Text>
             <View style={styles.emptySuggestions}>
               {suggestions.map((suggestion) => (
                 <TouchableOpacity key={suggestion} style={styles.emptySuggestionChip} onPress={() => void sendPrompt(suggestion)}>
@@ -549,6 +566,7 @@ function shouldGenerateAppPlan(value: string) {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background, gap: 10, paddingBottom: 24 },
+  flex: { flex: 1 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", gap: 10 },
   headerActions: { alignItems: "center", flexDirection: "row", gap: 8 },
   menuCard: { alignSelf: "flex-end", backgroundColor: "#101015", borderColor: colors.cardStroke, borderRadius: 16, borderWidth: 1, gap: 2, marginTop: -4, padding: 6, position: "absolute", right: 0, top: 48, width: 210, zIndex: 50 },
@@ -556,10 +574,14 @@ const styles = StyleSheet.create({
   menuText: { color: colors.textSecondary, fontSize: 12, fontWeight: "800" },
   saveActionText: { color: colors.accent },
   iconButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", width: 38 },
-  aiIdentity: { alignItems: "center", flexDirection: "row", gap: 10 },
-  aiOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.14)", borderColor: "rgba(0,163,255,0.45)", borderRadius: 18, borderWidth: 1, height: 36, justifyContent: "center", shadowColor: colors.accent, shadowOpacity: 0.55, shadowRadius: 12, width: 36 },
+  aiIdentity: { alignItems: "center", flex: 1, flexDirection: "row", gap: 10, minWidth: 0 },
+  aiOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.18)", borderColor: "rgba(0,163,255,0.55)", borderRadius: 18, borderWidth: 1, height: 36, justifyContent: "center", shadowColor: colors.accent, shadowOpacity: 0.55, shadowRadius: 12, width: 36 },
   title: { color: colors.textPrimary, fontSize: 18, fontWeight: "900", letterSpacing: 2 },
-  online: { color: colors.teal, fontSize: 9, fontWeight: "800", letterSpacing: 1.2 },
+  online: { color: colors.teal, fontSize: 9, fontWeight: "800", letterSpacing: 1.2, maxWidth: 190 },
+  coachHero: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.10)", borderColor: "rgba(10,132,255,0.24)", borderRadius: 20, borderWidth: 1, flexDirection: "row", gap: 12, padding: 14 },
+  coachHeroIcon: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
+  coachHeroTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "900" },
+  coachHeroCopy: { color: colors.textSecondary, fontSize: 11, fontWeight: "700", lineHeight: 16, marginTop: 2 },
   drawerLayer: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0, zIndex: 40 },
   drawerScrim: { backgroundColor: "rgba(0,0,0,0.48)", bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
   historyPanel: {
@@ -607,8 +629,9 @@ const styles = StyleSheet.create({
   retryButton: { backgroundColor: "rgba(255,199,51,0.16)", borderColor: "rgba(255,199,51,0.40)", borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
   retryText: { color: colors.gold, fontSize: 11, fontWeight: "900" },
   saveStatus: { color: colors.teal, fontSize: 12, lineHeight: 18, textAlign: "center" },
-  emptyState: { alignItems: "center", gap: 9, justifyContent: "center", paddingHorizontal: 28, paddingVertical: 40 },
-  emptyTitle: { color: colors.textPrimary, fontSize: 19, fontWeight: "800", textAlign: "center" },
+  emptyState: { alignItems: "center", gap: 10, justifyContent: "center", paddingHorizontal: 18, paddingVertical: 40 },
+  emptyOrb: { alignItems: "center", backgroundColor: "rgba(0,163,255,0.12)", borderColor: "rgba(0,163,255,0.30)", borderRadius: 30, borderWidth: 1, height: 60, justifyContent: "center", marginBottom: 4, width: 60 },
+  emptyTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: "900", letterSpacing: -0.4, textAlign: "center" },
   emptyCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
   emptySuggestions: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 12, width: "100%" },
   emptySuggestionChip: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.055)", borderColor: colors.cardStroke, borderRadius: 14, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: 10, width: "47%" },

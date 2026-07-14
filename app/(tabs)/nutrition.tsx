@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, ImageBackground, Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
@@ -91,6 +91,12 @@ export default function NutritionScreen() {
   useEffect(() => {
     void loadNutrition();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadNutrition();
+    }, [])
+  );
 
   if (isLoading) {
     return (

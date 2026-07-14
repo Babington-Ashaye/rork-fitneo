@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import { Platform } from "react-native";
 import { clearNotificationState } from "@/lib/notifications";
 import { secureStorage } from "@/lib/secureStorage";
 import { getCurrentUserId } from "@/lib/api";
@@ -73,6 +74,21 @@ export async function exportCurrentUserData() {
     }
   };
 
+  if (Platform.OS === "web" && typeof document !== "undefined") {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const fileName = `fitneo-data-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    await awardLocalBadge(userId, "data_exporter", "Data Exporter");
+    return fileName;
+  }
+
   const directory = FileSystem.cacheDirectory;
   if (!directory) throw new Error("No writable export directory is available.");
   const fileUri = `${directory}fitneo-data-${new Date().toISOString().slice(0, 10)}.json`;
@@ -87,7 +103,24 @@ export async function exportCurrentUserData() {
     mimeType: "application/json",
     UTI: "public.json"
   });
+  await awardLocalBadge(userId, "data_exporter", "Data Exporter");
   return fileUri;
+}
+
+async function awardLocalBadge(userId: string, badgeId: string, badgeName: string) {
+  const existing = await supabase
+    .from("badges")
+    .select("badge_id")
+    .eq("user_id", userId)
+    .eq("badge_id", badgeId)
+    .maybeSingle();
+  if (existing.data || existing.error) return;
+  await supabase.from("badges").insert({
+    user_id: userId,
+    badge_id: badgeId,
+    badge_name: badgeName,
+    earned_at: new Date().toISOString()
+  });
 }
 
 export async function clearAllLocalAppData(userId: string | null) {

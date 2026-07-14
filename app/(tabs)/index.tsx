@@ -59,7 +59,7 @@ export default function DashboardScreen() {
 
   async function updateWaterIntake(amount: number) {
     if (!data) return;
-    const normalized = Math.max(0, Math.min(data.waterGoal, Math.round(amount)));
+    const normalized = Math.max(0, Math.round(amount));
     const previous = data.waterCurrent;
     setData({ ...data, waterCurrent: normalized });
     try {
@@ -225,7 +225,7 @@ export default function DashboardScreen() {
             <Ionicons name="water" size={16} color={colors.textPrimary} />
             <Text style={styles.cardTitle}>{t("dashboard.waterIntake")}</Text>
           </View>
-          <Text style={styles.accentMeta}>{data.waterCurrent} / {data.waterGoal}</Text>
+          <Text style={styles.accentMeta}>{data.waterCurrent} / {data.waterGoal}+ cups</Text>
         </View>
         <View style={styles.waterControls}>
           <TouchableOpacity accessibilityLabel="Decrease water intake" style={styles.waterAdjust} onPress={() => void updateWaterIntake(data.waterCurrent - 1)}>
@@ -246,7 +246,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.waterRow}>
-          {Array.from({ length: data.waterGoal }).map((_, index) => (
+          {Array.from({ length: Math.max(data.waterGoal, Math.min(data.waterCurrent, 16)) }).map((_, index) => (
             <TouchableOpacity
               accessibilityLabel={`Set water intake to ${((index + 1) * 0.25).toFixed(2)} liters`}
               accessibilityRole="button"

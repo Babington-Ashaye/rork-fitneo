@@ -345,7 +345,9 @@ const styles = StyleSheet.create({
   },
   avatarGlow: {
     alignItems: "center",
-    backgroundColor: "rgba(10,132,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderColor: "rgba(255,255,255,0.18)",
+    borderWidth: 1,
     borderRadius: 50,
     height: 100,
     justifyContent: "center",
@@ -353,7 +355,9 @@ const styles = StyleSheet.create({
   },
   avatar: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: "rgba(10,132,255,0.38)",
+    borderColor: "rgba(255,255,255,0.28)",
+    borderWidth: 1,
     borderRadius: 43,
     height: 86,
     justifyContent: "center",

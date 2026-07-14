@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+const WEB_OFFER_SESSION_KEY = "fitneo.webOffer.seenThisSession";
+
 export function AppOpenAdGate() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(true), 900);
+    if (typeof window !== "undefined" && window.sessionStorage?.getItem(WEB_OFFER_SESSION_KEY)) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (typeof window !== "undefined") {
+        window.sessionStorage?.setItem(WEB_OFFER_SESSION_KEY, "true");
+      }
+      setVisible(true);
+    }, 1400);
     return () => clearTimeout(timer);
   }, []);
 

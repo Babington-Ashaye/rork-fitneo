@@ -356,6 +356,7 @@ export async function saveCustomWorkout(input: CustomWorkoutInput): Promise<Work
   if (error) {
     throw new Error(`Saved locally, but cloud sync failed: ${error.message}`);
   }
+  await awardBadgeIfMissing(userId, "plan_builder", "Plan Builder");
   return {
     ...localProgram,
     id: String(data.id)
@@ -817,6 +818,12 @@ export async function saveNutritionLog(input: NutritionLogInput): Promise<void> 
   if (error) {
     throw error;
   }
+  if (input.scanMethod === "photo") {
+    await awardBadgeIfMissing(userId, "meal_scanner", "Meal Scanner");
+  }
+  if (input.scanMethod === "barcode") {
+    await awardBadgeIfMissing(userId, "barcode_boss", "Barcode Boss");
+  }
 }
 
 export async function fetchEarnedBadges(): Promise<EarnedBadge[]> {
@@ -904,6 +911,43 @@ export async function completeWorkoutSession(input: {
     amount: xpEarned,
     reason: `Completed ${input.name}`
   });
+  await awardWorkoutMilestones(userId);
+}
+
+async function awardBadgeIfMissing(userId: string, badgeId: string, badgeName: string) {
+  const existing = await supabase
+    .from("badges")
+    .select("badge_id")
+    .eq("user_id", userId)
+    .eq("badge_id", badgeId)
+    .maybeSingle();
+  if (existing.data || existing.error) return;
+  await supabase.from("badges").insert({
+    user_id: userId,
+    badge_id: badgeId,
+    badge_name: badgeName,
+    earned_at: new Date().toISOString()
+  });
+}
+
+async function awardWorkoutMilestones(userId: string) {
+  await awardBadgeIfMissing(userId, "first_rep", "First Rep");
+
+  const [xpRes, workoutsRes, setsRes] = await Promise.all([
+    supabase.from("xp_transactions").select("amount").eq("user_id", userId),
+    supabase.from("workout_sessions").select("id").eq("user_id", userId),
+    supabase.from("workout_sessions").select("total_sets_completed").eq("user_id", userId)
+  ]);
+  const totalXp = ((xpRes.data ?? []) as Record<string, any>[]).reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+  const totalWorkouts = (workoutsRes.data ?? []).length;
+  const totalSets = ((setsRes.data ?? []) as Record<string, any>[]).reduce((sum, row) => sum + Number(row.total_sets_completed ?? 0), 0);
+
+  if (totalXp >= 500) await awardBadgeIfMissing(userId, "xp_500", "500 XP Club");
+  if (totalXp >= 1000) await awardBadgeIfMissing(userId, "xp_1000", "1K XP Club");
+  if (totalXp >= 5000) await awardBadgeIfMissing(userId, "xp_5000", "5K XP Club");
+  if (totalWorkouts >= 20) await awardBadgeIfMissing(userId, "home_athlete", "Home Athlete");
+  if (totalWorkouts >= 50) await awardBadgeIfMissing(userId, "iron_will", "Iron Will");
+  if (totalSets >= 100) await awardBadgeIfMissing(userId, "set_finisher", "Set Finisher");
 }
 
 
