@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
@@ -46,9 +46,9 @@ export default function BarcodeScannerScreen() {
     return value.replace(/[^0-9A-Za-z]/g, "").trim();
   }
 
-  async function lookupBarcode(rawCode: string) {
+  async function lookupBarcode(rawCode: string, force = false) {
     const code = normalizeBarcode(rawCode);
-    if (isLookingUp || product || !code) return;
+    if (isLookingUp || (!force && product) || !code) return;
     if (code.length < 6) {
       setError("Enter or scan a valid barcode.");
       return;
@@ -88,8 +88,10 @@ export default function BarcodeScannerScreen() {
         carbs: Number(nutrients.carbohydrates_100g ?? nutrients.carbohydrates ?? 0),
         fat: Number(nutrients.fat_100g ?? nutrients.fat ?? 0)
       });
+      setManualCode(code);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not identify this barcode.");
+      setLastCode("");
     } finally {
       setIsLookingUp(false);
     }
@@ -98,7 +100,7 @@ export default function BarcodeScannerScreen() {
   async function handleBarcode(result: BarcodeScanningResult) {
     if (isLookingUp || product || !result.data) return;
     const code = normalizeBarcode(result.data);
-    if (!code || code === lastCode) return;
+    if (!code || (code === lastCode && !error)) return;
     await lookupBarcode(code);
   }
 
@@ -145,7 +147,12 @@ export default function BarcodeScannerScreen() {
   if (!permission.granted) {
     return (
       <AppLayout contentContainerStyle={styles.center}>
-        <Ionicons name="camera" size={34} color={colors.accent} />
+        <TouchableOpacity activeOpacity={0.78} style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.permissionIcon}>
+          <Ionicons name="barcode" size={28} color={colors.accent} />
+        </View>
         <Text style={styles.permissionTitle}>Camera access is required</Text>
         <Text style={styles.permissionCopy}>FITNEO uses the camera only to read food barcodes.</Text>
         <TouchableOpacity style={styles.primary} onPress={requestPermission}>
@@ -157,7 +164,14 @@ export default function BarcodeScannerScreen() {
 
   return (
     <AppLayout scroll contentContainerStyle={styles.screen}>
-      <ScreenHeader title="Barcode Scanner" subtitle={`Scan packaged food or type the barcode for ${mealType}.`} />
+      <View style={styles.topRow}>
+        <TouchableOpacity activeOpacity={0.78} style={styles.topBackButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Barcode Scanner</Text>
+        <View style={styles.topBackButton} />
+      </View>
+      <ScreenHeader title="Packaged food lookup" subtitle={`Scan or type a barcode for ${mealType}.`} />
       <View style={styles.cameraShell}>
         <CameraView
           barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "code93", "itf14", "qr"] }}
@@ -211,7 +225,7 @@ export default function BarcodeScannerScreen() {
             underlineColorAndroid="transparent"
             value={manualCode}
           />
-          <TouchableOpacity activeOpacity={0.82} style={styles.lookupButton} onPress={() => void lookupBarcode(manualCode)} disabled={isLookingUp}>
+          <TouchableOpacity activeOpacity={0.82} style={styles.lookupButton} onPress={() => void lookupBarcode(manualCode, true)} disabled={isLookingUp}>
             {isLookingUp ? <ActivityIndicator color={colors.textPrimary} /> : <Ionicons name="search" size={18} color={colors.textPrimary} />}
           </TouchableOpacity>
         </View>
@@ -254,10 +268,15 @@ function Nutrient({ value, label }: { value: string; label: string }) {
 const styles = StyleSheet.create({
   screen: { gap: 14, paddingBottom: 12 },
   center: { alignItems: "center", gap: 14, justifyContent: "center", paddingHorizontal: 28 },
+  topRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  topBackButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", width: 38 },
+  topTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: "900" },
+  backButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", left: 18, position: "absolute", top: 18, width: 38 },
+  permissionIcon: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.12)", borderColor: "rgba(10,132,255,0.28)", borderRadius: 28, borderWidth: 1, height: 56, justifyContent: "center", width: 56 },
   permissionTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: "800", textAlign: "center" },
   permissionCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center" },
-  cameraShell: { borderColor: "rgba(10,132,255,0.22)", borderRadius: 24, borderWidth: 1, flex: 1, minHeight: 360, overflow: "hidden" },
-  scanFrame: { alignSelf: "center", borderColor: "rgba(10,132,255,0.18)", borderRadius: 18, height: 160, marginTop: 92, width: "82%" },
+  cameraShell: { borderColor: "rgba(10,132,255,0.22)", borderRadius: 24, borderWidth: 1, flex: 1, minHeight: 320, overflow: "hidden" },
+  scanFrame: { alignSelf: "center", borderColor: "rgba(10,132,255,0.18)", borderRadius: 18, height: 160, marginTop: 76, width: "82%" },
   scanLine: { alignSelf: "center", backgroundColor: colors.accent, borderRadius: 999, height: 3, opacity: 0.95, position: "absolute", shadowColor: colors.accent, shadowOpacity: 0.75, shadowRadius: 18, top: 0, width: "88%" },
   scanBadge: { alignItems: "center", backgroundColor: "rgba(0,0,0,0.72)", borderColor: "rgba(255,255,255,0.18)", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 7, left: 14, paddingHorizontal: 12, paddingVertical: 8, position: "absolute", top: 14 },
   scanBadgeText: { color: colors.textPrimary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },

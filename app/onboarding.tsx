@@ -564,6 +564,8 @@ function Interstitial({ copy, icon, image, title }: { copy: string; icon: keyof 
 
 function YearDrum({ onChange, value }: { onChange: (value: number) => void; value: number }) {
   const scrollRef = useRef<ScrollView>(null);
+  const didInitialScroll = useRef(false);
+  const lastScrolledYear = useRef(value);
   const currentYear = new Date().getFullYear();
   const years = useMemo(
     () => Array.from({ length: 73 }, (_, index) => currentYear - 13 - index),
@@ -572,6 +574,8 @@ function YearDrum({ onChange, value }: { onChange: (value: number) => void; valu
   const selectedIndex = Math.max(0, years.findIndex((year) => year === value));
 
   useEffect(() => {
+    if (didInitialScroll.current) return;
+    didInitialScroll.current = true;
     const timer = setTimeout(() => {
       scrollRef.current?.scrollTo({ animated: false, y: Math.max(0, selectedIndex * 74 - 148) });
     }, 50);
@@ -583,6 +587,15 @@ function YearDrum({ onChange, value }: { onChange: (value: number) => void; valu
     onChange(years[nextIndex]);
   }
 
+  function selectWhileScrolling(offsetY: number) {
+    const nextIndex = Math.max(0, Math.min(years.length - 1, Math.round(offsetY / 74)));
+    const nextYear = years[nextIndex];
+    if (nextYear !== lastScrolledYear.current) {
+      lastScrolledYear.current = nextYear;
+      onChange(nextYear);
+    }
+  }
+
   return (
     <View style={styles.yearWrap}>
       <View pointerEvents="none" style={styles.yearCenterRail} />
@@ -591,7 +604,9 @@ function YearDrum({ onChange, value }: { onChange: (value: number) => void; valu
         decelerationRate="fast"
         nestedScrollEnabled
         onMomentumScrollEnd={(event) => snapToNearest(event.nativeEvent.contentOffset.y)}
+        onScroll={(event) => selectWhileScrolling(event.nativeEvent.contentOffset.y)}
         onScrollEndDrag={(event) => snapToNearest(event.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={32}
         showsVerticalScrollIndicator={false}
         snapToInterval={74}
         style={styles.yearScroller}

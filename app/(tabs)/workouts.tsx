@@ -234,6 +234,15 @@ function matchesProgramCategory(program: WorkoutProgram, selectedCategory: strin
   if (needle === "cardio") {
     return /cardio|conditioning|hiit|fat|burn|athletic|endurance|sprint|run|jog|pace/.test(haystack);
   }
+  if (needle === "running") {
+    return /run|running|jog|5k|pace|stride|cadence|sprint|conditioning/.test(haystack);
+  }
+  if (needle === "walking") {
+    return /walk|walking|run|jog|stamina|foundation|fat|conditioning/.test(haystack);
+  }
+  if (needle === "endurance") {
+    return /endurance|5k|pace|run|jog|walk|conditioning|stamina/.test(haystack);
+  }
   if (needle === "arm") {
     return /arm|upper|bicep|tricep|push|pull/.test(haystack);
   }

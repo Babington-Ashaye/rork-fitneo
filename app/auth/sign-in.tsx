@@ -1,9 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { makeRedirectUri } from "expo-auth-session";
-import * as Google from "expo-auth-session/providers/google";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, router } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { RefObject, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
@@ -11,7 +8,7 @@ import { AuthNotice } from "@/components/AuthNotice";
 import { AuthSkeleton } from "@/components/AuthSkeleton";
 import { TouchableCard } from "@/components/ScreenKit";
 import { useAuth } from "@/context/AuthContext";
-import { isSupabaseConfigured, supabase, supabaseConfigStatus } from "@/lib/supabase";
+import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
 import { colors, radii } from "@/lib/theme";
 
 /*
@@ -21,7 +18,6 @@ import { colors, radii } from "@/lib/theme";
   - Get the client IDs from console.cloud.google.com.
   - Keep the app scheme as "fitneo" and allow the matching callback in Supabase.
 */
-WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const { error, isLoading, resetPassword, signIn, signInWithGoogle } = useAuth();
@@ -188,20 +184,10 @@ export default function SignInScreen() {
             <View style={styles.divider} />
           </View>
 
-          {/* Google Client IDs must be configured in .env */}
-          {/* Get them from console.cloud.google.com */}
-          {hasConfiguredGoogleClientId() ? (
-            <GoogleAuthSessionButton
-              disabled={isLoading}
-              onError={setLocalError}
-              onLoadingChange={setIsGoogleLoading}
-            />
-          ) : (
-            <TouchableCard radius={radii.md} style={styles.googleButton} onPress={isLoading || isGoogleLoading ? undefined : continueWithGoogle}>
-              <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
-              {isGoogleLoading ? <ActivityIndicator color="#333333" /> : <Text style={styles.googleText}>Continue with Google</Text>}
-            </TouchableCard>
-          )}
+          <TouchableCard radius={radii.md} style={styles.googleButton} onPress={isLoading || isGoogleLoading ? undefined : continueWithGoogle}>
+            <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
+            {isGoogleLoading ? <ActivityIndicator color="#333333" /> : <Text style={styles.googleText}>Continue with Google</Text>}
+          </TouchableCard>
 
           <View style={styles.footerBlock}>
             <Link href="/auth/sign-up" asChild>
@@ -234,91 +220,6 @@ function getAuthErrorMessage(error: unknown): string | null {
     return message || code || null;
   }
   return "Please check your details and try again.";
-}
-
-function isConfiguredClientId(value: string | undefined) {
-  const clean = value?.trim() ?? "";
-  return clean.length > 0 && !clean.startsWith("your_");
-}
-
-function hasConfiguredGoogleClientId() {
-  if (Platform.OS === "ios") return isConfiguredClientId(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
-  if (Platform.OS === "android") return isConfiguredClientId(process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
-  return isConfiguredClientId(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
-}
-
-function GoogleAuthSessionButton({
-  disabled,
-  onError,
-  onLoadingChange
-}: {
-  disabled: boolean;
-  onError: (message: string | null) => void;
-  onLoadingChange: (loading: boolean) => void;
-}) {
-  const [localLoading, setLocalLoading] = useState(false);
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    redirectUri: makeRedirectUri({ scheme: "fitneo", path: "auth/callback" }),
-    scopes: ["openid", "profile", "email"]
-  });
-
-  useEffect(() => {
-    if (response?.type !== "success") {
-      if (response?.type === "error") {
-        onError(response.error?.message ?? "Google sign-in failed.");
-      }
-      return;
-    }
-
-    void (async () => {
-      setLocalLoading(true);
-      onLoadingChange(true);
-      onError(null);
-      try {
-        const idToken = response.params.id_token;
-        if (!idToken) {
-          throw new Error("Google did not return an ID token. Check your Google Client ID configuration.");
-        }
-        const { error: tokenError } = await supabase.auth.signInWithIdToken({
-          provider: "google",
-          token: idToken
-        });
-        if (tokenError) throw tokenError;
-        router.replace("/");
-      } catch (err) {
-        onError(err instanceof Error ? err.message : "Google sign-in failed.");
-      } finally {
-        setLocalLoading(false);
-        onLoadingChange(false);
-      }
-    })();
-  }, [onError, onLoadingChange, response]);
-
-  async function launchGoogle() {
-    setLocalLoading(true);
-    onLoadingChange(true);
-    onError(null);
-    try {
-      await promptAsync();
-    } finally {
-      setLocalLoading(false);
-      onLoadingChange(false);
-    }
-  }
-
-  return (
-    <TouchableCard
-      radius={radii.md}
-      style={[styles.googleButton, disabled && !localLoading && styles.googleButtonDisabled]}
-      onPress={disabled || localLoading || !request ? undefined : launchGoogle}
-    >
-      <Image source={require("../../assets/google-g.png")} style={styles.googleLogo} />
-      {localLoading || !request ? <ActivityIndicator color="#333333" /> : <Text style={styles.googleText}>Continue with Google</Text>}
-    </TouchableCard>
-  );
 }
 
 function Field({

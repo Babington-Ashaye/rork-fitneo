@@ -46,10 +46,11 @@ async function loadLocalCoachSnapshot(): Promise<LocalCoachSnapshot | null> {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LocalCoachSnapshot>;
     if (!Array.isArray(parsed.messages) || !Array.isArray(parsed.sessions)) return null;
+    const sessions = parsed.sessions.filter((session) => session.title && session.title !== "New Chat");
     return {
-      activeSession: parsed.activeSession ?? parsed.sessions[0] ?? null,
+      activeSession: parsed.activeSession?.title && parsed.activeSession.title !== "New Chat" ? parsed.activeSession : sessions[0] ?? null,
       messages: parsed.messages,
-      sessions: parsed.sessions
+      sessions
     };
   } catch {
     return null;
@@ -90,14 +91,7 @@ export default function CoachScreen() {
     setSaveStatus(null);
     setHistoryOpen(false);
     setMenuOpen(false);
-    let session: ChatSessionSummary;
-    try {
-      session = await createChatSession("New Chat");
-    } catch {
-      session = { id: `local-${Date.now()}`, title: "New Chat", createdAt: new Date().toISOString() };
-    }
-    setSessions((current) => [session, ...current]);
-    setActiveSession(session);
+    setActiveSession(null);
     setMessages([]);
     setHistoryOpen(false);
   }
@@ -129,7 +123,7 @@ export default function CoachScreen() {
       const firstUser = messages.find((message) => message.role === "user")?.content;
       if (firstUser) return getChatTitle(firstUser);
     }
-    return session.title && session.title !== "New Chat" ? session.title : "New Chat";
+    return session.title && session.title !== "New Chat" ? session.title : "New conversation";
   }
 
   function getSessionPreview(session: ChatSessionSummary) {
@@ -198,13 +192,14 @@ export default function CoachScreen() {
           setActiveSession(existing[0]);
           setMessages(await fetchChatMessages(existing[0].id));
         } else {
-          await newChat();
+          setActiveSession(null);
+          setMessages([]);
         }
       } catch (err) {
         if (!localSnapshot?.activeSession) {
-          const localSession = { id: `local-${Date.now()}`, title: "New Chat", createdAt: new Date().toISOString() };
-          setActiveSession(localSession);
-          setSessions([localSession]);
+          setActiveSession(null);
+          setSessions([]);
+          setMessages([]);
         }
         setError(null);
       } finally {
@@ -272,14 +267,14 @@ export default function CoachScreen() {
     try {
       let session = activeSession;
       const nextTitle = getChatTitle(cleanPrompt);
-      if (!session) {
+      if (!session || session.id.startsWith("local-")) {
         try {
           session = await createChatSession(nextTitle);
         } catch {
           session = { id: `local-${Date.now()}`, title: nextTitle, createdAt: new Date().toISOString() };
         }
         setActiveSession(session);
-        setSessions((current) => [session!, ...current]);
+        setSessions((current) => current.some((item) => item.id === session!.id) ? current : [session!, ...current]);
       } else if (session.title === "New Chat") {
         session = persistSessionTitle(session, nextTitle);
       }
@@ -391,7 +386,7 @@ export default function CoachScreen() {
             <Text style={styles.title}>FITNEO AI</Text>
             <View style={styles.subtitleRow}>
               <View style={styles.onlineDot} />
-              <Text style={styles.online}>{activeSession ? getSessionTitle(activeSession) : "New Chat"}</Text>
+              <Text style={styles.online}>{activeSession ? getSessionTitle(activeSession) : "New conversation"}</Text>
             </View>
           </View>
         </View>

@@ -59,6 +59,145 @@ const fallbackPalettes: Record<string, string> = {
   Volleyball: "#EC4899"
 };
 
+const sportFallbackPools: Record<string, string[][]> = {
+  "Football (Soccer)": [
+    ["football_acceleration_starts", "football_lateral_cuts", "football_close_control_feet", "single_leg_glute_bridge", "side_plank", "runner_calf_mobility"],
+    ["football_backpedal_turns", "football_single_leg_bounds", "sprint_intervals", "jump_lunges", "calf_raises", "plank"],
+    ["football_lateral_cuts", "side_shuffles", "fast_feet", "mountain_climbers", "russian_twists", "walk_run_cooldown"],
+    ["leg_swings", "runner_lunge_stretch", "post_run_hamstring", "runner_calf_mobility", "cat_cow", "recovery_walk"]
+  ],
+  Basketball: [
+    ["basketball_defensive_slides", "basketball_closeout_sprints", "basketball_crossover_footwork", "side_plank", "calf_raises", "ankle_bounces"],
+    ["basketball_rebound_jumps", "tuck_jumps", "jump_lunges", "wall_sit", "single_leg_glute_bridge", "plank"],
+    ["basketball_defensive_slides", "fast_feet", "mountain_climbers", "high_knees", "russian_twists", "walk_run_cooldown"],
+    ["leg_swings", "hip_flexor_stretch", "hamstring_stretch", "runner_calf_mobility", "cat_cow", "childs_pose"]
+  ],
+  Rugby: [
+    ["rugby_get_up_sprints", "rugby_lateral_bound", "rugby_bear_crawl_drive", "push_ups", "side_plank", "calf_raises"],
+    ["rugby_sprawl_recoveries", "bear_crawl", "burpees", "jump_lunges", "plank", "mountain_climbers"],
+    ["sprint_intervals", "rugby_lateral_bound", "fast_feet", "push_ups", "russian_twists", "walk_run_cooldown"],
+    ["cat_cow", "childs_pose", "runner_lunge_stretch", "post_run_hamstring", "runner_calf_mobility", "recovery_walk"]
+  ],
+  Boxing: [
+    ["boxing_jab_cross_rounds", "boxing_slip_roll_drills", "boxing_l_step_footwork", "shadow_boxing", "side_plank", "calf_raises"],
+    ["boxing_pivot_drills", "high_knees", "mountain_climbers", "push_ups", "russian_twists", "plank"],
+    ["boxing_jab_cross_rounds", "boxing_l_step_footwork", "burpees", "bicycle_crunches", "fast_feet", "walk_run_cooldown"],
+    ["cat_cow", "cobra_stretch", "childs_pose", "hip_flexor_stretch", "hamstring_stretch", "recovery_walk"]
+  ],
+  Tennis: [
+    ["tennis_split_step_shuffles", "tennis_lateral_recovery", "tennis_shadow_swings", "side_plank", "calf_raises", "ankle_bounces"],
+    ["tennis_lateral_recovery", "sprint_intervals", "jump_lunges", "russian_twists", "plank", "runner_calf_mobility"],
+    ["tennis_split_step_shuffles", "fast_feet", "side_shuffles", "mountain_climbers", "dead_bug", "walk_run_cooldown"],
+    ["cat_cow", "cobra_stretch", "hip_flexor_stretch", "post_run_hamstring", "runner_lunge_stretch", "recovery_walk"]
+  ],
+  Swimming: [
+    ["swimmer_streamline_plank", "swimmer_dryland_kicks", "dead_bug", "plank", "cat_cow", "cobra_stretch"],
+    ["swimmer_streamline_plank", "push_ups", "supermans", "side_plank", "bird_dogs", "downward_dog"],
+    ["swimmer_dryland_kicks", "mountain_climbers", "russian_twists", "bicycle_crunches", "glute_bridges", "walk_run_cooldown"],
+    ["cat_cow", "childs_pose", "cobra_stretch", "downward_dog", "hamstring_stretch", "recovery_walk"]
+  ],
+  Running: [
+    ["brisk_walk_intervals", "easy_jog_intervals", "cadence_drills", "ankle_bounces", "leg_swings", "runner_calf_mobility"],
+    ["walk_jog_repeats", "running_strides", "butt_kicks", "a_skips", "single_leg_glute_bridge", "plank"],
+    ["easy_jog_intervals", "fast_feet", "side_shuffles", "hill_walk_march", "post_run_hamstring", "walk_run_cooldown"],
+    ["recovery_walk", "runner_lunge_stretch", "runner_calf_mobility", "post_run_hamstring", "cat_cow", "childs_pose"]
+  ],
+  Cricket: [
+    ["cricket_shadow_bowling", "cricket_lateral_pickups", "tennis_shadow_swings", "side_plank", "lunges", "calf_raises"],
+    ["cricket_lateral_pickups", "sprint_intervals", "jump_lunges", "russian_twists", "plank", "push_ups"],
+    ["cricket_shadow_bowling", "side_shuffles", "fast_feet", "mountain_climbers", "dead_bug", "walk_run_cooldown"],
+    ["cat_cow", "cobra_stretch", "hip_flexor_stretch", "post_run_hamstring", "runner_calf_mobility", "recovery_walk"]
+  ],
+  Volleyball: [
+    ["volleyball_approach_jumps", "volleyball_block_jumps", "basketball_defensive_slides", "side_plank", "calf_raises", "ankle_bounces"],
+    ["volleyball_sprawl_recoveries", "tuck_jumps", "jump_lunges", "push_ups", "plank", "mountain_climbers"],
+    ["volleyball_approach_jumps", "fast_feet", "side_shuffles", "burpees", "russian_twists", "walk_run_cooldown"],
+    ["cat_cow", "childs_pose", "hip_flexor_stretch", "hamstring_stretch", "runner_calf_mobility", "recovery_walk"]
+  ]
+};
+
+const positionExerciseEmphasis: Record<string, Record<string, string[]>> = {
+  "Football (Soccer)": {
+    Goalkeeper: ["football_backpedal_turns", "football_lateral_cuts", "single_leg_glute_bridge", "side_plank"],
+    "Centre Back": ["football_backpedal_turns", "rugby_lateral_bound", "sprint_intervals", "plank"],
+    "Full Back": ["football_acceleration_starts", "football_lateral_cuts", "running_strides", "side_shuffles"],
+    "Defensive Midfielder": ["football_close_control_feet", "football_lateral_cuts", "fast_feet", "russian_twists"],
+    "Central Midfielder": ["brisk_walk_intervals", "cadence_drills", "football_close_control_feet", "runner_calf_mobility"],
+    "Attacking Midfielder": ["football_close_control_feet", "football_acceleration_starts", "fast_feet", "side_plank"],
+    "Left Winger": ["football_acceleration_starts", "running_strides", "football_lateral_cuts", "ankle_bounces"],
+    "Right Winger": ["football_acceleration_starts", "running_strides", "football_lateral_cuts", "ankle_bounces"],
+    Striker: ["football_acceleration_starts", "football_single_leg_bounds", "sprint_intervals", "calf_raises"]
+  },
+  Basketball: {
+    "Point Guard": ["basketball_crossover_footwork", "basketball_defensive_slides", "fast_feet", "side_plank"],
+    "Shooting Guard": ["basketball_closeout_sprints", "basketball_crossover_footwork", "tuck_jumps", "russian_twists"],
+    "Small Forward": ["basketball_rebound_jumps", "basketball_defensive_slides", "jump_lunges", "plank"],
+    "Power Forward": ["basketball_rebound_jumps", "wall_sit", "single_leg_glute_bridge", "push_ups"],
+    Center: ["basketball_rebound_jumps", "wall_sit", "plank", "rugby_bear_crawl_drive"]
+  },
+  Rugby: {
+    Prop: ["rugby_sprawl_recoveries", "rugby_bear_crawl_drive", "push_ups", "plank"],
+    Hooker: ["rugby_get_up_sprints", "rugby_bear_crawl_drive", "side_plank", "calf_raises"],
+    Lock: ["rugby_lateral_bound", "tuck_jumps", "push_ups", "plank"],
+    Flanker: ["rugby_get_up_sprints", "rugby_sprawl_recoveries", "rugby_lateral_bound", "mountain_climbers"],
+    "Number 8": ["rugby_get_up_sprints", "rugby_bear_crawl_drive", "burpees", "side_plank"],
+    "Scrum Half": ["rugby_lateral_bound", "fast_feet", "side_shuffles", "russian_twists"],
+    "Fly Half": ["rugby_lateral_bound", "sprint_intervals", "fast_feet", "side_plank"],
+    Centre: ["rugby_get_up_sprints", "rugby_lateral_bound", "jump_lunges", "plank"],
+    Wing: ["sprint_intervals", "running_strides", "rugby_lateral_bound", "ankle_bounces"],
+    Fullback: ["rugby_get_up_sprints", "football_backpedal_turns", "side_shuffles", "runner_calf_mobility"]
+  },
+  Boxing: {
+    Orthodox: ["boxing_jab_cross_rounds", "boxing_pivot_drills", "boxing_slip_roll_drills", "shadow_boxing"],
+    Southpaw: ["boxing_jab_cross_rounds", "boxing_l_step_footwork", "boxing_slip_roll_drills", "russian_twists"],
+    Switch: ["boxing_l_step_footwork", "boxing_pivot_drills", "fast_feet", "side_plank"],
+    "Out-boxer": ["boxing_l_step_footwork", "fast_feet", "shadow_boxing", "walk_run_cooldown"],
+    "Pressure Fighter": ["boxing_jab_cross_rounds", "mountain_climbers", "burpees", "plank"],
+    "Counter Puncher": ["boxing_slip_roll_drills", "boxing_pivot_drills", "side_plank", "russian_twists"]
+  },
+  Swimming: {
+    Freestyle: ["swimmer_streamline_plank", "swimmer_dryland_kicks", "supermans", "dead_bug"],
+    Backstroke: ["swimmer_streamline_plank", "bird_dogs", "supermans", "side_plank"],
+    Breaststroke: ["swimmer_dryland_kicks", "glute_bridges", "hip_flexor_stretch", "dead_bug"],
+    Butterfly: ["swimmer_streamline_plank", "push_ups", "supermans", "plank"],
+    "Individual Medley": ["swimmer_streamline_plank", "swimmer_dryland_kicks", "bird_dogs", "side_plank"],
+    "Open Water": ["swimmer_streamline_plank", "brisk_walk_intervals", "dead_bug", "runner_calf_mobility"]
+  },
+  Running: {
+    "First 5K": ["walk_jog_repeats", "easy_jog_intervals", "cadence_drills", "runner_calf_mobility"],
+    "Weight-loss Walking": ["power_walk", "brisk_walk_intervals", "hill_walk_march", "recovery_walk"],
+    "10K Base": ["easy_jog_intervals", "running_strides", "cadence_drills", "post_run_hamstring"],
+    "Speed / Pace": ["running_strides", "fast_feet", "a_skips", "ankle_bounces"],
+    Endurance: ["brisk_walk_intervals", "walk_jog_repeats", "easy_jog_intervals", "walk_run_cooldown"]
+  },
+  Cricket: {
+    Batter: ["tennis_shadow_swings", "cricket_lateral_pickups", "russian_twists", "side_plank"],
+    Bowler: ["cricket_shadow_bowling", "runner_lunge_stretch", "side_plank", "push_ups"],
+    "All-rounder": ["cricket_shadow_bowling", "cricket_lateral_pickups", "sprint_intervals", "dead_bug"],
+    Wicketkeeper: ["cricket_lateral_pickups", "side_shuffles", "wall_sit", "plank"],
+    Fielder: ["cricket_lateral_pickups", "sprint_intervals", "fast_feet", "calf_raises"]
+  },
+  Volleyball: {
+    Setter: ["volleyball_approach_jumps", "basketball_defensive_slides", "side_plank", "fast_feet"],
+    "Outside Hitter": ["volleyball_approach_jumps", "volleyball_block_jumps", "jump_lunges", "plank"],
+    "Opposite Hitter": ["volleyball_approach_jumps", "tuck_jumps", "push_ups", "russian_twists"],
+    "Middle Blocker": ["volleyball_block_jumps", "wall_sit", "calf_raises", "plank"],
+    Libero: ["volleyball_sprawl_recoveries", "side_shuffles", "fast_feet", "dead_bug"]
+  }
+};
+
+function blendPositionPool(baseIds: string[], sport: string, position: string, dayIndex: number) {
+  const emphasis = positionExerciseEmphasis[sport]?.[position] ?? [];
+  if (emphasis.length === 0) return baseIds;
+  const rotated = emphasis.slice(dayIndex % emphasis.length).concat(emphasis.slice(0, dayIndex % emphasis.length));
+  return Array.from(new Set([...rotated.slice(0, 3), ...baseIds])).slice(0, 8);
+}
+
+function buildSportPools(sport: string, position: string, tier: ExerciseEquipmentTier, fallback: string[][]) {
+  const sourcePools = sportFallbackPools[sport] ?? fallback;
+  return sourcePools.map((ids, index) => pickValid(blendPositionPool(ids, sport, position, index), tier));
+}
+
 function getOpenAiClient() {
   if (!openAiApiKey) return null;
   return new OpenAI({
@@ -69,6 +208,40 @@ function getOpenAiClient() {
 
 function cleanString(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function normalizeComparable(value: unknown) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function getContextSport(context: PlanContext) {
+  return cleanString(context.answers.sport, "");
+}
+
+function getContextPosition(context: PlanContext) {
+  return cleanString(context.answers.sport_position, cleanString(context.answers.position, ""));
+}
+
+function getContextLevel(context: PlanContext) {
+  return cleanString(context.answers.sport_level, cleanString(context.profile.fitness_level, ""));
+}
+
+function planMetadataMatchesContext(
+  saved: { sport?: unknown; position?: unknown; level?: unknown },
+  context: PlanContext
+) {
+  const currentSport = normalizeComparable(getContextSport(context));
+  const currentPosition = normalizeComparable(getContextPosition(context));
+  const currentLevel = normalizeComparable(getContextLevel(context));
+  const savedSport = normalizeComparable(saved.sport);
+  const savedPosition = normalizeComparable(saved.position);
+  const savedLevel = normalizeComparable(saved.level);
+
+  if (currentSport && savedSport && currentSport !== savedSport) return false;
+  if (currentPosition && savedPosition && currentPosition !== savedPosition) return false;
+  if (currentLevel && savedLevel && currentLevel !== savedLevel) return false;
+  if (currentSport && !savedSport) return false;
+  return true;
 }
 
 function normalizeEquipmentPreference(answers: Record<string, unknown>): ExerciseEquipmentTier {
@@ -111,15 +284,19 @@ function buildFallbackPlan(context?: Partial<PlanContext>): GeneratedPlan {
   const tier = normalizeEquipmentPreference(answers);
   const color = fallbackPalettes[sport] ?? "#0A84FF";
 
-  const pools = [
+  const genericPools = [
     pickValid(["push_ups", "squats", "glute_bridges", "mountain_climbers", "dead_bug", "side_plank", "jumping_jacks"], tier),
     pickValid(["pike_push_ups", "lunges", "single_leg_glute_bridge", "calf_raises", "plank", "bicycle_crunches"], tier),
     pickValid(["high_knees", "burpees", "bear_crawl", "shadow_boxing", "jumping_jacks", "mountain_climbers"], tier),
     pickValid(["cat_cow", "downward_dog", "hamstring_stretch", "hip_flexor_stretch", "cobra_stretch", "childs_pose"], "none"),
     pickValid(["wide_push_ups", "wall_sit", "bird_dogs", "reverse_crunches", "v_ups", "supermans"], tier)
   ];
+  const pools = buildSportPools(sport, position, tier, genericPools);
 
   const themes = ["Foundation", "Progressive Power", "Peak Conditioning", "Performance Polish"];
+  const dayTitles = sport === "Running"
+    ? ["Aerobic Base", "Stride Mechanics", "Tempo Prep", "Mobility Reset", "Rest + Recovery", "Cadence Builder", "Rest + Recovery"]
+    : ["Athletic Base", "Position Power", "Speed + Skill", "Mobility Reset", "Rest + Recovery", "Game Conditioning", "Rest + Recovery"];
 
   return {
     planTitle: `${sport === "Performance" ? goal : sport} Training Plan`,
@@ -132,10 +309,10 @@ function buildFallbackPlan(context?: Partial<PlanContext>): GeneratedPlan {
       days: Array.from({ length: 7 }).map((__, dayIndex) => {
         const dayNumber = dayIndex + 1;
         const isRest = dayNumber === 5 || dayNumber === 7;
-        const poolIndex = dayNumber === 6 ? 4 : Math.min(dayIndex, 3);
+        const poolIndex = isRest ? 0 : (weekIndex + dayIndex) % pools.length;
         return {
           dayNumber,
-          title: isRest ? "Rest + Recovery" : ["Athletic Base", "Lower Body", "HIIT & Cardio", "Mobility Reset", "Rest + Recovery", "Full Body Control", "Rest + Recovery"][dayIndex],
+          title: isRest ? "Rest + Recovery" : dayTitles[dayIndex],
           focus: isRest ? "Recovery, walking, hydration, and light mobility." : `Week ${weekIndex + 1} ${themes[weekIndex].toLowerCase()} work for ${position}.`,
           exerciseIds: isRest ? [] : pools[poolIndex],
           isRest,
@@ -144,6 +321,33 @@ function buildFallbackPlan(context?: Partial<PlanContext>): GeneratedPlan {
       })
     }))
   };
+}
+
+export function previewGeneratedSportPlanForAudit(
+  sport: string,
+  position: string,
+  equipment: ExerciseEquipmentTier = "none"
+) {
+  const plan = buildFallbackPlan({
+    answers: {
+      sport,
+      sport_position: position,
+      equipment
+    },
+    profile: {
+      fitness_level: "Beginner",
+      primary_goal: "Athletic Performance"
+    }
+  });
+
+  return plan.weeks[0].days
+    .filter((day) => !day.isRest)
+    .slice(0, 4)
+    .map((day) => ({
+      day: day.dayNumber,
+      title: day.title,
+      exerciseIds: day.exerciseIds
+    }));
 }
 
 function validatePlan(value: unknown, fallback: GeneratedPlan): GeneratedPlan {
@@ -288,13 +492,15 @@ export async function generatePersonalizedPlan(userId: string): Promise<Generate
 export async function loadExistingPlanWithMetadata(userId: string): Promise<GeneratedPlanRecord | null> {
   if (!isSupabaseConfigured) return null;
   try {
+    const context = await loadPlanContext(userId);
     const { data, error } = await supabase
       .from("ai_plans")
-      .select("plan_data,generated_at")
+      .select("plan_data,generated_at,sport,position,level")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (error || !data?.plan_data) return null;
+    if (!planMetadataMatchesContext(data, context)) return null;
 
     const generatedAt = typeof data.generated_at === "string" ? data.generated_at : null;
     if (generatedAt) {
@@ -302,7 +508,7 @@ export async function loadExistingPlanWithMetadata(userId: string): Promise<Gene
       if (Number.isFinite(ageMs) && ageMs > 30 * 24 * 60 * 60 * 1000) return null;
     }
 
-    const fallback = buildFallbackPlan();
+    const fallback = buildFallbackPlan(context);
     return {
       plan: validatePlan(data.plan_data, fallback),
       generatedAt
@@ -326,4 +532,3 @@ export function getPlanDayForDate(plan: GeneratedPlan, generatedAt?: string | nu
   const dayIndex = Math.max(0, Math.floor((targetUtc - startUtc) / 86400000)) % Math.min(28, days.length);
   return days[dayIndex] ?? days[0] ?? null;
 }
-

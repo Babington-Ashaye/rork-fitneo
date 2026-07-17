@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AdaptiveBanner } from "@/components/AdaptiveBanner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -16,16 +16,106 @@ const SPORT_ONBOARDING_KEY = "fitneo.sports.onboarding.v2";
 const TOTAL_STEPS = 4;
 
 const sports = [
-  { name: "Football (Soccer)", label: "Football", icon: "football" as const, accent: "#22C55E" },
-  { name: "Basketball", label: "Basketball", icon: "basketball" as const, accent: "#F97316" },
-  { name: "Tennis", label: "Tennis", icon: "tennisball" as const, accent: "#A3E635" },
-  { name: "Swimming", label: "Swimming", icon: "water" as const, accent: "#06B6D4" },
-  { name: "Running", label: "Running", icon: "walk" as const, accent: "#A855F7" },
-  { name: "Rugby", label: "Rugby", icon: "american-football" as const, accent: "#EF4444" },
-  { name: "Boxing", label: "Boxing", icon: "fitness" as const, accent: "#DC2626" },
-  { name: "Cricket", label: "Cricket", icon: "baseball" as const, accent: "#EAB308" },
-  { name: "Volleyball", label: "Volleyball", icon: "ellipse" as const, accent: "#EC4899" },
-  { name: "Other", label: "Other", icon: "sparkles" as const, accent: "#0A84FF" }
+  {
+    name: "Football (Soccer)",
+    label: "Football",
+    icon: "football" as const,
+    glyph: "⚽",
+    accent: "#22C55E",
+    secondary: "#052E16",
+    image: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=85",
+    mood: "Pitch speed · first step · match engine"
+  },
+  {
+    name: "Basketball",
+    label: "Basketball",
+    icon: "basketball" as const,
+    glyph: "🏀",
+    accent: "#F97316",
+    secondary: "#431407",
+    image: "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=85",
+    mood: "Court bounce · vertical pop · lateral lock"
+  },
+  {
+    name: "Tennis",
+    label: "Tennis",
+    icon: "tennisball" as const,
+    glyph: "🎾",
+    accent: "#A3E635",
+    secondary: "#1A2E05",
+    image: "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?auto=format&fit=crop&w=1200&q=85",
+    mood: "Split-step rhythm · rotation · recovery"
+  },
+  {
+    name: "Swimming",
+    label: "Swimming",
+    icon: "accessibility" as const,
+    glyph: "🏊",
+    accent: "#06B6D4",
+    secondary: "#083344",
+    image: "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=1200&q=85",
+    mood: "Pool power · streamline · shoulder durability"
+  },
+  {
+    name: "Running",
+    label: "Running",
+    icon: "walk" as const,
+    glyph: "🏃",
+    accent: "#A855F7",
+    secondary: "#3B0764",
+    image: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=1200&q=85",
+    mood: "Cadence · pace · aerobic engine"
+  },
+  {
+    name: "Rugby",
+    label: "Rugby",
+    icon: "american-football" as const,
+    glyph: "🏉",
+    accent: "#16A34A",
+    secondary: "#052E16",
+    image: "https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1200&q=85",
+    mood: "Collision-ready · repeat power · pitch grit"
+  },
+  {
+    name: "Boxing",
+    label: "Boxing",
+    icon: "fitness" as const,
+    glyph: "🥊",
+    accent: "#EF4444",
+    secondary: "#450A0A",
+    image: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=1200&q=85",
+    mood: "Footwork · rotation · punch endurance"
+  },
+  {
+    name: "Cricket",
+    label: "Cricket",
+    icon: "baseball" as const,
+    glyph: "🏏",
+    accent: "#EAB308",
+    secondary: "#422006",
+    image: "https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=1200&q=85",
+    mood: "Crease speed · shoulder rhythm · field reaction"
+  },
+  {
+    name: "Volleyball",
+    label: "Volleyball",
+    icon: "ellipse" as const,
+    glyph: "🏐",
+    accent: "#EC4899",
+    secondary: "#500724",
+    image: "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=1200&q=85",
+    mood: "Approach jump · block timing · floor defense"
+  },
+  {
+    name: "Other",
+    label: "Other",
+    icon: "sparkles" as const,
+    glyph: "✦",
+    accent: "#0A84FF",
+    secondary: "#082F49",
+    image: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1200&q=85",
+    mood: "Custom athletic profile"
+  }
 ];
 
 const levels = [
@@ -47,11 +137,11 @@ const positions: Record<string, string[]> = {
   Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],
   Rugby: ["Prop", "Hooker", "Lock", "Flanker", "Number 8", "Scrum Half", "Fly Half", "Centre", "Wing", "Fullback"],
   Volleyball: ["Setter", "Outside Hitter", "Opposite Hitter", "Middle Blocker", "Libero"],
-  Boxing: ["Orthodox", "Southpaw", "Switch"],
-  Tennis: ["Right Hand", "Left Hand", "Ambidextrous"],
-  Swimming: ["Right Hand", "Left Hand", "Ambidextrous"],
-  Running: ["Right Hand", "Left Hand", "Ambidextrous"],
-  Cricket: ["Right Hand", "Left Hand", "Ambidextrous"]
+  Boxing: ["Orthodox", "Southpaw", "Switch", "Out-boxer", "Pressure Fighter", "Counter Puncher"],
+  Tennis: ["Baseline Player", "Serve-and-Volley", "All-Court Player", "Doubles Specialist"],
+  Swimming: ["Freestyle", "Backstroke", "Breaststroke", "Butterfly", "Individual Medley", "Open Water"],
+  Running: ["First 5K", "Weight-loss Walking", "10K Base", "Speed / Pace", "Endurance"],
+  Cricket: ["Batter", "Bowler", "All-rounder", "Wicketkeeper", "Fielder"]
 };
 
 const calibrationSteps = [
@@ -81,14 +171,61 @@ function getSportMeta(sportName: string) {
   return sports.find((sport) => sport.name === sportName) ?? sports[0];
 }
 
-function needsDominantHand(sportName: string) {
-  return ["Tennis", "Swimming", "Running", "Cricket"].includes(sportName);
+function getPositionQuestion(sportName: string) {
+  if (sportName === "Other") return "Tell us your sport";
+  if (sportName === "Swimming") return "What swim focus are you training?";
+  if (sportName === "Running") return "What running goal are you chasing?";
+  if (sportName === "Tennis") return "What playing style fits you?";
+  if (sportName === "Cricket") return "What cricket role do you play?";
+  if (sportName === "Boxing") return "What boxing style do you train?";
+  return "What position do you play?";
 }
 
-function getPositionQuestion(sportName: string) {
-  if (needsDominantHand(sportName)) return "Dominant hand?";
-  if (sportName === "Other") return "Tell us your sport";
-  return "What position do you play?";
+function getRoleLabel(sportName: string) {
+  if (sportName === "Swimming") return "Focus";
+  if (sportName === "Running") return "Goal";
+  if (sportName === "Tennis") return "Style";
+  if (sportName === "Cricket") return "Role";
+  if (sportName === "Boxing") return "Style";
+  return sportName === "Other" ? "Sport" : "Position";
+}
+
+type SportMeta = (typeof sports)[number];
+
+const sportGlyphs: Record<string, string> = {
+  "Football (Soccer)": "\u26BD",
+  Basketball: "\uD83C\uDFC0",
+  Tennis: "\uD83C\uDFBE",
+  Swimming: "\uD83C\uDFCA",
+  Running: "\uD83C\uDFC3",
+  Rugby: "\uD83C\uDFC9",
+  Boxing: "\uD83E\uDD4A",
+  Cricket: "\uD83C\uDFCF",
+  Volleyball: "\uD83C\uDFD0",
+  Other: "\u2726"
+};
+
+function getSportGlyph(sport: SportMeta) {
+  return sportGlyphs[sport.name] ?? sport.glyph ?? "\u2726";
+}
+
+function formatSportMood(value: string) {
+  return value.replace(/Â·/g, "·").replace(/â€”/g, "—");
+}
+
+function SportGlyph({ sport, size = 28, selected = false }: { sport: SportMeta; size?: number; selected?: boolean }) {
+  return (
+    <Text
+      style={{
+        color: selected ? "#FFFFFF" : sport.accent,
+        fontSize: size,
+        lineHeight: size + 4,
+        textAlign: "center"
+      }}
+    >
+      {getSportGlyph(sport)}
+    </Text>
+  );
 }
 
 function getShortLevel(level: string) {
@@ -218,7 +355,7 @@ export default function SportsModeScreen() {
           .from("workout_sessions")
           .select("session_name,xp_earned")
           .eq("user_id", user.id)
-          .ilike("session_name", `%${selected}%`),
+          .ilike("session_name", `%${selectedSport.label}%`),
         supabase
           .from("user_profiles")
           .select("current_streak,total_xp")
@@ -250,8 +387,13 @@ export default function SportsModeScreen() {
         .from("user_profiles")
         .update({ onboarding_answers: mergedAnswers })
         .eq("id", user.id);
-      if (!error) void refreshProfile();
-      void generatePersonalizedPlan(user.id).then(setPlan).catch(() => undefined);
+      if (!error) await refreshProfile();
+      try {
+        const nextPlan = await generatePersonalizedPlan(user.id);
+        setPlan(nextPlan);
+      } catch (err) {
+        setPlanError(err instanceof Error ? err.message : "Could not generate your sports plan yet.");
+      }
     }
     setIsCalibrating(true);
   }
@@ -297,7 +439,7 @@ export default function SportsModeScreen() {
     return (
       <AppLayout contentContainerStyle={styles.calibrationScreen}>
         <Animated.View style={[styles.aiOrb, { borderColor: displayColor, transform: [{ scale: pulseAnim }] }]}>
-          <Ionicons name={selectedSport.icon} size={42} color={displayColor} />
+          <SportGlyph sport={selectedSport} size={44} selected />
         </Animated.View>
         <Text style={styles.aiTitle}>FITNEO AI</Text>
         <Text style={styles.aiSubtitle}>Sports Mode</Text>
@@ -331,7 +473,7 @@ export default function SportsModeScreen() {
         <View style={styles.emptySportGrid}>
           {sports.slice(0, 9).map((sport) => (
             <View key={sport.name} style={[styles.emptySportTile, { borderColor: `${sport.accent}44` }]}>
-              <Ionicons name={sport.icon} size={28} color={sport.accent} />
+              <SportGlyph sport={sport} size={28} />
             </View>
           ))}
         </View>
@@ -354,14 +496,14 @@ export default function SportsModeScreen() {
       <AppLayout contentContainerStyle={styles.completionScreen}>
         <SportsHeader />
         <View style={[styles.completionIcon, { borderColor: displayColor }]}>
-          <Ionicons name={selectedSport.icon} size={48} color={displayColor} />
+          <SportGlyph sport={selectedSport} size={48} selected />
         </View>
         <Text style={styles.completionTitle}>You're all set</Text>
         <Text style={[styles.completionSubtitle, { color: displayColor }]}>{level} {selectedSport.label} Player</Text>
         <View style={styles.answerSummaryGrid}>
           <SummaryTile label="Sport" value={selectedSport.label} />
           <SummaryTile label="Level" value={level} />
-          <SummaryTile label={needsDominantHand(selected) ? "Hand" : "Position"} value={finalPosition} />
+          <SummaryTile label={getRoleLabel(selected)} value={finalPosition} />
         </View>
         <TouchableOpacity activeOpacity={0.86} style={[styles.primaryButton, { backgroundColor: displayColor }]} onPress={() => setMode("dashboard")}>
           <Text style={styles.primaryButtonText}>Open Sports Plan</Text>
@@ -377,11 +519,13 @@ export default function SportsModeScreen() {
     return (
       <AppLayout scroll contentContainerStyle={styles.dashboardScreen}>
         <SportsHeader />
-        <LinearGradient colors={["#151821", "#0D0D11"]} style={[styles.heroCard, { borderLeftColor: displayColor }]}>
+        <ImageBackground source={{ uri: selectedSport.image }} resizeMode="cover" style={[styles.heroCard, { borderLeftColor: displayColor }]} imageStyle={styles.heroImage}>
+          <LinearGradient colors={[`${selectedSport.secondary}DD`, "rgba(6,6,8,0.84)", "rgba(6,6,8,0.98)"]} style={StyleSheet.absoluteFillObject} />
+          <View style={[styles.heroDiagonal, { backgroundColor: `${displayColor}38` }]} />
           <View style={styles.heroTop}>
             <View style={styles.heroIdentity}>
               <View style={[styles.heroIcon, { backgroundColor: `${displayColor}22` }]}>
-                <Ionicons name={selectedSport.icon} size={24} color={displayColor} />
+                <SportGlyph sport={selectedSport} size={26} />
               </View>
               <View style={styles.heroTextBlock}>
                 <Text style={styles.heroSport}>{plan?.planTitle ?? `${selectedSport.label} Training Plan`}</Text>
@@ -398,6 +542,7 @@ export default function SportsModeScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          <Text style={[styles.sportMood, { color: displayColor }]}>{formatSportMood(selectedSport.mood)}</Text>
           <Text style={styles.tagline}>{plan?.tagline ?? "Your AI plan is calibrating around your sport profile."}</Text>
           <Text style={styles.description}>{plan?.planDescription ?? "FITNEO is preparing a personalized training block for you."}</Text>
           <View style={styles.heroStatRow}>
@@ -407,7 +552,7 @@ export default function SportsModeScreen() {
             <View style={styles.statDivider} />
             <HeroStat value={String(stats.xp)} label="Sport XP" />
           </View>
-        </LinearGradient>
+        </ImageBackground>
 
         <AdaptiveBanner enabled={!isPremium} label="Sponsored sports recovery" />
 
@@ -476,7 +621,7 @@ export default function SportsModeScreen() {
         <View style={styles.heroGlowDot} />
         <View style={styles.onboardingHeroTop}>
           <View style={[styles.onboardingSportOrb, { borderColor: displayColor, shadowColor: displayColor }]}>
-            <Ionicons name={selectedSport.icon} size={28} color={displayColor} />
+            <SportGlyph sport={selectedSport} size={30} />
           </View>
           <View style={styles.onboardingHeroCopy}>
             <Text style={styles.onboardingKicker}>FITNEO AI SPORTS</Text>
@@ -512,14 +657,14 @@ export default function SportsModeScreen() {
                   onPress={() => setSelected(sport.name)}
                   style={[styles.sportCard, selected === sport.name && { borderColor: sport.accent, shadowColor: sport.accent }]}
                 >
-                  {selected === sport.name ? (
-                    <LinearGradient colors={[sport.accent, `${sport.accent}99`]} style={StyleSheet.absoluteFillObject} />
-                  ) : null}
+                  <ImageBackground source={{ uri: sport.image }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.sportCardImage}>
+                    <LinearGradient colors={selected === sport.name ? [`${sport.accent}D9`, `${sport.secondary}E6`] : ["rgba(7,7,9,0.60)", "rgba(7,7,9,0.94)"]} style={StyleSheet.absoluteFillObject} />
+                  </ImageBackground>
                   {selected === sport.name ? (
                     <View style={styles.checkBadge}><Ionicons name="checkmark" size={13} color="#FFFFFF" /></View>
                   ) : null}
                   <View style={[styles.sportIconRing, { backgroundColor: selected === sport.name ? "rgba(255,255,255,0.18)" : `${sport.accent}18` }]}>
-                    <Ionicons name={sport.icon} size={32} color={selected === sport.name ? "#FFFFFF" : sport.accent} />
+                    <SportGlyph sport={sport} size={32} selected={selected === sport.name} />
                   </View>
                   <Text style={styles.sportName}>{sport.label}</Text>
                 </TouchableOpacity>
@@ -726,6 +871,10 @@ const styles = StyleSheet.create({
   loadingPlanCopy: { color: "#A1A1AA", fontSize: 12, lineHeight: 18, textAlign: "center" },
   planError: { color: colors.danger, fontSize: 12, lineHeight: 18, textAlign: "center" },
   weekBlock: { gap: 10 },
+  heroImage: { borderRadius: 22 },
+  heroDiagonal: { borderRadius: 90, height: 180, position: "absolute", right: -70, top: -70, transform: [{ rotate: "-18deg" }], width: 180 },
+  sportMood: { fontSize: 11, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase" },
+  sportCardImage: { borderRadius: 20 },
   lockedPreview: { opacity: 0.3 },
   weekHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   weekTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },

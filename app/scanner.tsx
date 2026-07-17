@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AppLayout } from "@/components/AppLayout";
@@ -95,7 +95,14 @@ export default function ScannerScreen() {
   if (!permission.granted) {
     return (
       <AppLayout contentContainerStyle={styles.center}>
+        <TouchableOpacity activeOpacity={0.78} style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.permissionIcon}>
+          <Ionicons name="camera" size={28} color={colors.accent} />
+        </View>
         <Text style={styles.title}>Camera access is required for meal scanning.</Text>
+        <Text style={styles.permissionCopy}>FITNEO only uses the camera to capture the food photo you choose to analyze.</Text>
         <TouchableOpacity style={styles.button} onPress={requestPermission}>
           <Text style={styles.buttonText}>Allow camera</Text>
         </TouchableOpacity>
@@ -105,6 +112,13 @@ export default function ScannerScreen() {
 
   return (
     <AppLayout scroll contentContainerStyle={styles.screen}>
+      <View style={styles.topRow}>
+        <TouchableOpacity activeOpacity={0.78} style={styles.topBackButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>AI Plate Scanner</Text>
+        <View style={styles.topBackButton} />
+      </View>
       <View style={styles.headerCard}>
         <View style={styles.headerIcon}>
           <Ionicons name="scan" size={20} color={colors.textPrimary} />
@@ -168,13 +182,19 @@ export default function ScannerScreen() {
 const styles = StyleSheet.create({
   screen: { gap: 14, paddingBottom: 28 },
   center: { alignItems: "center", gap: 16, justifyContent: "center", paddingHorizontal: 28 },
+  topRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  topBackButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", width: 38 },
+  topTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: "900" },
+  backButton: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, height: 38, justifyContent: "center", left: 18, position: "absolute", top: 18, width: 38 },
+  permissionIcon: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.12)", borderColor: "rgba(10,132,255,0.28)", borderRadius: 28, borderWidth: 1, height: 56, justifyContent: "center", width: 56 },
+  permissionCopy: { color: colors.textSecondary, fontSize: 13, lineHeight: 19, maxWidth: 320, textAlign: "center" },
   headerCard: { alignItems: "center", backgroundColor: "rgba(10,132,255,0.10)", borderColor: "rgba(10,132,255,0.28)", borderRadius: 22, borderWidth: 1, flexDirection: "row", gap: 14, padding: 16 },
   headerIcon: { alignItems: "center", backgroundColor: colors.accent, borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
   headerCopy: { flex: 1 },
   kicker: { color: colors.accent, fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   headerTitle: { color: colors.textPrimary, fontSize: 24, fontWeight: "900", marginTop: 2 },
   headerSubtitle: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  cameraFrame: { backgroundColor: "#050507", borderColor: "rgba(10,132,255,0.30)", borderRadius: 24, borderWidth: 1, minHeight: 320, overflow: "hidden" },
+  cameraFrame: { backgroundColor: "#050507", borderColor: "rgba(10,132,255,0.30)", borderRadius: 24, borderWidth: 1, minHeight: 280, overflow: "hidden" },
   cameraTint: { backgroundColor: "rgba(0,0,0,0.18)", ...StyleSheet.absoluteFillObject },
   guide: { alignSelf: "center", borderColor: colors.accent, borderRadius: 24, borderWidth: 2, height: "64%", marginTop: "18%", width: "82%" },
   cornerTopLeft: { borderColor: colors.teal, borderLeftWidth: 4, borderTopWidth: 4, borderTopLeftRadius: 18, height: 42, left: "9%", position: "absolute", top: "17%", width: 42 },

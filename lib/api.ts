@@ -215,6 +215,72 @@ export async function getCurrentUserId() {
   return data.session?.user.id ?? null;
 }
 
+function getLocalDateKey(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function addDaysKey(base: Date, offset: number) {
+  const next = new Date(base);
+  next.setDate(next.getDate() + offset);
+  return getLocalDateKey(next);
+}
+
+function calculateWorkoutStreak(rows: Array<Record<string, any>>) {
+  const uniqueDays = [...new Set(rows
+    .map((row) => getLocalDateKey(String(row.completed_at ?? row.created_at ?? "")))
+    .filter(Boolean))]
+    .sort();
+
+  let longestStreak = 0;
+  let running = 0;
+  let previous: string | null = null;
+  for (const day of uniqueDays) {
+    if (previous && day === addDaysKey(new Date(`${previous}T12:00:00`), 1)) {
+      running += 1;
+    } else {
+      running = 1;
+    }
+    longestStreak = Math.max(longestStreak, running);
+    previous = day;
+  }
+
+  const today = getLocalDateKey(new Date());
+  const yesterday = addDaysKey(new Date(), -1);
+  let currentStreak = 0;
+  let cursor = uniqueDays.includes(today) ? today : uniqueDays.includes(yesterday) ? yesterday : "";
+  while (cursor && uniqueDays.includes(cursor)) {
+    currentStreak += 1;
+    cursor = addDaysKey(new Date(`${cursor}T12:00:00`), -1);
+  }
+
+  return { currentStreak, longestStreak };
+}
+
+async function syncUserWorkoutStreak(userId: string) {
+  if (!isSupabaseConfigured) return { currentStreak: 0, longestStreak: 0 };
+  const { data } = await supabase
+    .from("workout_sessions")
+    .select("completed_at,created_at")
+    .eq("user_id", userId)
+    .order("completed_at", { ascending: true })
+    .limit(365);
+  const streak = calculateWorkoutStreak((data ?? []) as Array<Record<string, any>>);
+  await supabase
+    .from("user_profiles")
+    .update({
+      current_streak: streak.currentStreak,
+      longest_streak: streak.longestStreak
+    })
+    .eq("id", userId);
+  return streak;
+}
+
 export async function fetchDashboardData(): Promise<DashboardData> {
   if (!isSupabaseConfigured) {
     return fallbackDashboard;
@@ -253,11 +319,12 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     .filter((row) => String(row.completed_at ?? "").startsWith(today))
     .reduce((sum, row) => sum + Math.round(Number(row.duration_seconds ?? 0) / 60), 0);
   const caloriesEaten = nutrition.reduce((sum, row) => sum + Number(row.calories ?? 0), 0);
+  const streak = calculateWorkoutStreak(workouts);
 
   return {
     ...fallbackDashboard,
     displayName: profile.display_name || profile.email?.split("@")[0] || "Athlete",
-    streak: Number(profile.current_streak ?? profile.streak ?? 0),
+    streak: Math.max(streak.currentStreak, Number(profile.current_streak ?? profile.streak ?? 0)),
     level: xpProgress.level,
     xp,
     xpSpan: xpProgress.xpSpan,
@@ -486,7 +553,7 @@ export async function fetchProgressData(): Promise<ProgressData> {
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
 
   const [profileRes, workoutsRes, xpRes, metricsRes] = await Promise.all([
-    supabase.from("user_profiles").select("current_streak,height_cm,goal_weight_kg,weight_kg").eq("id", userId).maybeSingle(),
+    supabase.from("user_profiles").select("current_streak,longest_streak,height_cm,goal_weight_kg,weight_kg").eq("id", userId).maybeSingle(),
     supabase.from("workout_sessions").select("*").eq("user_id", userId).gte("completed_at", eightWeeksAgo.toISOString()).order("completed_at", { ascending: true }),
     supabase.from("xp_transactions").select("amount").eq("user_id", userId),
     supabase.from("body_metrics").select("*").eq("user_id", userId).order("recorded_date", { ascending: false }).limit(8)
@@ -501,6 +568,7 @@ export async function fetchProgressData(): Promise<ProgressData> {
 
   const profile = (profileRes.data ?? {}) as Record<string, any>;
   const workouts = (workoutsRes.data ?? []) as Record<string, any>[];
+  const streak = calculateWorkoutStreak(workouts);
   const weeklyWorkouts = Array.from({ length: 8 }, () => 0);
   workouts.forEach((workout) => {
     const completed = new Date(String(workout.completed_at ?? workout.created_at ?? new Date().toISOString()));
@@ -544,8 +612,8 @@ export async function fetchProgressData(): Promise<ProgressData> {
   }
 
   return {
-    streak: Number(profile.current_streak ?? 0),
-    longestStreak: Number(profile.longest_streak ?? profile.current_streak ?? 0),
+    streak: Math.max(streak.currentStreak, Number(profile.current_streak ?? 0)),
+    longestStreak: Math.max(streak.longestStreak, Number(profile.longest_streak ?? profile.current_streak ?? 0)),
     consistency: Math.min(100, Math.round((weeklyWorkouts.filter(Boolean).length / 8) * 100)),
     weeklyWorkouts,
     totalWorkouts: workouts.length,
@@ -699,18 +767,19 @@ export async function fetchChatSessions(): Promise<ChatSessionSummary[]> {
       ? session.title
       : firstUser
         ? makeChatTitle(firstUser)
-        : "New Chat";
+        : "";
     return {
       ...session,
+      hasMessages: sessionMessages.length > 0,
       title,
       preview: firstAssistant ? makeChatPreview(firstAssistant) : firstUser ? makeChatPreview(firstUser) : undefined
     };
-  });
+  }).filter((session) => session.hasMessages || (session.title && session.title !== "New Chat"));
 
   await Promise.allSettled(
     hydrated.map(async (session) => {
       const original = sessions.find((item) => item.id === session.id);
-      if (session.title === "New Chat" || original?.title !== "New Chat") return;
+      if (!session.title || session.title === "New Chat" || original?.title !== "New Chat") return;
 
       const { error: titleError } = await supabase
         .from("chat_sessions")
@@ -724,7 +793,7 @@ export async function fetchChatSessions(): Promise<ChatSessionSummary[]> {
     })
   );
 
-  return hydrated;
+  return hydrated.map(({ hasMessages, ...session }) => session);
 }
 
 function makeChatTitle(value: string) {
@@ -900,20 +969,40 @@ export async function fetchLeaderboardEntries(): Promise<LeaderboardEntry[]> {
 
   const { data, error } = await supabase
     .from("leaderboard_entries")
-    .select("user_id,display_name,avatar_color,total_xp,current_streak,workouts_this_week")
+    .select("user_id,display_name,avatar_color,total_xp,current_streak,workouts_this_week,last_updated")
     .limit(100);
   if (error) {
     throw error;
   }
-  return (data ?? []).map((row) => ({
-    userId: String(row.user_id),
-    displayName: String(row.display_name ?? "Athlete"),
-    avatarColor: String(row.avatar_color ?? "#0A84FF"),
-    totalXp: Number(row.total_xp ?? 0),
-    currentStreak: Number(row.current_streak ?? 0),
-    workoutsThisWeek: Number(row.workouts_this_week ?? 0),
-    isCurrentUser: row.user_id === userId
-  }));
+  const deduped = new Map<string, any>();
+  for (const row of data ?? []) {
+    const rowUserId = String(row.user_id ?? "");
+    if (!rowUserId) continue;
+    const existing = deduped.get(rowUserId);
+    if (!existing) {
+      deduped.set(rowUserId, row);
+      continue;
+    }
+    const rowScore = Number(row.total_xp ?? 0) + Number(row.current_streak ?? 0) * 20 + Number(row.workouts_this_week ?? 0) * 10;
+    const existingScore = Number(existing.total_xp ?? 0) + Number(existing.current_streak ?? 0) * 20 + Number(existing.workouts_this_week ?? 0) * 10;
+    const rowTime = new Date(String(row.last_updated ?? 0)).getTime();
+    const existingTime = new Date(String(existing.last_updated ?? 0)).getTime();
+    if (rowScore > existingScore || (rowScore === existingScore && rowTime > existingTime)) {
+      deduped.set(rowUserId, row);
+    }
+  }
+
+  return [...deduped.values()]
+    .map((row) => ({
+      userId: String(row.user_id),
+      displayName: String(row.display_name ?? "Athlete"),
+      avatarColor: String(row.avatar_color ?? "#0A84FF"),
+      totalXp: Number(row.total_xp ?? 0),
+      currentStreak: Number(row.current_streak ?? 0),
+      workoutsThisWeek: Number(row.workouts_this_week ?? 0),
+      isCurrentUser: row.user_id === userId
+    }))
+    .sort((a, b) => b.totalXp - a.totalXp || b.workoutsThisWeek - a.workoutsThisWeek || b.currentStreak - a.currentStreak);
 }
 
 export async function completeWorkoutSession(input: {
@@ -945,6 +1034,7 @@ export async function completeWorkoutSession(input: {
     amount: xpEarned,
     reason: `Completed ${input.name}`
   });
+  await syncUserWorkoutStreak(userId);
   await awardWorkoutMilestones(userId);
 }
 

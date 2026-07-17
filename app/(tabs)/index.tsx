@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { Alert, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Animated, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/AppLayout";
 import { EmptySpacer, ErrorState, IconBubble, MetaItem, PillButton, SectionHeader, SkeletonBlock, StatCard, TouchableCard, XPBar, withAlpha } from "@/components/ScreenKit";
@@ -11,6 +11,14 @@ import { GeneratedPlanRecord, getPlanDayForDate, loadExistingPlanWithMetadata } 
 import { colors, radii } from "@/lib/theme";
 import { useAuth } from "@/context/AuthContext";
 import { loadWaterIntake, saveWaterIntake } from "@/lib/water";
+
+const heroSlides = [
+  "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=900&q=82",
+  "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=900&q=82",
+  "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=900&q=82",
+  "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=900&q=82",
+  "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=900&q=82"
+];
 
 export default function DashboardScreen() {
   const { needsOnboarding, user } = useAuth();
@@ -21,6 +29,8 @@ export default function DashboardScreen() {
   const [plan, setPlan] = useState<WorkoutProgram | null>(null);
   const [aiPlanRecord, setAiPlanRecord] = useState<GeneratedPlanRecord | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+  const heroFade = useRef(new Animated.Value(1)).current;
 
   async function loadDashboard() {
     setError(null);
@@ -49,6 +59,17 @@ export default function DashboardScreen() {
     }
     void loadDashboard();
   }, [needsOnboarding]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(heroFade, { duration: 420, toValue: 0.35, useNativeDriver: true }),
+        Animated.timing(heroFade, { duration: 520, toValue: 1, useNativeDriver: true })
+      ]).start();
+      setHeroSlideIndex((current) => (current + 1) % heroSlides.length);
+    }, 5200);
+    return () => clearInterval(timer);
+  }, [heroFade]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -172,9 +193,11 @@ export default function DashboardScreen() {
       ) : null}
 
       <TouchableCard radius={radii.hero} style={styles.heroCard} onPress={openTodayWorkout}>
-        <ImageBackground source={{ uri: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80" }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.heroImage}>
-          <LinearGradient colors={["rgba(0,0,0,0.58)", "rgba(0,0,0,0.76)", "rgba(0,0,0,0.94)"]} style={StyleSheet.absoluteFillObject} />
-        </ImageBackground>
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { opacity: heroFade }]}>
+          <ImageBackground source={{ uri: heroSlides[heroSlideIndex] }} resizeMode="cover" style={StyleSheet.absoluteFillObject} imageStyle={styles.heroImage}>
+            <LinearGradient colors={["rgba(0,0,0,0.50)", "rgba(0,0,0,0.74)", "rgba(0,0,0,0.94)"]} style={StyleSheet.absoluteFillObject} />
+          </ImageBackground>
+        </Animated.View>
         <View style={styles.heroTop}>
           <View style={styles.inline}>
             <Ionicons name="sparkles" size={13} color={colors.accent} />
