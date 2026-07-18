@@ -10,6 +10,7 @@ import { useSubscription } from "@/context/SubscriptionContext";
 import {
   getCleanEquipmentTierLabel,
   getEquipmentTierBadgeColor,
+  getWorkoutProgramCatalogCategory,
   getWorkoutProgramExercises,
   getWorkoutTrainingFrequency,
   workoutPrograms
@@ -37,16 +38,21 @@ const programImages: Record<string, string> = {
   mobility: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=85",
   core: "https://images.unsplash.com/photo-1549576490-b0b4831ef60a?auto=format&fit=crop&w=1200&q=85",
   gym: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=1200&q=85",
+  homeNoEquipment: "https://images.unsplash.com/photo-1598971639058-a7441f840ec0?auto=format&fit=crop&w=1200&q=85",
+  homeGear: "https://images.unsplash.com/photo-1605296867424-35fc25c9212a?auto=format&fit=crop&w=1200&q=85",
+  walking: "https://images.unsplash.com/photo-1501554728187-ce583db33af7?auto=format&fit=crop&w=1200&q=85",
   run: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1200&q=85",
+  runEndurance: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=1200&q=85",
+  runMobility: "https://images.unsplash.com/photo-1518459031867-a89b944bffe4?auto=format&fit=crop&w=1200&q=85",
   custom: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85"
 };
 
 const programImageById: Record<string, string> = {
-  "full-body-beginner-home": "https://images.unsplash.com/photo-1599058917765-a780eda07a3e?auto=format&fit=crop&w=1200&q=85",
+  "full-body-beginner-home": "https://images.unsplash.com/photo-1598971639058-a7441f840ec0?auto=format&fit=crop&w=1200&q=85",
   "full-body-beginner-gym": "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=1200&q=85",
-  "upper-lower-split-home": "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?auto=format&fit=crop&w=1200&q=85",
+  "upper-lower-split-home": "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85",
   "upper-lower-split-gym": "https://images.unsplash.com/photo-1534367507873-d2d7e24c797f?auto=format&fit=crop&w=1200&q=85",
-  "push-pull-legs-home": "https://images.unsplash.com/photo-1594737625785-a6cbdabd333c?auto=format&fit=crop&w=1200&q=85",
+  "push-pull-legs-home": "https://images.unsplash.com/photo-1598971639058-a7441f840ec0?auto=format&fit=crop&w=1200&q=85",
   "push-pull-legs-gym": "https://images.unsplash.com/photo-1571019613914-85f342c1d70c?auto=format&fit=crop&w=1200&q=85",
   "hiit-burn-home": "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85",
   "core-control-home": "https://images.unsplash.com/photo-1518459031867-a89b944bffe4?auto=format&fit=crop&w=1200&q=85",
@@ -57,14 +63,14 @@ const programImageById: Record<string, string> = {
   "athletic-conditioning-gym": "https://images.unsplash.com/photo-1517963879433-6ad2b056d712?auto=format&fit=crop&w=1200&q=85",
   "leg-power-home": "https://images.unsplash.com/photo-1434682881908-b43d0467b798?auto=format&fit=crop&w=1200&q=85",
   "leg-power-gym": "https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=1200&q=85",
-  "upper-body-pump-home": "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=1200&q=85",
+  "upper-body-pump-home": "https://images.unsplash.com/photo-1598971639058-a7441f840ec0?auto=format&fit=crop&w=1200&q=85",
   "upper-body-pump-gym": "https://images.unsplash.com/photo-1532384748853-8f54a8f476e2?auto=format&fit=crop&w=1200&q=85",
   "fat-loss-circuit": "https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?auto=format&fit=crop&w=1200&q=85",
   "recovery-flow": "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=1200&q=85",
   "walk-run-foundation": "https://images.unsplash.com/photo-1502224562085-639556652f33?auto=format&fit=crop&w=1200&q=85",
-  "walking-weight-loss": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=85",
+  "walking-weight-loss": "https://images.unsplash.com/photo-1501554728187-ce583db33af7?auto=format&fit=crop&w=1200&q=85",
   "easy-jog-builder": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1200&q=85",
-  "runner-mobility-reset": "https://images.unsplash.com/photo-1529693662653-9d480530a697?auto=format&fit=crop&w=1200&q=85",
+  "runner-mobility-reset": "https://images.unsplash.com/photo-1518459031867-a89b944bffe4?auto=format&fit=crop&w=1200&q=85",
   "5k-conditioning": "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=1200&q=85"
 };
 
@@ -221,42 +227,29 @@ export default function WorkoutsScreen() {
 
 function matchesMode(program: WorkoutProgram, mode: TrainingMode) {
   const category = program.category.toLowerCase();
-  if (mode === "home") return program.equipmentTier !== "full" && !category.includes("walk") && !category.includes("sports");
-  if (mode === "gym") return program.equipmentTier !== "none";
+  const isWalkRunProgram = category.includes("walk");
+  const isSportsProgram = category.includes("sports");
+  if (mode === "home") return program.equipmentTier !== "full" && !isWalkRunProgram && !isSportsProgram;
+  if (mode === "gym") return program.equipmentTier !== "none" && !isWalkRunProgram && !isSportsProgram;
   return category.includes("walk");
 }
 
 function matchesProgramCategory(program: WorkoutProgram, selectedCategory: string) {
-  const needle = selectedCategory.toLowerCase();
-  const haystack = `${program.category} ${program.name} ${program.description} ${program.difficulty}`.toLowerCase();
-
-  if (selectedCategory === "Full Body" || selectedCategory === "Walking") return true;
-  if (needle === "cardio") {
-    return /cardio|conditioning|hiit|fat|burn|athletic|endurance|sprint|run|jog|pace/.test(haystack);
-  }
-  if (needle === "running") {
-    return /run|running|jog|5k|pace|stride|cadence|sprint|conditioning/.test(haystack);
-  }
-  if (needle === "walking") {
-    return /walk|walking|run|jog|stamina|foundation|fat|conditioning/.test(haystack);
-  }
-  if (needle === "endurance") {
-    return /endurance|5k|pace|run|jog|walk|conditioning|stamina/.test(haystack);
-  }
-  if (needle === "arm") {
-    return /arm|upper|bicep|tricep|push|pull/.test(haystack);
-  }
-  if (needle === "legs") {
-    return /leg|lower|glute|squat|lunge/.test(haystack);
-  }
-  return haystack.includes(needle);
+  if (selectedCategory === "Beginner") return program.difficulty === "Beginner";
+  return getWorkoutProgramCatalogCategory(program) === selectedCategory;
 }
 
 function getProgramImage(program: WorkoutProgram, mode?: TrainingMode) {
   const category = program.category.toLowerCase();
+  const catalogCategory = getWorkoutProgramCatalogCategory(program);
   if (programImageById[program.id]) return programImageById[program.id];
+  if (catalogCategory === "Walking") return programImages.walking;
+  if (catalogCategory === "Running") return programImages.run;
+  if (catalogCategory === "Endurance") return programImages.runEndurance;
+  if (mode === "walk" || category.includes("walk")) return programImages.runMobility;
   if (mode === "gym" || program.equipmentTier === "full") return programImages.gym;
-  if (mode === "walk") return programImages.run;
+  if (program.equipmentTier === "few") return programImages.homeGear;
+  if (program.equipmentTier === "none") return programImages.homeNoEquipment;
   if (category.includes("conditioning")) return programImages.conditioning;
   if (category.includes("mobility")) return programImages.mobility;
   if (category.includes("core")) return programImages.core;

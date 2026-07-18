@@ -7,6 +7,7 @@ import { EmptySpacer, GlassCard, MetaItem } from "@/components/ScreenKit";
 import {
   getCleanEquipmentTierLabel,
   getEquipmentTierBadgeColor,
+  getWorkoutProgramCatalogCategory,
   getWorkoutProgramExercises,
   getWorkoutTrainingFrequency,
   workoutPrograms
@@ -16,7 +17,13 @@ import { colors, radii } from "@/lib/theme";
 const previewHeroImages: Record<string, string> = {
   conditioning: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80",
   core: "https://images.unsplash.com/photo-1549576490-b0b4831ef60a?auto=format&fit=crop&w=1200&q=80",
+  gym: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=1200&q=80",
+  homeGear: "https://images.unsplash.com/photo-1605296867424-35fc25c9212a?auto=format&fit=crop&w=1200&q=80",
+  homeNoEquipment: "https://images.unsplash.com/photo-1598971639058-a7441f840ec0?auto=format&fit=crop&w=1200&q=80",
   mobility: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80",
+  walking: "https://images.unsplash.com/photo-1501554728187-ce583db33af7?auto=format&fit=crop&w=1200&q=80",
+  running: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1200&q=80",
+  endurance: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=1200&q=80",
   strength: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=80"
 };
 
@@ -27,7 +34,7 @@ export default function WorkoutPreviewScreen() {
   const exercises = getWorkoutProgramExercises(program.id);
   const frequency = getWorkoutTrainingFrequency(program.id);
   const badgeColor = getEquipmentTierBadgeColor(program.equipmentTier);
-  const heroImage = getPreviewHeroImage(program.category);
+  const heroImage = getPreviewHeroImage(program);
 
   return (
     <AppLayout scroll contentContainerStyle={styles.screen}>
@@ -117,11 +124,17 @@ export default function WorkoutPreviewScreen() {
   );
 }
 
-function getPreviewHeroImage(category: string) {
-  const key = category.toLowerCase();
-  if (key.includes("conditioning")) return previewHeroImages.conditioning;
-  if (key.includes("core")) return previewHeroImages.core;
-  if (key.includes("mobility")) return previewHeroImages.mobility;
+function getPreviewHeroImage(program: typeof workoutPrograms[number]) {
+  const catalogCategory = getWorkoutProgramCatalogCategory(program);
+  if (catalogCategory === "Walking") return previewHeroImages.walking;
+  if (catalogCategory === "Running") return previewHeroImages.running;
+  if (catalogCategory === "Endurance") return previewHeroImages.endurance;
+  if (catalogCategory === "Mobility") return previewHeroImages.mobility;
+  if (catalogCategory === "Core") return previewHeroImages.core;
+  if (program.category.toLowerCase().includes("conditioning")) return previewHeroImages.conditioning;
+  if (program.equipmentTier === "full") return previewHeroImages.gym;
+  if (program.equipmentTier === "few") return previewHeroImages.homeGear;
+  if (program.equipmentTier === "none") return previewHeroImages.homeNoEquipment;
   return previewHeroImages.strength;
 }
 

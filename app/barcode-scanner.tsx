@@ -19,6 +19,16 @@ type Product = {
   fat: number;
 };
 
+type ProductLookupResponse = {
+  status?: number;
+  product?: {
+    brands?: string;
+    product_name?: string;
+    serving_size?: string;
+    nutriments?: Record<string, number>;
+  };
+};
+
 export default function BarcodeScannerScreen() {
   const params = useLocalSearchParams<{ mealType?: string }>();
   const mealType = typeof params.mealType === "string" ? params.mealType : "Snacks";
@@ -59,30 +69,30 @@ export default function BarcodeScannerScreen() {
     setError(null);
     try {
       const fields = "product_name,brands,serving_size,nutriments";
-      const response = await fetch(
+      const urls = [
         `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${fields}`,
-        { headers: { Accept: "application/json" } }
-      );
-      if (!response.ok) {
-        throw new Error(`Product lookup failed (${response.status}).`);
+        `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`
+      ];
+      let matchedProduct: NonNullable<ProductLookupResponse["product"]> | null = null;
+
+      for (const url of urls) {
+        const response = await fetch(url, { headers: { Accept: "application/json" } });
+        if (!response.ok) continue;
+        const candidate = await response.json() as ProductLookupResponse;
+        if (candidate?.status === 1 && candidate.product) {
+          matchedProduct = candidate.product;
+          break;
+        }
       }
-      const body = await response.json() as {
-        status?: number;
-        product?: {
-          brands?: string;
-          product_name?: string;
-          serving_size?: string;
-          nutriments?: Record<string, number>;
-        };
-      };
-      if (body.status !== 1 || !body.product) {
-        throw new Error("This barcode is not in the food database yet. Try typing the number or add it manually.");
+
+      if (!matchedProduct) {
+        throw new Error("I could not find that barcode in the food database yet. Check the number and try again.");
       }
-      const nutrients = body.product.nutriments ?? {};
+      const nutrients = matchedProduct.nutriments ?? {};
       setProduct({
         barcode: code,
-        name: body.product.product_name || body.product.brands || "Scanned food",
-        serving: body.product.serving_size || "100 g",
+        name: matchedProduct.product_name || matchedProduct.brands || "Scanned food",
+        serving: matchedProduct.serving_size || "100 g",
         calories: Number(nutrients["energy-kcal_100g"] ?? nutrients["energy-kcal"] ?? 0),
         protein: Number(nutrients.proteins_100g ?? nutrients.proteins ?? 0),
         carbs: Number(nutrients.carbohydrates_100g ?? nutrients.carbohydrates ?? 0),

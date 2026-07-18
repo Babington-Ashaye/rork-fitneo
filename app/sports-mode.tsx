@@ -13,7 +13,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 
 const SPORT_ONBOARDING_KEY = "fitneo.sports.onboarding.v2";
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 8;
 
 const sports = [
   {
@@ -132,6 +132,88 @@ const frequencies = [
   { title: "Daily", description: "Elite training load" }
 ];
 
+const equipmentOptions = [
+  { title: "No equipment", description: "Bodyweight drills only" },
+  { title: "Home gear", description: "Bands, dumbbells, cones, mat" },
+  { title: "Full gym", description: "Machines, racks, cables, sleds" }
+];
+
+const sessionLengthOptions = [
+  { title: "20-30 min", description: "Short and focused" },
+  { title: "35-45 min", description: "Balanced athletic session" },
+  { title: "50-60 min", description: "Full training block" }
+];
+
+const limitationOptions = [
+  { title: "No limitations", description: "Ready for normal training" },
+  { title: "Knee / ankle care", description: "Lower-impact footwork and landing choices" },
+  { title: "Shoulder / wrist care", description: "Protect pressing, punching, and overhead work" },
+  { title: "Back / hip care", description: "Extra mobility and controlled core work" }
+];
+
+const sportGoals: Record<string, Array<{ title: string; description: string }>> = {
+  "Football (Soccer)": [
+    { title: "Explosive first step", description: "Acceleration and change of direction" },
+    { title: "Match stamina", description: "Repeat runs without fading late" },
+    { title: "Position power", description: "Strength and control for your role" },
+    { title: "Injury resilience", description: "Hips, hamstrings, groin, and ankle durability" }
+  ],
+  Basketball: [
+    { title: "Vertical pop", description: "Jumping, landing, and rebound power" },
+    { title: "Defensive slides", description: "Lateral speed and closeout control" },
+    { title: "Court conditioning", description: "Repeat sprint and rotation stamina" },
+    { title: "Ankle durability", description: "Foot and calf control under fatigue" }
+  ],
+  Boxing: [
+    { title: "Footwork rhythm", description: "Angles, pivots, and ring control" },
+    { title: "Punch volume", description: "Work-rate and shoulder endurance" },
+    { title: "Defense + reflex", description: "Slip, roll, reset, counter" },
+    { title: "Fight conditioning", description: "Rounds that feel sharp to the end" }
+  ],
+  Swimming: [
+    { title: "Stroke endurance", description: "Dryland strength for longer sets" },
+    { title: "Starts + turns", description: "Core, hips, and explosive wall work" },
+    { title: "Shoulder durability", description: "Scapular control and mobility" },
+    { title: "Streamline power", description: "Position, tension, and trunk control" }
+  ],
+  Running: [
+    { title: "First 5K", description: "Walk-jog consistency and confidence" },
+    { title: "Weight-loss walking", description: "Low-impact volume and pace" },
+    { title: "Speed / pace", description: "Cadence, strides, and quicker turnover" },
+    { title: "Endurance base", description: "Longer easy efforts and recovery" }
+  ],
+  Rugby: [
+    { title: "Contact power", description: "Get-up speed and repeat strength" },
+    { title: "Pitch stamina", description: "Repeated efforts across phases" },
+    { title: "Lateral agility", description: "Cuts, bounds, and defensive movement" },
+    { title: "Collision resilience", description: "Core, hips, neck, and trunk control" }
+  ],
+  Tennis: [
+    { title: "Split-step speed", description: "First move and recovery footwork" },
+    { title: "Rotational power", description: "Serve and groundstroke engine" },
+    { title: "Match stamina", description: "Repeat points with clean movement" },
+    { title: "Shoulder care", description: "Mobility and control for serving" }
+  ],
+  Cricket: [
+    { title: "Batting power", description: "Rotation, footwork, and trunk control" },
+    { title: "Bowling durability", description: "Shoulder, hip, and hamstring care" },
+    { title: "Field reaction", description: "Pickups, sprints, and lateral movement" },
+    { title: "All-round fitness", description: "Balanced work capacity and mobility" }
+  ],
+  Volleyball: [
+    { title: "Approach jump", description: "Elastic power and landing control" },
+    { title: "Block timing", description: "Repeated jumps and shoulder position" },
+    { title: "Floor defense", description: "Sprawl, recovery, and quick resets" },
+    { title: "Knee durability", description: "Landing mechanics and leg strength" }
+  ],
+  Other: [
+    { title: "Speed", description: "Move faster with better mechanics" },
+    { title: "Endurance", description: "Sustain output for longer" },
+    { title: "Power", description: "Build explosive strength" },
+    { title: "Mobility", description: "Move smoother and recover better" }
+  ]
+};
+
 const positions: Record<string, string[]> = {
   "Football (Soccer)": ["Goalkeeper", "Centre Back", "Full Back", "Defensive Midfielder", "Central Midfielder", "Attacking Midfielder", "Left Winger", "Right Winger", "Striker"],
   Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],
@@ -147,6 +229,8 @@ const positions: Record<string, string[]> = {
 const calibrationSteps = [
   "Analyzing sport demands",
   "Evaluating position needs",
+  "Reading goals and equipment",
+  "Checking limitations",
   "Building your AI training plan",
   "Calibrating weekly intensity",
   "Finalizing your sports plan"
@@ -157,6 +241,10 @@ type SportAnswers = {
   sport_level: string;
   sport_frequency: string;
   sport_position: string;
+  sport_goal?: string;
+  sport_equipment?: string;
+  sport_session_length?: string;
+  sport_limitations?: string;
 };
 
 type SportStats = {
@@ -188,6 +276,10 @@ function getRoleLabel(sportName: string) {
   if (sportName === "Cricket") return "Role";
   if (sportName === "Boxing") return "Style";
   return sportName === "Other" ? "Sport" : "Position";
+}
+
+function getSportGoalOptions(sportName: string) {
+  return sportGoals[sportName] ?? sportGoals.Other;
 }
 
 type SportMeta = (typeof sports)[number];
@@ -246,6 +338,10 @@ export default function SportsModeScreen() {
   const [level, setLevel] = useState(typeof savedAnswers.sport_level === "string" ? savedAnswers.sport_level : "Recreational");
   const [frequency, setFrequency] = useState(typeof savedAnswers.sport_frequency === "string" ? savedAnswers.sport_frequency : "3-4x per week");
   const [position, setPosition] = useState(typeof savedAnswers.sport_position === "string" ? savedAnswers.sport_position : "");
+  const [goal, setGoal] = useState(typeof savedAnswers.sport_goal === "string" ? savedAnswers.sport_goal : "");
+  const [equipment, setEquipment] = useState(typeof savedAnswers.sport_equipment === "string" ? savedAnswers.sport_equipment : "No equipment");
+  const [sessionLength, setSessionLength] = useState(typeof savedAnswers.sport_session_length === "string" ? savedAnswers.sport_session_length : "35-45 min");
+  const [limitations, setLimitations] = useState(typeof savedAnswers.sport_limitations === "string" ? savedAnswers.sport_limitations : "No limitations");
   const [customSport, setCustomSport] = useState(savedSport === "Other" && typeof savedAnswers.sport_position === "string" ? savedAnswers.sport_position : "");
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<ScreenMode>(savedSport ? "dashboard" : "empty");
@@ -260,11 +356,17 @@ export default function SportsModeScreen() {
 
   const selectedSport = getSportMeta(selected);
   const positionOptions = positions[selected] ?? [];
+  const goalOptions = getSportGoalOptions(selected);
   const finalPosition = useMemo(() => {
     if (selected === "Other") return customSport.trim() || "Custom sport";
     return position || positionOptions[0] || "General athlete";
   }, [customSport, position, positionOptions, selected]);
-  const isContinueEnabled = step !== 3 || selected !== "Other" || customSport.trim().length > 1;
+  const isContinueEnabled =
+    (step !== 3 || selected !== "Other" || customSport.trim().length > 1) &&
+    (step !== 4 || Boolean(goal || goalOptions[0]?.title)) &&
+    (step !== 5 || Boolean(equipment)) &&
+    (step !== 6 || Boolean(sessionLength)) &&
+    (step !== 7 || Boolean(limitations));
   const displayColor = plan?.sportColor ?? selectedSport.accent;
 
   useEffect(() => {
@@ -296,6 +398,10 @@ export default function SportsModeScreen() {
           setLevel(local.sport_level ?? "Recreational");
           setFrequency(local.sport_frequency ?? "3-4x per week");
           setPosition(local.sport_position ?? "");
+          setGoal(local.sport_goal ?? "");
+          setEquipment(local.sport_equipment ?? "No equipment");
+          setSessionLength(local.sport_session_length ?? "35-45 min");
+          setLimitations(local.sport_limitations ?? "No limitations");
           setMode("dashboard");
         }
       } catch {
@@ -354,15 +460,26 @@ export default function SportsModeScreen() {
         supabase
           .from("workout_sessions")
           .select("session_name,xp_earned")
-          .eq("user_id", user.id)
-          .ilike("session_name", `%${selectedSport.label}%`),
+          .eq("user_id", user.id),
         supabase
           .from("user_profiles")
           .select("current_streak,total_xp")
           .eq("id", user.id)
           .maybeSingle()
       ]);
-      const workoutRows = (workoutRes.data ?? []) as Array<{ xp_earned?: number | null }>;
+      const selectedNeedles = [
+        selectedSport.label,
+        selected,
+        selected.replace(/\s*\([^)]*\)/g, ""),
+        plan?.planTitle ?? ""
+      ]
+        .map((value) => value.toLowerCase().trim())
+        .filter(Boolean);
+      const workoutRows = ((workoutRes.data ?? []) as Array<{ session_name?: string | null; xp_earned?: number | null }>)
+        .filter((row) => {
+          const sessionName = String(row.session_name ?? "").toLowerCase();
+          return selectedNeedles.some((needle) => sessionName.includes(needle));
+        });
       setStats({
         workouts: workoutRows.length,
         xp: workoutRows.reduce((sum, row) => sum + Number(row.xp_earned ?? 0), 0),
@@ -378,7 +495,11 @@ export default function SportsModeScreen() {
       sport: selected,
       sport_level: level,
       sport_frequency: frequency,
-      sport_position: finalPosition
+      sport_position: finalPosition,
+      sport_goal: goal || goalOptions[0]?.title || "Athletic performance",
+      sport_equipment: equipment,
+      sport_session_length: sessionLength,
+      sport_limitations: limitations
     };
     await AsyncStorage.setItem(SPORT_ONBOARDING_KEY, JSON.stringify(answers));
     if (isSupabaseConfigured && user?.id) {
@@ -403,6 +524,7 @@ export default function SportsModeScreen() {
     if (step === 0) {
       setPosition("");
       setCustomSport("");
+      setGoal("");
     }
     if (step < TOTAL_STEPS - 1) {
       setStep((current) => current + 1);
@@ -705,6 +827,38 @@ export default function SportsModeScreen() {
                 <OptionRow key={item} active={(position || positionOptions[0]) === item} accent={displayColor} title={item} onPress={() => setPosition(item)} />
               ))
             )}
+          </QuestionScreen>
+        ) : null}
+
+        {step === 4 ? (
+          <QuestionScreen question={`What should your ${selectedSport.label} plan improve first?`}>
+            {goalOptions.map((item) => (
+              <OptionRow key={item.title} active={(goal || goalOptions[0]?.title) === item.title} accent={displayColor} title={item.title} description={item.description} onPress={() => setGoal(item.title)} />
+            ))}
+          </QuestionScreen>
+        ) : null}
+
+        {step === 5 ? (
+          <QuestionScreen question="What equipment can you actually use?">
+            {equipmentOptions.map((item) => (
+              <OptionRow key={item.title} active={equipment === item.title} accent={displayColor} title={item.title} description={item.description} onPress={() => setEquipment(item.title)} />
+            ))}
+          </QuestionScreen>
+        ) : null}
+
+        {step === 6 ? (
+          <QuestionScreen question="How long should each session feel?">
+            {sessionLengthOptions.map((item) => (
+              <OptionRow key={item.title} active={sessionLength === item.title} accent={displayColor} title={item.title} description={item.description} onPress={() => setSessionLength(item.title)} />
+            ))}
+          </QuestionScreen>
+        ) : null}
+
+        {step === 7 ? (
+          <QuestionScreen question="Any limitation FITNEO should respect?">
+            {limitationOptions.map((item) => (
+              <OptionRow key={item.title} active={limitations === item.title} accent={displayColor} title={item.title} description={item.description} onPress={() => setLimitations(item.title)} />
+            ))}
           </QuestionScreen>
         ) : null}
       </Animated.View>

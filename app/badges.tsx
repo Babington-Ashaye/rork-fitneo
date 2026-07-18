@@ -84,13 +84,34 @@ export default function BadgesScreen() {
         </View>
       ) : (
         <View style={styles.grid}>
-          {catalog.map((badge) => {
+          {catalog.map((badge, index) => {
             const unlocked = earnedIds.has(badge.id);
+            const tier = getBadgeTier(index);
+            const tierColor = getBadgeTierColor(tier);
             return (
-              <GlassCard key={badge.id} radius={16} selected={unlocked} style={[styles.badge, !unlocked && styles.locked]}>
-                <View style={[styles.iconCircle, { backgroundColor: unlocked ? `${badge.tint}22` : "rgba(255,255,255,0.04)" }]}>
-                  <Ionicons name={unlocked ? badge.icon : "lock-closed"} size={25} color={unlocked ? badge.tint : colors.textTertiary} />
+              <GlassCard
+                key={badge.id}
+                radius={16}
+                selected={unlocked}
+                style={[
+                  styles.badge,
+                  unlocked && { borderColor: `${tierColor}66` },
+                  !unlocked && styles.locked
+                ]}
+              >
+                <View style={[styles.tierRing, { borderColor: unlocked ? `${tierColor}88` : "rgba(255,255,255,0.08)" }]}>
+                  <View style={[styles.iconCircle, { backgroundColor: unlocked ? `${badge.tint}24` : "rgba(255,255,255,0.045)" }]}>
+                    <Ionicons name={badge.icon} size={25} color={unlocked ? badge.tint : "rgba(148,163,184,0.42)"} />
+                    {!unlocked ? (
+                      <View style={styles.lockOverlay}>
+                        <Ionicons name="lock-closed" size={10} color={colors.textPrimary} />
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
+                <Text style={[styles.tierText, { color: unlocked ? tierColor : colors.textTertiary }]}>
+                  {unlocked ? tier.toUpperCase() : "LOCKED"}
+                </Text>
                 <Text style={styles.badgeTitle}>{badge.name}</Text>
                 <Text style={styles.description}>{badge.description}</Text>
               </GlassCard>
@@ -103,12 +124,68 @@ export default function BadgesScreen() {
   );
 }
 
+type BadgeTier = "bronze" | "silver" | "gold" | "platinum";
+
+function getBadgeTier(index: number): BadgeTier {
+  if (index >= 38) return "platinum";
+  if (index >= 24) return "gold";
+  if (index >= 12) return "silver";
+  return "bronze";
+}
+
+function getBadgeTierColor(tier: BadgeTier) {
+  if (tier === "platinum") return "#C4B5FD";
+  if (tier === "gold") return colors.gold;
+  if (tier === "silver") return "#CBD5E1";
+  return "#D97706";
+}
+
 const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   cell: { width: "48%" },
-  badge: { alignItems: "center", gap: 8, minHeight: 154, padding: 14, width: "48%" },
-  locked: { opacity: 0.62 },
-  iconCircle: { alignItems: "center", borderRadius: 27, height: 54, justifyContent: "center", width: 54 },
+  badge: {
+    alignItems: "center",
+    gap: 7,
+    minHeight: 172,
+    padding: 14,
+    width: "48%"
+  },
+  locked: { opacity: 0.74 },
+  tierRing: {
+    alignItems: "center",
+    borderRadius: 38,
+    borderWidth: 1,
+    height: 68,
+    justifyContent: "center",
+    width: 68
+  },
+  iconCircle: {
+    alignItems: "center",
+    borderRadius: 27,
+    height: 54,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 54
+  },
+  lockOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderColor: "rgba(255,255,255,0.14)",
+    borderRadius: 10,
+    borderWidth: 1,
+    bottom: 4,
+    height: 20,
+    justifyContent: "center",
+    position: "absolute",
+    right: 4,
+    width: 20
+  },
+  tierText: {
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+    marginTop: 1
+  },
   badgeTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: "800", textAlign: "center" },
   description: { color: colors.textTertiary, fontSize: 10, lineHeight: 14, textAlign: "center" }
 });

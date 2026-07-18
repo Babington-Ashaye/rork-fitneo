@@ -8,6 +8,20 @@ import { EmptySpacer, ErrorState, LoadingState, ScreenTitle, SectionHeader, Stat
 import { fetchProgressData, ProgressData } from "@/lib/api";
 import { colors, radii } from "@/lib/theme";
 
+const EMPTY_PROGRESS_DATA: ProgressData = {
+  streak: 0,
+  longestStreak: 0,
+  consistency: 0,
+  weeklyWorkouts: [0, 0, 0, 0, 0, 0, 0, 0],
+  totalWorkouts: 0,
+  totalSets: 0,
+  caloriesBurned: 0,
+  totalXp: 0,
+  bmi: null,
+  goalPaceWeeks: null,
+  favoriteMuscleGroups: []
+};
+
 export default function ProgressScreen() {
   const { t } = useTranslation();
   const [data, setData] = useState<ProgressData | null>(null);
@@ -20,7 +34,11 @@ export default function ProgressScreen() {
     try {
       setData(await fetchProgressData());
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("progress.loadFailed"));
+      if (__DEV__) {
+        console.warn("[FITNEO] Progress screen fallback used:", err);
+      }
+      setData(EMPTY_PROGRESS_DATA);
+      setError(null);
     } finally {
       setIsLoading(false);
     }

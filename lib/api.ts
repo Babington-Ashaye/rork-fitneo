@@ -528,46 +528,58 @@ export async function fetchNutritionData(date = new Date()): Promise<NutritionDa
 }
 
 export async function fetchProgressData(): Promise<ProgressData> {
+  const emptyProgress: ProgressData = {
+    streak: 0,
+    longestStreak: 0,
+    consistency: 0,
+    weeklyWorkouts: [0, 0, 0, 0, 0, 0, 0, 0],
+    totalWorkouts: 0,
+    totalSets: 0,
+    caloriesBurned: 0,
+    totalXp: 0,
+    bmi: null,
+    goalPaceWeeks: null,
+    favoriteMuscleGroups: []
+  };
+
   if (!isSupabaseConfigured) {
-    return {
-      streak: 0,
-      longestStreak: 0,
-      consistency: 0,
-      weeklyWorkouts: [0, 0, 0, 0, 0, 0, 0, 0],
-      totalWorkouts: 0,
-      totalSets: 0,
-      caloriesBurned: 0,
-      totalXp: 0,
-      bmi: null,
-      goalPaceWeeks: null,
-      favoriteMuscleGroups: []
-    };
+    return emptyProgress;
   }
 
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    throw new Error("You must be signed in.");
-  }
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return emptyProgress;
+    }
 
-  const eightWeeksAgo = new Date();
-  eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+    const eightWeeksAgo = new Date();
+    eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
 
-  const [profileRes, workoutsRes, xpRes, metricsRes] = await Promise.all([
-    supabase.from("user_profiles").select("current_streak,longest_streak,height_cm,goal_weight_kg,weight_kg").eq("id", userId).maybeSingle(),
-    supabase.from("workout_sessions").select("*").eq("user_id", userId).gte("completed_at", eightWeeksAgo.toISOString()).order("completed_at", { ascending: true }),
+    const [profileRes, workoutsRes, xpRes, metricsRes] = await Promise.all([
+    supabase.from("user_profiles").select("*").eq("id", userId).maybeSingle(),
+    supabase.from("workout_sessions").select("*").eq("user_id", userId),
     supabase.from("xp_transactions").select("amount").eq("user_id", userId),
     supabase.from("body_metrics").select("*").eq("user_id", userId).order("recorded_date", { ascending: false }).limit(8)
   ]);
 
-  if (profileRes.error) {
-    throw profileRes.error;
-  }
-  if (workoutsRes.error) {
-    throw workoutsRes.error;
+  if (__DEV__) {
+    if (profileRes.error) console.warn("[FITNEO] Progress profile query failed:", profileRes.error.message);
+    if (workoutsRes.error) console.warn("[FITNEO] Progress workout query failed:", workoutsRes.error.message);
+    if (xpRes.error) console.warn("[FITNEO] Progress XP query failed:", xpRes.error.message);
+    if (metricsRes.error) console.warn("[FITNEO] Progress body metrics query failed:", metricsRes.error.message);
   }
 
-  const profile = (profileRes.data ?? {}) as Record<string, any>;
-  const workouts = (workoutsRes.data ?? []) as Record<string, any>[];
+  const profile = (profileRes.error ? {} : profileRes.data ?? {}) as Record<string, any>;
+  const workouts = ((workoutsRes.error ? [] : workoutsRes.data ?? []) as Record<string, any>[])
+    .filter((workout) => {
+      const rawDate = String(workout.completed_at ?? workout.created_at ?? "");
+      const completed = rawDate ? new Date(rawDate) : null;
+      return completed && Number.isFinite(completed.getTime()) && completed >= eightWeeksAgo;
+    })
+    .sort((a, b) =>
+      new Date(String(a.completed_at ?? a.created_at ?? 0)).getTime() -
+      new Date(String(b.completed_at ?? b.created_at ?? 0)).getTime()
+    );
   const streak = calculateWorkoutStreak(workouts);
   const weeklyWorkouts = Array.from({ length: 8 }, () => 0);
   workouts.forEach((workout) => {
@@ -577,7 +589,8 @@ export async function fetchProgressData(): Promise<ProgressData> {
     weeklyWorkouts[index] += 1;
   });
 
-  const latestWeight = Number(((metricsRes.data ?? []) as Record<string, any>[])[0]?.weight_kg ?? profile.weight_kg ?? 0);
+  const metricRows = (metricsRes.error ? [] : metricsRes.data ?? []) as Record<string, any>[];
+  const latestWeight = Number(metricRows[0]?.weight_kg ?? profile.weight_kg ?? 0);
   const heightMeters = Number(profile.height_cm ?? 0) / 100;
   const bmi = latestWeight > 0 && heightMeters > 0 ? Number((latestWeight / (heightMeters * heightMeters)).toFixed(1)) : null;
   const goalWeight = Number(profile.goal_weight_kg ?? 0);
@@ -611,19 +624,25 @@ export async function fetchProgressData(): Promise<ProgressData> {
     }
   }
 
-  return {
-    streak: Math.max(streak.currentStreak, Number(profile.current_streak ?? 0)),
-    longestStreak: Math.max(streak.longestStreak, Number(profile.longest_streak ?? profile.current_streak ?? 0)),
-    consistency: Math.min(100, Math.round((weeklyWorkouts.filter(Boolean).length / 8) * 100)),
-    weeklyWorkouts,
-    totalWorkouts: workouts.length,
-    totalSets: workouts.reduce((sum, row) => sum + Number(row.total_sets_completed ?? 0), 0),
-    caloriesBurned: workouts.reduce((sum, row) => sum + Number(row.calories_burned ?? 0), 0),
-    totalXp: ((xpRes.data ?? []) as Record<string, any>[]).reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
-    bmi,
-    goalPaceWeeks,
-    favoriteMuscleGroups
-  };
+    return {
+      streak: Math.max(streak.currentStreak, Number(profile.current_streak ?? 0)),
+      longestStreak: Math.max(streak.longestStreak, Number(profile.longest_streak ?? profile.current_streak ?? 0)),
+      consistency: Math.min(100, Math.round((weeklyWorkouts.filter(Boolean).length / 8) * 100)),
+      weeklyWorkouts,
+      totalWorkouts: workouts.length,
+      totalSets: workouts.reduce((sum, row) => sum + Number(row.total_sets_completed ?? 0), 0),
+      caloriesBurned: workouts.reduce((sum, row) => sum + Number(row.calories_burned ?? 0), 0),
+      totalXp: ((xpRes.error ? [] : xpRes.data ?? []) as Record<string, any>[]).reduce((sum, row) => sum + Number(row.amount ?? 0), 0) || Number(profile.total_xp ?? 0),
+      bmi,
+      goalPaceWeeks,
+      favoriteMuscleGroups
+    };
+  } catch (err) {
+    if (__DEV__) {
+      console.warn("[FITNEO] Progress fallback used after unexpected error:", err);
+    }
+    return emptyProgress;
+  }
 }
 
 export async function saveOnboardingProfile(payload: OnboardingPayload): Promise<void> {

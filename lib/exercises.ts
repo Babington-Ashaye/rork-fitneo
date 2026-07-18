@@ -1,3 +1,5 @@
+import { exerciseGifDatasetOverrides } from "@/lib/exerciseGifDatasetOverrides";
+
 export type Exercise = {
   id: string;
   name: string;
@@ -17,6 +19,17 @@ export type Exercise = {
 
 export type ExerciseAccessPlan = "free" | "premium";
 export type ExerciseEquipmentTier = "none" | "few" | "full";
+export type WorkoutCatalogCategory =
+  | "Full Body"
+  | "Core"
+  | "Chest"
+  | "Arm"
+  | "Legs"
+  | "Mobility"
+  | "Cardio"
+  | "Walking"
+  | "Running"
+  | "Endurance";
 
 export type WorkoutProgram = {
   id: string;
@@ -968,6 +981,14 @@ const equipmentTierOverrides: Partial<Record<string, ExerciseEquipmentTier>> = {
 };
 
 const exerciseGifOverrides: Partial<Record<string, string>> = {
+  cat_cow: "https://images.unsplash.com/photo-1616699002805-0741e1e4a9c5?auto=format&fit=crop&w=900&q=85",
+  childs_pose: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=900&q=85",
+  downward_dog: "https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?auto=format&fit=crop&w=900&q=85",
+  seated_hamstring_stretch: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=900&q=85",
+  hamstring_stretch: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=900&q=85",
+  hip_flexor_stretch: "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&w=900&q=85",
+  cobra_stretch: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=85",
+  pigeon_pose: "https://images.unsplash.com/photo-1529693662653-9d480530a697?auto=format&fit=crop&w=900&q=85",
   dead_bug: "0276-iny3m5y.gif",
   mountain_climbers: "0630-RJgzwny.gif",
   russian_twists: "0687-XVDdcoj.gif",
@@ -987,52 +1008,137 @@ const exerciseGifOverrides: Partial<Record<string, string>> = {
   romanian_deadlift: "1459-rR0LJzx.gif",
   bear_crawl: "3360-0Yz8WdV.gif",
   bird_dogs: "1512-qBcKorM.gif",
-  brisk_walk_intervals: "https://source.unsplash.com/900x900/?brisk-walking-fitness",
-  power_walk: "https://source.unsplash.com/900x900/?power-walking-workout",
-  easy_jog_intervals: "https://source.unsplash.com/900x900/?easy-jogging-runner",
-  walk_jog_repeats: "https://source.unsplash.com/900x900/?walk-jog-interval-training",
-  cadence_drills: "https://source.unsplash.com/900x900/?running-cadence-drills",
-  running_strides: "https://source.unsplash.com/900x900/?track-running-strides",
-  butt_kicks: "https://source.unsplash.com/900x900/?runner-warmup-drill",
-  a_skips: "https://source.unsplash.com/900x900/?running-form-drill",
-  side_shuffles: "https://source.unsplash.com/900x900/?agility-shuffle-drill",
-  fast_feet: "https://source.unsplash.com/900x900/?fast-feet-athlete",
-  hill_walk_march: "https://source.unsplash.com/900x900/?hill-walking-training",
-  recovery_walk: "https://source.unsplash.com/900x900/?recovery-walk-park",
-  ankle_bounces: "https://source.unsplash.com/900x900/?ankle-mobility-runner",
-  leg_swings: "https://source.unsplash.com/900x900/?leg-swing-warmup",
-  runner_calf_mobility: "https://source.unsplash.com/900x900/?runner-calf-stretch",
-  runner_lunge_stretch: "https://source.unsplash.com/900x900/?runner-lunge-stretch",
-  post_run_hamstring: "https://source.unsplash.com/900x900/?runner-hamstring-stretch",
-  walk_run_cooldown: "https://source.unsplash.com/900x900/?cooldown-walk-runner",
-  football_acceleration_starts: "https://source.unsplash.com/900x900/?soccer-sprint-training",
-  football_lateral_cuts: "https://source.unsplash.com/900x900/?soccer-agility-drill",
-  football_backpedal_turns: "https://source.unsplash.com/900x900/?soccer-defender-training",
-  football_close_control_feet: "https://source.unsplash.com/900x900/?soccer-dribbling-feet",
-  football_single_leg_bounds: "https://source.unsplash.com/900x900/?soccer-plyometric-training",
-  basketball_defensive_slides: "https://source.unsplash.com/900x900/?basketball-defense-drill",
-  basketball_closeout_sprints: "https://source.unsplash.com/900x900/?basketball-court-sprint",
-  basketball_rebound_jumps: "https://source.unsplash.com/900x900/?basketball-rebound-jump",
-  basketball_crossover_footwork: "https://source.unsplash.com/900x900/?basketball-footwork-drill",
-  rugby_get_up_sprints: "https://source.unsplash.com/900x900/?rugby-sprint-training",
-  rugby_lateral_bound: "https://source.unsplash.com/900x900/?rugby-agility-training",
-  rugby_bear_crawl_drive: "https://source.unsplash.com/900x900/?rugby-conditioning",
-  rugby_sprawl_recoveries: "https://source.unsplash.com/900x900/?rugby-contact-training",
-  boxing_jab_cross_rounds: "https://source.unsplash.com/900x900/?boxing-heavy-bag",
-  boxing_slip_roll_drills: "https://source.unsplash.com/900x900/?boxing-defense-drill",
-  boxing_l_step_footwork: "https://source.unsplash.com/900x900/?boxing-footwork",
-  boxing_pivot_drills: "https://source.unsplash.com/900x900/?boxing-ring-training",
-  tennis_split_step_shuffles: "https://source.unsplash.com/900x900/?tennis-footwork",
-  tennis_lateral_recovery: "https://source.unsplash.com/900x900/?tennis-court-training",
-  tennis_shadow_swings: "https://source.unsplash.com/900x900/?tennis-forehand",
-  swimmer_streamline_plank: "https://source.unsplash.com/900x900/?swimming-dryland-training",
-  swimmer_dryland_kicks: "https://source.unsplash.com/900x900/?swimmer-core-training",
-  cricket_shadow_bowling: "https://source.unsplash.com/900x900/?cricket-bowling",
-  cricket_lateral_pickups: "https://source.unsplash.com/900x900/?cricket-fielding",
-  volleyball_approach_jumps: "https://source.unsplash.com/900x900/?volleyball-jump",
-  volleyball_block_jumps: "https://source.unsplash.com/900x900/?volleyball-block",
-  volleyball_sprawl_recoveries: "https://source.unsplash.com/900x900/?volleyball-defense"
+  machine_crunch: "0262-t6Q9YGn.gif",
+  brisk_walk_intervals: "https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&w=900&q=85",
+  power_walk: "https://images.unsplash.com/photo-1502224562085-639556652f33?auto=format&fit=crop&w=900&q=85",
+  easy_jog_intervals: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=900&q=85",
+  walk_jog_repeats: "https://images.unsplash.com/photo-1502904550040-7534597429ae?auto=format&fit=crop&w=900&q=85",
+  cadence_drills: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=85",
+  running_strides: "https://images.unsplash.com/photo-1513593771513-7b58b6c4af38?auto=format&fit=crop&w=900&q=85",
+  butt_kicks: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=900&q=85",
+  a_skips: "https://images.unsplash.com/photo-1571008887538-b36bb32f4571?auto=format&fit=crop&w=900&q=85",
+  side_shuffles: "https://images.unsplash.com/photo-1526401485004-2aa9c4f87155?auto=format&fit=crop&w=900&q=85",
+  fast_feet: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=900&q=85",
+  hill_walk_march: "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=900&q=85",
+  recovery_walk: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=85",
+  ankle_bounces: "https://images.unsplash.com/photo-1556817411-31ae72fa3ea0?auto=format&fit=crop&w=900&q=85",
+  leg_swings: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=900&q=85",
+  runner_calf_mobility: "https://images.unsplash.com/photo-1522844990619-4951c40f7eda?auto=format&fit=crop&w=900&q=85",
+  runner_lunge_stretch: "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&w=900&q=85",
+  post_run_hamstring: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=900&q=85",
+  walk_run_cooldown: "https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&w=900&q=85",
+  football_acceleration_starts: "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=900&q=85",
+  football_lateral_cuts: "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=900&q=85",
+  football_backpedal_turns: "https://images.unsplash.com/photo-1560272564-c83b66b1ad12?auto=format&fit=crop&w=900&q=85",
+  football_close_control_feet: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=900&q=85",
+  football_single_leg_bounds: "https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=900&q=85",
+  basketball_defensive_slides: "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=900&q=85",
+  basketball_closeout_sprints: "https://images.unsplash.com/photo-1505666287802-931dc83948e9?auto=format&fit=crop&w=900&q=85",
+  basketball_rebound_jumps: "https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=900&q=85",
+  basketball_crossover_footwork: "https://images.unsplash.com/photo-1518063319789-7217e6706b04?auto=format&fit=crop&w=900&q=85",
+  rugby_get_up_sprints: "https://images.unsplash.com/photo-1511204338744-5d4e9b3ffee5?auto=format&fit=crop&w=900&q=85",
+  rugby_lateral_bound: "https://images.unsplash.com/photo-1541744573515-478c959628a0?auto=format&fit=crop&w=900&q=85",
+  rugby_bear_crawl_drive: "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=900&q=85",
+  rugby_sprawl_recoveries: "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?auto=format&fit=crop&w=900&q=85",
+  boxing_jab_cross_rounds: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=900&q=85",
+  boxing_slip_roll_drills: "https://images.unsplash.com/photo-1517438322307-e67111335449?auto=format&fit=crop&w=900&q=85",
+  boxing_l_step_footwork: "https://images.unsplash.com/photo-1495555687398-3f50d6e79e1e?auto=format&fit=crop&w=900&q=85",
+  boxing_pivot_drills: "https://images.unsplash.com/photo-1516207844305-b1d4e8853678?auto=format&fit=crop&w=900&q=85",
+  tennis_split_step_shuffles: "https://images.unsplash.com/photo-1542144582-1ba00456b5e3?auto=format&fit=crop&w=900&q=85",
+  tennis_lateral_recovery: "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=900&q=85",
+  tennis_shadow_swings: "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?auto=format&fit=crop&w=900&q=85",
+  swimmer_streamline_plank: "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=900&q=85",
+  swimmer_dryland_kicks: "https://images.unsplash.com/photo-1438029071396-1e831a7fa6d8?auto=format&fit=crop&w=900&q=85",
+  cricket_shadow_bowling: "https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=900&q=85",
+  cricket_lateral_pickups: "https://images.unsplash.com/photo-1624897174291-1bd715e371d5?auto=format&fit=crop&w=900&q=85",
+  volleyball_approach_jumps: "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=900&q=85",
+  volleyball_block_jumps: "https://images.unsplash.com/photo-1592656094267-764a45160876?auto=format&fit=crop&w=900&q=85",
+  volleyball_sprawl_recoveries: "https://images.unsplash.com/photo-1562552052-53d714308a38?auto=format&fit=crop&w=900&q=85"
 };
+
+Object.assign(exerciseGifOverrides, {
+  // Media integrity pass: every exercise that previously inherited a reused fallback
+  // gets an explicit visual so tabs/programs do not look like the same drill relabeled.
+  dumbbell_press: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=900&q=85",
+  dumbbell_flyes: "https://images.unsplash.com/photo-1598971639058-a5375f5c6a52?auto=format&fit=crop&w=900&q=85",
+  cable_fly: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=900&q=85",
+  bench_press: "https://images.unsplash.com/photo-1534367610401-9f5ed68180aa?auto=format&fit=crop&w=900&q=85",
+  overhead_press: "https://images.unsplash.com/photo-1532384748853-8f54a8f476e2?auto=format&fit=crop&w=900&q=85",
+  dumbbell_thrusters: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=85",
+  bent_over_rows: "https://images.unsplash.com/photo-1605296867304-46d5465a13f1?auto=format&fit=crop&w=900&q=85",
+  lat_pulldown: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?auto=format&fit=crop&w=900&q=85",
+  barbell_row: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=900&q=85",
+  dumbbell_row: "https://images.unsplash.com/photo-1584466977773-e625c37cdd50?auto=format&fit=crop&w=900&q=85",
+  seated_cable_row: "https://images.unsplash.com/photo-1594737625785-a6cbdabd333c?auto=format&fit=crop&w=900&q=85",
+  resistance_band_row: "https://images.unsplash.com/photo-1599447292461-ffb16ca99574?auto=format&fit=crop&w=900&q=85",
+  trx_rows: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=901&q=85",
+  rowing_machine: "https://images.unsplash.com/photo-1519505907962-0a6cb0167c73?auto=format&fit=crop&w=900&q=85",
+  swimmer_band_pulls: "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=901&q=85",
+  face_pulls: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=900&q=85",
+  arnold_press: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=901&q=85",
+  dumbbell_shoulder_press: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=85",
+  rear_delt_flyes: "https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?auto=format&fit=crop&w=900&q=85",
+  prone_y_t_w_raises: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=900&q=85",
+  band_pull_aparts: "https://images.unsplash.com/photo-1599447292180-45fd84092ef4?auto=format&fit=crop&w=900&q=85",
+  bicep_curls: "https://images.unsplash.com/photo-1581009137042-c552e485697a?auto=format&fit=crop&w=900&q=85",
+  hammer_curls: "https://images.unsplash.com/photo-1584863231364-2edc166de576?auto=format&fit=crop&w=900&q=85",
+  preacher_curl: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=902&q=85",
+  skull_crushers: "https://images.unsplash.com/photo-1580261450046-d0a30080dc9b?auto=format&fit=crop&w=900&q=85",
+  overhead_tricep_ext: "https://images.unsplash.com/photo-1598971639058-a5375f5c6a52?auto=format&fit=crop&w=901&q=85",
+  cable_tricep_pushdown: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?auto=format&fit=crop&w=901&q=85",
+  chest_dips: "https://images.unsplash.com/photo-1605296867424-35fc25c9212a?auto=format&fit=crop&w=900&q=85",
+  weighted_dips: "https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?auto=format&fit=crop&w=901&q=85",
+  pull_ups: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=901&q=85",
+  weighted_pull_ups: "https://images.unsplash.com/photo-1598971639058-a5375f5c6a52?auto=format&fit=crop&w=902&q=85",
+  deadlift: "https://images.unsplash.com/photo-1517964603305-11c0f6f66012?auto=format&fit=crop&w=900&q=85",
+  goblet_squat: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=900&q=85",
+  barbell_squat: "https://images.unsplash.com/photo-1532029837206-abbe2b7620e3?auto=format&fit=crop&w=900&q=85",
+  smith_machine_squat: "https://images.unsplash.com/photo-1534258936925-c58bed479fcb?auto=format&fit=crop&w=900&q=85",
+  banded_squats: "https://images.unsplash.com/photo-1599447292294-45fd84092ef4?auto=format&fit=crop&w=900&q=85",
+  leg_press: "https://images.unsplash.com/photo-1581122584612-713f89daa8eb?auto=format&fit=crop&w=900&q=85",
+  hack_squat: "https://images.unsplash.com/photo-1532384748853-8f54a8f476e2?auto=format&fit=crop&w=901&q=85",
+  dumbbell_goblet_lunge: "https://images.unsplash.com/photo-1532029837206-abbe2b7620e3?auto=format&fit=crop&w=901&q=85",
+  jump_lunges: "https://images.unsplash.com/photo-1526401485004-2aa9c4f87155?auto=format&fit=crop&w=903&q=85",
+  squat_jumps: "https://images.unsplash.com/photo-1526401485004-2aa9c4f87155?auto=format&fit=crop&w=901&q=85",
+  step_ups: "https://images.unsplash.com/photo-1599058917765-a780eda07a3e?auto=format&fit=crop&w=900&q=85",
+  plyometric_sets: "https://images.unsplash.com/photo-1526401485004-2aa9c4f87155?auto=format&fit=crop&w=902&q=85",
+  glute_bridges: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=902&q=85",
+  single_leg_glute_bridge: "https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?auto=format&fit=crop&w=901&q=85",
+  hip_thrust: "https://images.unsplash.com/photo-1594737625785-a6cbdabd333c?auto=format&fit=crop&w=901&q=85",
+  leg_curl: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?auto=format&fit=crop&w=902&q=85",
+  leg_extension: "https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?auto=format&fit=crop&w=902&q=85",
+  reverse_crunches: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=903&q=85",
+  captains_chair_leg_raise: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=902&q=85",
+  hanging_knee_raise: "https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?auto=format&fit=crop&w=903&q=85",
+  crunches: "https://images.unsplash.com/photo-1571019613576-2b22c76fd955?auto=format&fit=crop&w=900&q=85",
+  machine_crunch: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?auto=format&fit=crop&w=903&q=85",
+  bicycle_crunches: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=904&q=85",
+  cycling_sprint: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=900&q=85",
+  assault_bike: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=903&q=85",
+  elliptical_intervals: "https://images.unsplash.com/photo-1571019613914-85f342c6a11e?auto=format&fit=crop&w=900&q=85",
+  burpees: "https://images.unsplash.com/photo-1599058917765-a780eda07a3e?auto=format&fit=crop&w=901&q=85",
+  tabata_rounds: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=901&q=85",
+  emom_sets: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=900&q=85",
+  circuit_rounds: "https://images.unsplash.com/photo-1599058918144-1ffabb6ab9a0?auto=format&fit=crop&w=900&q=85",
+  kettlebell_swings: "https://images.unsplash.com/photo-1517344884509-a0c97ec11bcc?auto=format&fit=crop&w=900&q=85",
+  medicine_ball_slams: "https://images.unsplash.com/photo-1534258936925-c58bed479fcb?auto=format&fit=crop&w=901&q=85",
+  jump_rope: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=905&q=85",
+  battle_ropes: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=901&q=85",
+  jumping_jacks: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=906&q=85",
+  agility_ladder: "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=901&q=85",
+  farmer_carries: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=901&q=85",
+  sled_push: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?auto=format&fit=crop&w=904&q=85",
+  hamstring_stretch: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=901&q=85",
+  post_run_hamstring: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=902&q=85",
+  hip_flexor_stretch: "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&w=901&q=85",
+  runner_lunge_stretch: "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&w=902&q=85",
+  cobra_stretch: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=907&q=85",
+  recovery_walk: "https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&w=901&q=85",
+  cable_crunch: "https://images.unsplash.com/photo-1593079831268-3381b0db4a77?auto=format&fit=crop&w=905&q=85",
+  cable_woodchop: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=901&q=85"
+});
+
+Object.assign(exerciseGifOverrides, exerciseGifDatasetOverrides);
 
 const exerciseVideoDemos: Partial<Record<string, Pick<Exercise, "videoLicense" | "videoSource" | "videoUrl">>> = {
   // Real-human video demos can be added here only when the source/license is verified.
@@ -1040,11 +1146,19 @@ const exerciseVideoDemos: Partial<Record<string, Pick<Exercise, "videoLicense" |
 };
 
 function getExerciseGif(id: string, fallbackGif: string) {
-  return exerciseGifOverrides[id] ?? fallbackGif;
+  const override = exerciseGifOverrides[id];
+  if (!override) return fallbackGif;
+
+  // Exercise demonstrations must be motion media. Some card-image polish passes
+  // added still-photo URLs here, but those should never replace the actual GIF
+  // demo used in active workouts or exercise lists.
+  const mediaPath = override.split("?")[0]?.toLowerCase() ?? "";
+  return mediaPath.endsWith(".gif") ? override : fallbackGif;
 }
 
 function getExerciseAnimationUrl(id: string, fallbackGif: string) {
   const gif = getExerciseGif(id, fallbackGif);
+  if (gif.startsWith("videos/")) return `${repositoryBase}/${gif}`;
   return gif.startsWith("https://") ? gif : `${videoBase}/${gif}`;
 }
 
@@ -1552,6 +1666,48 @@ export const workoutPrograms: WorkoutProgram[] = [
 ];
 
 // ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
+
+const workoutCatalogCategoryById: Record<string, WorkoutCatalogCategory> = {
+  "full-body-beginner-home": "Full Body",
+  "full-body-beginner-gym": "Full Body",
+  "upper-lower-split-home": "Full Body",
+  "upper-lower-split-gym": "Full Body",
+  "push-pull-legs-home": "Full Body",
+  "push-pull-legs-gym": "Full Body",
+  "home-no-equipment": "Full Body",
+  "core-control-home": "Core",
+  "core-control-gym": "Core",
+  "upper-body-pump-home": "Arm",
+  "upper-body-pump-gym": "Arm",
+  "leg-power-home": "Legs",
+  "leg-power-gym": "Legs",
+  "mobility-reset": "Mobility",
+  "recovery-flow": "Mobility",
+  "runner-mobility-reset": "Mobility",
+  "hiit-burn-home": "Cardio",
+  "athletic-conditioning-home": "Cardio",
+  "athletic-conditioning-gym": "Cardio",
+  "fat-loss-circuit": "Cardio",
+  "walk-run-foundation": "Endurance",
+  "walking-weight-loss": "Walking",
+  "easy-jog-builder": "Running",
+  "5k-conditioning": "Endurance",
+};
+
+export function getWorkoutProgramCatalogCategory(program: WorkoutProgram): WorkoutCatalogCategory {
+  const explicit = workoutCatalogCategoryById[program.id];
+  if (explicit) return explicit;
+
+  const normalized = `${program.id} ${program.name} ${program.category}`.toLowerCase();
+  if (normalized.includes("core") || normalized.includes("abs")) return "Core";
+  if (normalized.includes("leg") || normalized.includes("lower")) return "Legs";
+  if (normalized.includes("arm") || normalized.includes("upper")) return "Arm";
+  if (normalized.includes("mobility") || normalized.includes("recovery") || normalized.includes("stretch")) return "Mobility";
+  if (normalized.includes("walk")) return "Walking";
+  if (normalized.includes("run") || normalized.includes("jog")) return "Running";
+  if (normalized.includes("conditioning") || normalized.includes("hiit") || normalized.includes("fat-loss")) return "Cardio";
+  return "Full Body";
+}
 
 export function findExercise(id: string) {
   return exerciseCatalog.find((e) => e.id === id);
